@@ -293,7 +293,7 @@ def cdmft(
     displaymin=False, 
     method='Nelder-Mead', 
     file='cdmft.tsv', 
-    skip_averages=False, 
+    averages=False, 
     eps_algo=0, 
     initial_step = 0.1, 
     hartree=None, 
@@ -322,7 +322,7 @@ def cdmft(
     :param boolean displaymin: displays the minimum distance function when minimized
     :param str method: method to use, as used in scipy.optimize.minimize()
     :param str file: name of the file where the solution is written
-    :param boolean skip_averages: if True, does NOT compute the lattice averages of the converged solution
+    :param boolean averages: if True, computes the lattice averages after each iteration. Computes them at the end anyway.
     :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
     :param float initial_step: initial step in the minimization routine
     :param [class hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
@@ -529,6 +529,9 @@ def cdmft(
                 CT_converged = CT_converged and C.converged()
         #--------------------------------------------------------------------------------
 
+        if averages:
+            ave = pyqcm.averages()
+            pyqcm.print_averages(ave)    
 
         # writing the parameters in a progress file
         des = 'distance\tdiff_param\tdiff_hybrid\t'
@@ -604,9 +607,8 @@ def cdmft(
             if GS != GS0:
                 raise ValueError(f'Ground state inconsistent : {GS} from the converged parameters and {GS0} initially')
 
-        if skip_averages is False:
-            ave = pyqcm.averages()
-            pyqcm.print_averages(ave)    
+        ave = pyqcm.averages()
+        pyqcm.print_averages(ave)    
 
         if SEF:
             omegaH=pyqcm.Potthoff_functional(hartree)

@@ -303,7 +303,8 @@ def cdmft(
     SEF=False, 
     observables=None,
     verb=False,
-    max_function_eval = 5000000
+    max_function_eval = 5000000,
+    compute_potential_energy = False
 ):
     """Performs the CDMFT procedure
 
@@ -333,6 +334,7 @@ def cdmft(
     :param [class observable]: list of observables used to assess convergence
     :param boolean verb: If True, prints debugging information
     :param int max_function_eval: maximum number of distance function evaluations when minimizing distance
+    :param boolean compute_potential_energy: If True, computes Tr(Sigma*G) along with the averages
     :returns: None
 
     """
@@ -531,6 +533,7 @@ def cdmft(
 
         if averages:
             ave = pyqcm.averages()
+            if compute_potential_energy : pyqcm.potential_energy()
             pyqcm.print_averages(ave)    
 
         # writing the parameters in a progress file
@@ -608,6 +611,7 @@ def cdmft(
                 raise ValueError(f'Ground state inconsistent : {GS} from the converged parameters and {GS0} initially')
 
         ave = pyqcm.averages()
+        if compute_potential_energy : pyqcm.potential_energy()
         pyqcm.print_averages(ave)    
 
         if SEF:

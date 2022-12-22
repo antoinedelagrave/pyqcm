@@ -122,7 +122,7 @@ void Hamiltonian_CSR<HilbertField>::HS_ops_map(const map<string, double> &value)
     for (auto& x : value) {
         keys.push_back(x.first);
     }
-    //construct the hamiltonian in parallel
+    //construct the Hamiltonian in parallel
     #pragma omp parallel for schedule(guided)
     //for (auto& x : value){
     for (auto& x : keys) {

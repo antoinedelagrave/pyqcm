@@ -15,7 +15,7 @@
 #include "model.hpp"
 #include <algorithm>
 
-enum op_type {one_body, anomalous, interaction, Hund, Heisenberg, X, Y, Z};
+enum op_type {one_body, anomalous, interaction, Hund, Heisenberg, X, Y, Z, general_interaction};
 
 //! Abstract class representing a Hermitian operator, i.e. a term in the Hamiltonian
 struct Hermitian_operator

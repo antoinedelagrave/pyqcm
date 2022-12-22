@@ -104,7 +104,7 @@ void Hamiltonian_Eigen<HilbertField>::HS_ops_map(const map<string, double> &valu
     for (auto& x : value) {
         keys.push_back(x.first);
     }
-    //construct the hamiltonian in parallel
+    //construct the Hamiltonian in parallel
     #pragma omp parallel for schedule(dynamic, 1)
     //for (auto& x : value){
     for (auto& x : keys) {

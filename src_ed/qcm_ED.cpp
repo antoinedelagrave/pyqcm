@@ -13,6 +13,7 @@
 #include "Operators/interaction_operator.hpp"
 #include "Operators/Hund_operator.hpp"
 #include "Operators/Heisenberg_operator.hpp"
+#include "Operators/general_interaction_operator.hpp"
 #ifdef _OPENMP
   #include <omp.h>
 #endif
@@ -75,6 +76,7 @@ namespace ED{
     else if(_type == "X") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements, 'X');
     else if(_type == "Y") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements, 'Y');
     else if(_type == "Z") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements, 'Z');
+    else if(_type == "general_interaction") M->term[_name] = make_shared<general_interaction_operator<double>>(_name, M, elements);
     else qcm_throw("type of operator "+_name+" is not yet implemented");
   }
   
@@ -90,6 +92,7 @@ namespace ED{
     }
     if(_type == "one-body") M->term[_name] = make_shared<one_body_operator<Complex>>(_name, M, elements);
     else if(_type == "anomalous") M->term[_name] = make_shared<anomalous_operator<Complex>>(_name, M, elements);
+    else if(_type == "general_interaction") M->term[_name] = make_shared<general_interaction_operator<Complex>>(_name, M, elements);
     else cout << "ED_WARNING : type of operator " << _name << " is not yet implemented" << endl;
   }
   

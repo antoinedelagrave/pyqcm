@@ -2171,3 +2171,25 @@ def density_matrix(sites, label=0):
 
     return rho, basis
 
+######################################################################
+def general_interaction_matrix_elements(e, n):
+    """Translates a list of matrix elements (i,j,k,l,v) for a general interaction into a list of compound elements (I,J,v)
+    where I = i+n*j and J = k+n*l and v is the value of the matrix element
+    Also checks that only non redundant elements are given
+    """
+
+    E = []
+    for x in e:
+        if x[0]<x[1]:
+            I = x[0]+n*x[1]
+        else:
+            continue
+        if x[2]<x[3]:
+            J = x[2]+n*x[3]
+        else:
+            continue
+        if I > J: continue
+        
+        E += [(I+1,J+1,x[4])]  # need to add one because indices start at 1 when transmitted via pyqcm (1 is subtracted in the C++ code)
+    return E
+        

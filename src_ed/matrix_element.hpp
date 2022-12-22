@@ -60,42 +60,4 @@ struct diagonal_matrix_element{
   }
 } ;
 
-
-#define MAXORB 64
-template<typename op_field>
-struct interaction_matrix_element
-{
-  size_t i;
-  size_t j;
-  size_t k;
-  size_t l;
-  op_field v;
-  
-  interaction_matrix_element() : i(0), j(0), k(0), l(0), v(0) {}
-  
-  interaction_matrix_element(size_t _i, size_t _j, size_t _k, size_t _l, op_field _v) : i(_i), j(_j), k(_k), l(_l), v(_v) {}
-  
-  inline size_t rank() const
-  {
-    return i + MAXORB*(j + MAXORB*(k + MAXORB*l));
-  }
-  
-  friend std::ostream & operator<<(std::ostream &s, const interaction_matrix_element &e)
-  {
-    s << '(' << e.i+1 << ',' << e.j+1 << "|" << e.k+1 << ',' << e.l+1 << ") : " << e.v;
-    return s;
-  }
-  
-  string str() const{
-    ostringstream sout;
-    sout << *this;
-    return sout.str();
-  }
-};
-
-template<typename op_field>
-bool operator<(const interaction_matrix_element<op_field> &x, const interaction_matrix_element<op_field> &y){
-  return x.rank() < y.rank();
-}
-
 #endif

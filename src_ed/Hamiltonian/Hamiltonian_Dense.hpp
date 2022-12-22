@@ -132,7 +132,7 @@ void Hamiltonian_Dense<HilbertField>::print(ostream& fout)
 {
     if(H_dense.v.size() == 0) return;
     banner('~', "Hamiltonian", fout);
-    fout << this->B;
+    fout << *this->B;
     fout << "Hamiltonian (dense form):\n";
     fout << H_dense;
 }

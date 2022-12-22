@@ -565,7 +565,7 @@ creates a new operator from its matrix elements
 arguments:
 1. name of the cluster to which the operator belong
 2. name of the operator
-3. type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', Z')
+3. type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z', 'general_interaction')
 4. array of matrix elements (real)
 returns: None
 )";
@@ -623,7 +623,7 @@ creates a new operator from its matrix elements (complex matrix elements)
 arguments:
 1. name of the cluster to which the operator belong
 2. name of the operator
-3. type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z')
+3. type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z', 'general_interaction')
 4. array of matrix elements (complex)
 returns: None
 )";

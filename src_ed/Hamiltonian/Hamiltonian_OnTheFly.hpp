@@ -3,7 +3,7 @@
 */
 
 #ifndef Hamiltonian_otf
-#define Hamiltonian_oft
+#define Hamiltonian_otf
 
 #include "Hamiltonian_base.hpp"
 

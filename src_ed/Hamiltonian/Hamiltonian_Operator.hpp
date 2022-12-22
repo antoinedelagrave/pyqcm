@@ -2,8 +2,8 @@
  Implementation of the Hamiltonian in CSR format (own implementation)
 */
 
-#ifndef Hamiltonian_otf
-#define Hamiltonian_oft
+#ifndef Hamiltonian_operator
+#define Hamiltonian_operator
 
 #include "Hamiltonian_base.hpp"
 

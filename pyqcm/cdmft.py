@@ -536,7 +536,9 @@ def cdmft(
 
         if averages:
             ave = pyqcm.averages()
-            if compute_potential_energy : pyqcm.potential_energy()
+            if compute_potential_energy : 
+                pyqcm.potential_energy()
+                pyqcm.Potthoff_functional()
             pyqcm.print_averages(ave)    
 
         # writing the parameters in a progress file

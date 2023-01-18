@@ -228,7 +228,7 @@ pair<vector<double>, vector<double>> LanczosGreen(T &H, vector<HilbertField> &ps
 
 //! Implementation of the band Lanczos method for the Green function
 /**
- Band Lanczos method.
+ band Lanczos method.
  See the chapter by Freund in the SIAM book
  www.cs.utk.edu/~dongarra/etemplates
  
@@ -251,7 +251,7 @@ pair<vector<double>, vector<double>> LanczosGreen(T &H, vector<HilbertField> &ps
  @param M0		Number of iterations
  */
 template<typename TYPE, typename HilbertField>
-bool BandLanczos(
+bool bandLanczos(
 				 TYPE &H,
 				 vector<vector<HilbertField>> &phi,
 				 vector<double> &evalues,
@@ -405,7 +405,7 @@ bool BandLanczos(
 			}
 			
 			if (evalues_tmp[1]-evalues_tmp[0] < band_lanczos_minimum_gap and no_degenerate_BL){
-        		qcm_ED_throw("Band Lanczos: the gap between the first two eigenvalues is smaller than " + to_string(band_lanczos_minimum_gap));
+        		qcm_ED_throw("band Lanczos: the gap between the first two eigenvalues is smaller than " + to_string(band_lanczos_minimum_gap));
 			}
 			if(converged) break;
 		}

@@ -47,12 +47,12 @@ class slab:
 
         """
         
-        if 'band1' in kwargs:
-            b1 = kwargs['band1']
+        if 'orb1' in kwargs:
+            b1 = kwargs['orb1']
         else:
              b1 = 1
-        if 'band2' in kwargs:
-            b2 = kwargs['band2']
+        if 'orb2' in kwargs:
+            b2 = kwargs['orb2']
         else:
              b2 = 1
         if 'tau' in kwargs:
@@ -66,10 +66,10 @@ class slab:
         
         if link[2] == 0:
             for i in range(self.nlayer):
-                pyqcm.hopping_operator(name, link, amplitude, band1=b1+self.nband*i,  band2=b2+self.nband*i, tau=tau, sigma=sigma)
+                pyqcm.hopping_operator(name, link, amplitude, orb1=b1+self.nband*i,  orb2=b2+self.nband*i, tau=tau, sigma=sigma)
         elif link[2] == 1:
             for i in range(self.nlayer-1):
-                pyqcm.hopping_operator(name, link, amplitude, band1=b1+self.nband*i,  band2=b2+self.nband*(i+1), tau=tau, sigma=sigma)
+                pyqcm.hopping_operator(name, link, amplitude, orb1=b1+self.nband*i,  orb2=b2+self.nband*(i+1), tau=tau, sigma=sigma)
         else:
             raise ValueError('hopping operators in slabs can only have a z-component of 0 or 1 for the link')
         
@@ -79,12 +79,12 @@ class slab:
 
         """
         
-        if 'band1' in kwargs:
-            b1 = kwargs['band1']
+        if 'orb1' in kwargs:
+            b1 = kwargs['orb1']
         else:
              b1 = 1
-        if 'band2' in kwargs:
-            b2 = kwargs['band2']
+        if 'orb2' in kwargs:
+            b2 = kwargs['orb2']
         else:
              b2 = 1
         if 'type' in kwargs:
@@ -102,10 +102,10 @@ class slab:
        
         if link[2] == 0:
             for i in range(self.nlayer):
-                pyqcm.interaction_operator(name, link=link, amplitude=amplitude, band1=b1+self.nband*i,  band2=b2+self.nband*i, type=the_type)
+                pyqcm.interaction_operator(name, link=link, amplitude=amplitude, orb1=b1+self.nband*i,  orb2=b2+self.nband*i, type=the_type)
         elif link[2] == 1:
             for i in range(self.nlayer-1):
-                pyqcm.interaction_operator(name, link=link, amplitude=amplitude, band1=b1+self.nband*i,  band2=b2+self.nband*i, type=the_type)
+                pyqcm.interaction_operator(name, link=link, amplitude=amplitude, orb1=b1+self.nband*i,  orb2=b2+self.nband*i, type=the_type)
         else:
             raise ValueError('hopping operators in slabs can only have a z-component of 0 or 1 for the link')
 

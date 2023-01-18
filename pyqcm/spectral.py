@@ -65,7 +65,7 @@ def __kgrid(ax, nk, quadrant=False, k_perp=0.0, plane='xy', size=1.0):
     return k, x
 
 ################################################################################
-def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, band=None, offset=2, opt='A', Nambu_redress=True, inverse_path=False, title=None, file=None, plt_ax=None, **kwargs):
+def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, orb=None, offset=2, opt='A', Nambu_redress=True, inverse_path=False, title=None, file=None, plt_ax=None, **kwargs):
     """Plots the spectral function :math:`A(\mathbf{k},\omega)` along a wavevector path in the Brillouin zone.
     This version plots the spin-down part with the correct sign of the frequency in the Nambu formalism.
 
@@ -74,7 +74,7 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, band=
     :param str path: a keyword that is passed to pyqcm.wavevector_path() to produce a set of wavevectors along a path, or a tuple 
     :param int nk: the number of wavevectors along each segment of the path (passed to pyqcm.wavevector_grid())
     :param int label: label of the instance of the model
-    :param int band: if not None, only plots the spectral function associated with this orbital number (starts at 1). If None, sums over all bands.
+    :param int orb: if not None, only plots the spectral function associated with this orbital number (starts at 1). If None, sums over all orbitals.
     :param float offset: vertical offset in the plot between the curves associated to successive wavevectors
     :param str opt: 'A' : spectral function, 'self' : self-energy, 'Sx' : spin (x component), 'Sy' : spin (y component)
     :param boolean Nambu_redress: if True, evaluates the Nambu component at the opposite frequency
@@ -97,9 +97,9 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, band=
     dim, nbands = pyqcm.reduced_Green_function_dimension()
     mix = pyqcm.mixing()
 
-    if band is not None:
-        assert (band <= nbands and band > 0), 'The band index in plot_spectrum() must vary from 1 to {:d}'.format(nbands)
-        band -= 1
+    if orb is not None:
+        assert (orb <= nbands and orb > 0), 'The orbital index in plot_spectrum() must vary from 1 to {:d}'.format(nbands)
+        orb -= 1
 
     w = __frequency_array(wmax, eta)
 
@@ -123,19 +123,19 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, band=
         if opt=='Sy':
             assert mix&2, 'option Sy in spectral_function() only makes sense if spin-flip terms are present'
         for j in range(len(k)):
-            if band is None:
+            if orb is None:
                 for l in range(nbands): 
                     A[i, j] += -g[j, l, l].imag
             else:
-                A[i, j] += -g[j, band, band].imag
+                A[i, j] += -g[j, orb, orb].imag
 
             if mix&2:  
                 plot_down = True
-                if band is None:
+                if orb is None:
                     for l in range(nbands): 
                         A_down[i, j] += -g[j, nbands+l, nbands+l].imag
                 else:
-                    A_down[i, j] += -g[j, nbands+band, nbands+band].imag
+                    A_down[i, j] += -g[j, nbands+orb, nbands+orb].imag
 
     if mix == 1:
         # add the contribution to the Nambu channel, but with opposite frequency
@@ -152,11 +152,11 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, band=
                 g = pyqcm.periodized_Green_function(W, k, False, label)
             for j in range(len(k)):
                 plot_down = True
-                if band is None:
+                if orb is None:
                     for l in range(nbands): 
                         A_down[i, j] += -g[j, nbands+l, nbands+l].imag
                 else:
-                    A_down[i, j] += -g[j, nbands+band, nbands+band].imag
+                    A_down[i, j] += -g[j, nbands+orb, nbands+orb].imag
 
     if mix == 4:
         plot_down = True
@@ -167,11 +167,11 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, band=
             else:
                 g = pyqcm.periodized_Green_function(w[i], k, True, label)
             for j in range(len(k)):
-                if band is None:
+                if orb is None:
                     for l in range(nbands): 
                         A_down[i, j] += -g[j, l, l].imag
                 else:
-                    A_down[i, j] += -g[j, band, band].imag
+                    A_down[i, j] += -g[j, orb, orb].imag
     
 
     ax.set_xlim(np.real(w[0]), np.real(w[-1]))
@@ -355,13 +355,13 @@ def cluster_spectral_function(wmax=6, eta = 0.05, matsubara=False, clus=0, label
 
 
 ################################################################################
-def spectral_function_Lehmann(path='triangle', nk=32, label=0, band=1, offset=0.1, lims=None, file=None, plt_ax=None, **kwargs):
+def spectral_function_Lehmann(path='triangle', nk=32, label=0, orb=1, offset=0.1, lims=None, file=None, plt_ax=None, **kwargs):
     """Plots a Lehmann representation of the spectral function along a wavevector path in the Brillouin zone. Singularities are plotted as impulses with heights proportionnal to the residue.
     
     :param path: if a string, keyword passed to `pyqcm.wavevector_path()` to produce a set of wavevectors; else, explicit list of wavevectors (N x 3 numpy array).
     :param int nk: the number of wavevectors along each segment of the path (passed to pyqcm.wavevector_path())
     :param int label: label of the instance of the model
-    :param int band: only plots the spectral function associated with this orbital number (starts at 1)
+    :param int orb: only plots the spectral function associated with this orbital number (starts at 1)
     :param float offset: vertical offset in the plot between the curves associated to successive wavevectors
     :param (float,float) lims: limits of the plot in frequency (2-tuple)
     :param str file: if not None, saves the plot in a file with that name
@@ -382,7 +382,7 @@ def spectral_function_Lehmann(path='triangle', nk=32, label=0, band=1, offset=0.
 
     k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
 
-    assert (band <= nbands and band > 0), 'The band index in spectral_function_Lehmann() must vary from 1 to {:d}'.format(nbands)
+    assert (orb <= nbands and orb > 0), 'The orbital index in spectral_function_Lehmann() must vary from 1 to {:d}'.format(nbands)
 
     if lims is not None:
         plt.xlim(lims[0], lims[1])
@@ -405,18 +405,18 @@ def spectral_function_Lehmann(path='triangle', nk=32, label=0, band=1, offset=0.
 
 
 ################################################################################
-def gap(k, band = 1, threshold=1e-3):
+def gap(k, orb = 1, threshold=1e-3):
     """Computes the spectral gap for a series of wavevectors
 
     :param k : set of wavevectors
-    :param int band : band number (starts at 1)
+    :param int orb : orbital number (starts at 1)
     :param float threshold : weight below which a Lehmann contribution is deemed zero
     returns: an array of gap values
     """
 
     if len(k.shape)==1:
         k = np.array([k])
-    G = pyqcm.Lehmann_Green_function(k, band)
+    G = pyqcm.Lehmann_Green_function(k, orb)
     g = [None]*len(k)
     for i in range(len(k)):
         x1 = -1e6
@@ -442,7 +442,7 @@ def DoS(w, eta = 0.1, label=0, sum=False, progress = True, labels=None, colors=N
     :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (wmax[0], wmax[1]). w can also be an explicit list of real frequencies, or of complex frequencies (in which case eta is ignored)
     :param float eta: Lorentzian broadening, if w is real
     :param int label: label of the model instance 
-    :param boolean sum: if True, the sum of the DoS of all bands is plotted in addition to each band individually
+    :param boolean sum: if True, the sum of the DoS of all lattice orbitals is plotted in addition to each orbital individually
     :param boolean progress: if True, prints computation progress
     :param [str] labels: labels of the different curves
     :param [str] colors: colors of the different curves
@@ -538,13 +538,13 @@ def DoS(w, eta = 0.1, label=0, sum=False, progress = True, labels=None, colors=N
 
 
 ################################################################################
-def mdc(nk=200, eta=0.1, label=0, band=None, spin_down=False, quadrant=False, opt='GF', k_perp = 0, freq = 0.0, max=None, plane = 'xy', size=1.0, band_basis=False, sym=None, file=None, plt_ax=None, **kwargs):
+def mdc(nk=200, eta=0.1, label=0, orb=None, spin_down=False, quadrant=False, opt='GF', k_perp = 0, freq = 0.0, max=None, plane = 'xy', size=1.0, orb_basis=False, sym=None, file=None, plt_ax=None, **kwargs):
     """Plots the spectral weight at zero frequency in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param float eta: Lorentzian broadening
     :param int label: label of the model instance 
-    :param int band: if None, sums all the bands. Otherwise just shows the weight for that band (starts at 1)
+    :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param boolean spin_down: true is the spin down sector is to be computed (applies if mixing = 4)
     :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
     :param str opt: The quantity to plot. 'GF' = Green function, 'self' = self-energy, 'Z' = quasi-particle weight
@@ -580,23 +580,23 @@ def mdc(nk=200, eta=0.1, label=0, band=None, spin_down=False, quadrant=False, op
     # computes the spectral function
     if opt == 'self':
         g = pyqcm.self_energy(eta * 1j, k)
-        if band is None:
+        if orb is None:
             for l in range(nbands): 
                 A += -g[:, l, l].imag
         else:
-            A = -g[:, band-1, band-1].imag
+            A = -g[:, orb-1, orb-1].imag
 
     elif opt == 'Z':
-        A = pyqcm.QP_weight(k, eta, band)
+        A = pyqcm.QP_weight(k, eta, orb)
 
     else:
-        if band is None:
+        if orb is None:
             for l in range(d): 
                 A += -pyqcm.periodized_Green_function_element(l, l, freq + eta * 1j, k, spin_down=spin_down, label=label).imag
         elif not band_basis:
-            A = -pyqcm.periodized_Green_function_element(band-1, band-1, freq + eta * 1j, k, spin_down=spin_down, label=label).imag
+            A = -pyqcm.periodized_Green_function_element(orb-1, orb-1, freq + eta * 1j, k, spin_down=spin_down, label=label).imag
         else:
-            A = -pyqcm.band_Green_function(freq + eta * 1j, k, spin_down=spin_down, label=label)[:, band-1, band-1].imag
+            A = -pyqcm.band_Green_function(freq + eta * 1j, k, spin_down=spin_down, label=label)[:, orb-1, orb-1].imag
 
     A = np.reshape(A, (nk, nk))
 
@@ -630,8 +630,8 @@ def mdc(nk=200, eta=0.1, label=0, band=None, spin_down=False, quadrant=False, op
         axis += ', $\omega = {:1.3f}$'.format(freq)
 
     title = axis
-    if band != None:
-        title = 'band {:d} : '.format(band) + title
+    if orb_basis != None:
+        title = 'orbital {:d} : '.format(orb) + title
     if opt == 'self':
         title = r"$\Sigma''(k,0)$ : "+title
     elif opt == 'Z':
@@ -665,13 +665,13 @@ def mdc(nk=200, eta=0.1, label=0, band=None, spin_down=False, quadrant=False, op
 
 
 ################################################################################
-def spin_mdc(nk=200, eta=0.1, label=0, band=None, quadrant=False, opt='spin', freq = 0.0, max=None, k_perp = 0, plane = 'xy', band_basis=False, file=None, plt_ax=None, **kwargs):
+def spin_mdc(nk=200, eta=0.1, label=0, orb=None, quadrant=False, opt='spin', freq = 0.0, max=None, k_perp = 0, plane = 'xy', band_basis=False, file=None, plt_ax=None, **kwargs):
     """Plots the spin spectral weight at zero frequency in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param float eta: Lorentzian broadening
     :param int label: label of the model instance 
-    :param int band: if None, sums all the bands. Otherwise just shows the weight for that band (starts at 1)
+    :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
     :param str opt: The quantity to plot. 'spin' = spin texture, 'spins' = spin texture (saturated), 'sz' = z-component, 'spinp' = modulus of xy-component
     :param float freq: frequency at which the spectral function is computed (0 by default)
@@ -705,7 +705,7 @@ def spin_mdc(nk=200, eta=0.1, label=0, band=None, quadrant=False, opt='spin', fr
     d, nbands = pyqcm.reduced_Green_function_dimension()
 
     # computes the spin spectral function
-    S = pyqcm.spin_spectral_function(freq+eta*1j, k, band, label)
+    S = pyqcm.spin_spectral_function(freq+eta*1j, k, orb, label)
     if opt=='sz':
         A = S[:,3]
     elif opt=='spinp':
@@ -739,8 +739,8 @@ def spin_mdc(nk=200, eta=0.1, label=0, band=None, quadrant=False, opt='spin', fr
         axis += ', $\omega = {:1.3f}$'.format(freq)
 
     title = axis
-    if band != None:
-        title = 'band {:d} : '.format(band) + title
+    if orb != None:
+        title = 'orb {:d} : '.format(orb) + title
     if opt == 'self':
         title = r"$\Sigma''(k,0)$ : "+title
     elif opt == 'Z':
@@ -786,13 +786,13 @@ def spin_mdc(nk=200, eta=0.1, label=0, band=None, quadrant=False, opt='spin', fr
 
 
 ################################################################################
-def mdc_anomalous(nk=200, w=0.1j, label=0, bands=(1,1), self=False, im_part=False, quadrant=False, k_perp=0.0, plane='xy', file=None, plt_ax=None, **kwargs):
+def mdc_anomalous(nk=200, w=0.1j, label=0, orbitals=(1,1), self=False, im_part=False, quadrant=False, k_perp=0.0, plane='xy', file=None, plt_ax=None, **kwargs):
     """Plots the anomalous Green function or self-energy (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param complex w: complex frequency at which the Green function is computed
     :param int label: label of the model instance 
-    :param int bands: shows the weight for (b1,b2) (starts at 1), or numpy array of spin-Nambu projection
+    :param int orbitals: shows the weight for orbitals (b1,b2) (starts at 1), or numpy array of spin-Nambu projection
     :param boolean self: if True, plots the anomalous self-energy instead of the spectral function
     :param boolean im_part: if True, plots the imaginary part instead of the real part
     :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
@@ -818,9 +818,9 @@ def mdc_anomalous(nk=200, w=0.1j, label=0, bands=(1,1), self=False, im_part=Fals
 
     d, nbands = pyqcm.reduced_Green_function_dimension()
     d = d//2
-    if type(bands) is tuple:
-        assert (bands[0] > 0 and bands[0] <= nbands), 'bands is out of range in mdc_anomalous()'
-        assert (bands[1] > 0 and bands[1] <= nbands), 'bands is out of range in mdc_anomalous()'
+    if type(orbitals) is tuple:
+        assert (orbitals[0] > 0 and orbitals[0] <= nbands), 'bands is out of range in mdc_anomalous()'
+        assert (orbitals[1] > 0 and orbitals[1] <= nbands), 'bands is out of range in mdc_anomalous()'
 
     k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
 
@@ -833,21 +833,21 @@ def mdc_anomalous(nk=200, w=0.1j, label=0, bands=(1,1), self=False, im_part=Fals
     else:
         g = pyqcm.periodized_Green_function(w, k, label=label)
     
-    if type(bands) is np.ndarray:
-        if(bands.shape != (d,d)):
-            print('the size of argument "bands" is not square of side ', d)
+    if type(orbitals) is np.ndarray:
+        if(orbitals.shape != (d,d)):
+            print('the size of argument "orbitals" is not square of side ', d)
             return
         A = np.zeros(nk*nk)
         for i in range(nk*nk):
             if im_part:
-                A[i] = (-g[i,0:d,d:2*d]*bands).sum().imag
+                A[i] = (-g[i,0:d,d:2*d]*orbitals).sum().imag
             else:
-                A[i] = (-g[i,0:d,d:2*d]*bands).sum().real
+                A[i] = (-g[i,0:d,d:2*d]*orbitals).sum().real
     else:    
         if im_part:
-            A = -g[:, bands[0]-1, bands[1]+d-1].imag
+            A = -g[:, orbitals[0]-1, orbitals[1]+d-1].imag
         else:
-            A = -g[:, bands[0]-1, bands[1]+d-1].real
+            A = -g[:, orbitals[0]-1, orbitals[1]+d-1].real
 
     A = np.reshape(A, (nk, nk))
     max = np.abs(A).max()
@@ -864,15 +864,15 @@ def mdc_anomalous(nk=200, w=0.1j, label=0, bands=(1,1), self=False, im_part=Fals
         plt.show()
 
 ################################################################################
-def plot_dispersion(nk=64, label=0, spin_down=False, band=None, contour=False, datafile=None, quadrant=False, k_perp = 0, plane = 'xy', file=None, plt_ax=None, view_angle=None, **kwargs):
+def plot_dispersion(nk=64, label=0, spin_down=False, orb=None, contour=False, datafile=None, quadrant=False, k_perp = 0, plane = 'xy', file=None, plt_ax=None, view_angle=None, **kwargs):
     """Plots the dispersion relation in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param int label: label of the model instance 
     :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
-    :param int band: if None, sums all the bands. Otherwise just shows the weight for that band (starts at 1)
+    :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param boolean contour: True if a contour plot is produced instead of a 3D plot.
-    :param str datafile: if given, name of the data file (no extension please) in which the data is printed, for plotting with an external program. Does not plot. Will produce one file per band, with the .tsv extension.
+    :param str datafile: if given, name of the data file (no extension please) in which the data is printed, for plotting with an external program. Does not plot. Will produce one file per orbital, with the .tsv extension.
     :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
     :param float k_perp: momentum component in the third direction (in multiple of pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
@@ -913,18 +913,18 @@ def plot_dispersion(nk=64, label=0, spin_down=False, band=None, contour=False, d
     print('plotting...')
 
     if contour:
-        if band is None:
-            print('Contour plots of the dispersion with more than one band make no sense visually! band set to 1')
-            band=1
-        CS = plt.contour(x, x, e[:, :, band-1], linewidths=0.5)
+        if orb is None:
+            print('Contour plots of the dispersion with more than one orbital make no sense visually! orbital label set to 1')
+            orb=1
+        CS = plt.contour(x, x, e[:, :, orb-1], linewidths=0.5)
         ax.clabel(CS, inline=True, fontsize=9)
     else:
         x, y = np.meshgrid(x, x)
-        if band is None:
+        if orb is None:
             for j in range(d):
                 ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
         else:
-            ax.plot_surface(x, y, e[:, :, band-1], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
+            ax.plot_surface(x, y, e[:, :, orb-1], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
             
     if plt_ax is None:
         axis = set_legend_mdc(plane, k_perp)
@@ -986,12 +986,12 @@ def segment_dispersion(path='triangle', nk=64, label=0, file=None, plt_ax=None, 
         plt.show()
 
 ################################################################################
-def Fermi_surface(nk=64, label=0, band=None, quadrant=False, plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
+def Fermi_surface(nk=64, label=0, orb=None, quadrant=False, plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
     """Plots the Fermi surface of the non-interacting model (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param int label: label of the model instance 
-    :param int band: if None, plots all the bands. Otherwise just plots the FS for that band (starts at 1)
+    :param int orb: if None, plots all the orbitals. Otherwise just plots the FS for that orbital (starts at 1)
     :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param float k_perp: momentum component in the third direction (in multiple of :math:`\pi`)
@@ -1018,11 +1018,11 @@ def Fermi_surface(nk=64, label=0, band=None, quadrant=False, plane='xy', k_perp=
     k.shape = (nk, nk, 3)
     e.shape = (nk, nk, d)
 
-    if band is None:
+    if orb is None:
         for j in range(d):
             plt.contour(x, x, e[:, :, j], levels=[0.0], **kwargs)
     else:
-        plt.contour(x, x, e[:, :, band-1], levels=[0.0], **kwargs)
+        plt.contour(x, x, e[:, :, orb-1], levels=[0.0], **kwargs)
 
     if plt_ax is None:
         axis = set_legend_mdc('xy', 0.0)
@@ -1035,12 +1035,12 @@ def Fermi_surface(nk=64, label=0, band=None, quadrant=False, plane='xy', k_perp=
         plt.show()
 
 ################################################################################
-def G_dispersion(nk=64, label=0, band=None, period = 'G', contour=False, inv=False, quadrant=False, datafile=None, max=None, k_perp = 0.0, plane = 'xy', file=None, plt_ax=None, **kwargs):
+def G_dispersion(nk=64, label=0, orb=None, period = 'G', contour=False, inv=False, quadrant=False, datafile=None, max=None, k_perp = 0.0, plane = 'xy', file=None, plt_ax=None, **kwargs):
     """Plots the eigenvalues of the inverse Green function at zero frequency
 
     :param int nk: number of wavevectors on each side of the grid
     :param int label: label of the model instance 
-    :param int band: if 0, plots all the bands. Otherwise just shows the plot for that band (starts at 1)
+    :param int orb: if 0, plots all the orbitals. Otherwise just shows the plot for that orbital (starts at 1)
     :param str period: periodization scheme ('G', 'M')
     :param boolean contour: True for a contour plot; otherwise a 3D plot.
     :param boolean inv: True if the inverse eigenvalues (inverse energies) are plotted instead
@@ -1093,14 +1093,14 @@ def G_dispersion(nk=64, label=0, band=None, period = 'G', contour=False, inv=Fal
         e = 1.0/e
 
     if datafile != None:
-        np.savetxt(datafile,e[:,:,band])
+        np.savetxt(datafile,e[:,:,orb])
         return
 
     if contour:
-        if band is None:
-            print('Contour plots of the dispersion with more than one band make no sense visually! band set to 1')
-            band=1
-        A = e[:, :, band-1]
+        if orb is None:
+            print('Contour plots of the dispersion with more than one orbital make no sense visually! orbital set to 1')
+            orb=1
+        A = e[:, :, orb-1]
         CS = plt.contour(x, x, A, **kwargs)
         ax.clabel(CS, inline=True, fontsize=9)
     else:    
@@ -1113,11 +1113,11 @@ def G_dispersion(nk=64, label=0, band=None, period = 'G', contour=False, inv=Fal
         else:
             plt.xticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
             plt.yticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
-        if band is None:
+        if orb is None:
             for j in range(d):
                 ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
         else:
-            ax.plot_surface(x, y, e[:, :, band], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
+            ax.plot_surface(x, y, e[:, :, orb], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
 
     if file is not None:
         plt.savefig(file)
@@ -1127,12 +1127,12 @@ def G_dispersion(nk=64, label=0, band=None, period = 'G', contour=False, inv=Fal
 
 
 ################################################################################
-def Luttinger_surface(nk=200, label=0, band=1, quadrant=False, k_perp = 0, plane = 'xy',  file=None, plt_ax=None, **kwargs):
+def Luttinger_surface(nk=200, label=0, orb=1, quadrant=False, k_perp = 0, plane = 'xy',  file=None, plt_ax=None, **kwargs):
     """Plots the Luttinger surface (zeros of the Green function) in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param int label: label of the model instance 
-    :param int band: band number (starts at 1)
+    :param int orb: orbital number (starts at 1)
     :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
     :param float k_perp: for 3D models, value of the component of k perpendicular to the plane
     :param str plane: for 3D models, plane of the plot ('z'='xy', 'y'='xz', 'x='yz')
@@ -1155,7 +1155,7 @@ def Luttinger_surface(nk=200, label=0, band=1, quadrant=False, k_perp = 0, plane
     k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
     
     g = pyqcm.periodized_Green_function(0.0, k, label=label)
-    A = g[:,band-1,band-1].real
+    A = g[:,orb-1,orb-1].real
     A = np.reshape(A, (nk, nk))
     A = 1.0/A
     CS = plt.contour(x, x, A, levels=[0], **kwargs)

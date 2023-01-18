@@ -101,7 +101,7 @@ arguments :
 1. k1 : wavevector, lower left bound of the region
 2. k2 : wavevector, upper right bound of the region
 3. nk : number of wavevectors in x and y
-4. band : the band number to use, from 1 to the number of bands (default 0 = all)
+4. orb : the lattice orbital number to use, from 1 to the number of lattice orbitals (default 0 = all)
 5. rec : true is recursion is used (subdivision of intervals)
 6. label (optional) :  label of the model instance (default 0)
 returns : a 2D array of values.
@@ -115,18 +115,18 @@ is the average value of the array.
 static PyObject* Berry_flux_python(PyObject *self, PyObject *args)
 {
   int label=0;
-  int band=0;
+  int orb=0;
   PyArrayObject *k_pyobj = nullptr;
   
   try{
-    if(!PyArg_ParseTuple(args, "O|ii", &k_pyobj, &band, &label))
+    if(!PyArg_ParseTuple(args, "O|ii", &k_pyobj, &orb, &label))
       qcm_throw("failed to read parameters in call to Berry_flux (python)");
   } catch(const string& s) {qcm_catch(s);}
   
   vector<vector3D<double>> k = wavevectors_from_Py(k_pyobj);
   double g;
   try{
-    g = QCM::Berry_flux(k, band, label);
+    g = QCM::Berry_flux(k, orb, label);
   } catch(const string& s) {qcm_catch(s);}
 
   return Py_BuildValue("d", g);
@@ -140,7 +140,7 @@ arguments :
 1. k1 : wavevector, lower left bound of the region
 2. k2 : wavevector, upper right bound of the region
 3. nk : number of wavevectors in x and y
-4. band : the band number to use, from 1 to the number of bands (default 0 = all)
+4. orb : the lattice orbital to use, from 1 to the number of lattice orbitals (default 0 = all)
 5. rec : true is recursion is used (subdivision of intervals)
 6. label (optional) :  label of the model instance (default 0)
 returns : a 2D array of values.
@@ -154,7 +154,7 @@ is the average value of the array.
 static PyObject* Berry_curvature_python(PyObject *self, PyObject *args)
 {
   int label=0;
-  int band=0;
+  int orb=0;
   int rec=0;
   PyArrayObject *k1_pyobj = nullptr;
   PyArrayObject *k2_pyobj = nullptr;
@@ -162,7 +162,7 @@ static PyObject* Berry_curvature_python(PyObject *self, PyObject *args)
   int dir;
   
   try{
-    if(!PyArg_ParseTuple(args, "OOi|iiii",&k1_pyobj, &k2_pyobj, &nk, &band, &rec, &dir, &label))
+    if(!PyArg_ParseTuple(args, "OOi|iiii",&k1_pyobj, &k2_pyobj, &nk, &orb, &rec, &dir, &label))
       qcm_throw("failed to read parameters in call to Berry_curvature (python)");
   } catch(const string& s) {qcm_catch(s);}
   
@@ -171,7 +171,7 @@ static PyObject* Berry_curvature_python(PyObject *self, PyObject *args)
   
   vector<double> g;
   try{
-    g = QCM::Berry_curvature(k1, k2, nk, band, (bool)rec, dir, label);
+    g = QCM::Berry_curvature(k1, k2, nk, orb, (bool)rec, dir, label);
   } catch(const string& s) {qcm_catch(s);}
 
   npy_intp dims[2];
@@ -825,7 +825,7 @@ None
 returns:
   A 4-tuple:
     1. the size of the supercell
-    2. the number of bands
+    2. the number of lattice orbitals
     3. a tuple containing the sizes of each cluster
     4. a tuple containing the sizes of each cluster's bath
   
@@ -1301,7 +1301,7 @@ returns: void
 static PyObject* print_model_python(PyObject *self, PyObject *args, PyObject *keywds)
 {
   char* s1 = nullptr;
-  const char *kwlist[] = {"", "asy_operators", "asy_labels", "asy_band", "asy_neighbors", "asy_working_basis",  NULL};
+  const char *kwlist[] = {"", "asy_operators", "asy_labels", "asy_orb", "asy_neighbors", "asy_working_basis",  NULL};
 
   try{
     if(!PyArg_ParseTuple(args, "s", &s1))
@@ -1400,7 +1400,7 @@ static PyObject* properties_python(PyObject *self, PyObject *args)
 const char* reduced_Green_function_dimension_help =
 R"{(
 returns the dimension of the reduced Green function, i.e. a simple multiple of the
-number of bands n, depending on the mixing state: n, 2n or 4n.
+number n of lattice orbitals, depending on the mixing state: n, 2n or 4n.
 ){";
 //------------------------------------------------------------------------------
 static PyObject* reduced_Green_function_dimension_python(PyObject *self, PyObject *args)
@@ -1665,8 +1665,8 @@ arguments:
 kwargs
        2. 'link" : 3 component integer vector, (0,0,0)by default
        3. 'amplitude" : double
-       4. 'band1' : int. Band label of first index (1 by default)
-       5. 'band2' : int. Band label of second index (1 by default)
+       4. 'orb1' : int. lattice orbital label of first index (1 by default)
+       5. 'orb2' : int. lattice orbital label of second index (1 by default)
        6. 'type' : one of 'Hubbard', 'Heisenberg', 'Hund', 'X', 'Y', 'Z'
 returns: None
 ){";
@@ -1674,20 +1674,20 @@ returns: None
 static PyObject* interaction_operator_python(PyObject *self, PyObject *args, PyObject *keywds)
 {
   double amplitude=1.0;
-  int band1=1;
-  int band2=1;
+  int orb1=1;
+  int orb2=1;
   char *name = nullptr;
   char *type = nullptr;
   PyArrayObject *link_pyobj = nullptr;
   
-  const char *kwlist[] = {"", "link", "amplitude", "band1", "band2", "type",  NULL};
+  const char *kwlist[] = {"", "link", "amplitude", "orb1", "orb2", "type",  NULL};
   try{
     if(!PyArg_ParseTupleAndKeywords(args, keywds, "s|Odiis", const_cast<char **>(kwlist),
                                      &name,
                                      &link_pyobj,
                                      &amplitude,
-                                     &band1,
-                                     &band2,
+                                     &orb1,
+                                     &orb2,
                                      &type))
       qcm_throw("failed to read parameters in call to interaction_operator (python)");
 
@@ -1697,7 +1697,7 @@ static PyObject* interaction_operator_python(PyObject *self, PyObject *args, PyO
     vector3D<int64_t> link(0,0,0);
     if(link_pyobj != nullptr and (PyObject*)link_pyobj != Py_None) link = position_from_Py(link_pyobj);
   
-    QCM::interaction_operator(string(name), link, amplitude, band1, band2, the_type);
+    QCM::interaction_operator(string(name), link, amplitude, orb1, orb2, the_type);
   } catch(const string& s) {qcm_catch(s);}
   return Py_BuildValue("");
 }
@@ -1711,8 +1711,8 @@ arguments:
 2. link (3 component integer array)
 3. amplitude (real number)
 kwargs:
-  4. 'band1' : int. Band label of first index (1 by default)
-  5. 'band2' : int. Band label of first index (1 by default)
+  4. 'orb1' : int. lattice orbital label of first index (1 by default)
+  5. 'orb2' : int. lattice orbital label of first index (1 by default)
   6. 'tau' : int. specifies the tau Pauli matrix (0,1,2,3)
   7. 'sigma' : int. specifies the sigma Pauli matrix (0,1,2,3)
   
@@ -1723,27 +1723,27 @@ static PyObject* hopping_operator_python(PyObject *self, PyObject *args, PyObjec
 {
   char *name = nullptr;
   double amplitude = 1.0;
-  int band1=1;
-  int band2=1;
+  int orb1=1;
+  int orb2=1;
   int tau=1;
   int sigma=0;
   PyArrayObject *link_pyobj = nullptr;
   
-  const char *kwlist[] = {"", "", "", "band1", "band2", "tau", "sigma",  NULL};
+  const char *kwlist[] = {"", "", "", "orb1", "orb2", "tau", "sigma",  NULL};
   try{
     if(!PyArg_ParseTupleAndKeywords(args, keywds, "sOd|iiii", const_cast<char **>(kwlist),
                                      &name,
                                      &link_pyobj,
                                      &amplitude,
-                                     &band1,
-                                     &band2,
+                                     &orb1,
+                                     &orb2,
                                      &tau,
                                      &sigma))
       qcm_throw("failed to read parameters in call to hopping_operator (python)");
 
     vector3D<int64_t> link = position_from_Py(link_pyobj);
 
-    QCM::hopping_operator(string(name), link, amplitude, band1, band2, tau, sigma);
+    QCM::hopping_operator(string(name), link, amplitude, orb1, orb2, tau, sigma);
   } catch(const string& s) {qcm_catch(s);}
   return Py_BuildValue("");
 }
@@ -1757,8 +1757,8 @@ arguments:
   2. link (3 component integer array)
   3. amplitude (complex number)
 kwargs:
-  4. 'band1' : int. Band label of first index (1 by default)
-  5. 'band2' : int. Band label of second index (1 by default)
+  4. 'orb1' : int. lattice orbital label of first index (1 by default)
+  5. 'orb2' : int. lattice orbital label of second index (1 by default)
   6. 'type' : one of 'singlet' (default), 'dz', 'dy', 'dx'
   
 returns: None
@@ -1769,18 +1769,18 @@ static PyObject* anomalous_operator_python(PyObject *self, PyObject *args, PyObj
   char* name = nullptr;
   char* type = nullptr;
   complex<double> amplitude = 1.0;
-  int band1=1;
-  int band2=1;
+  int orb1=1;
+  int orb2=1;
   PyArrayObject *link_pyobj = nullptr;
   
-  const char *kwlist[] = {"", "", "", "band1", "band2", "type",  NULL};
+  const char *kwlist[] = {"", "", "", "orb1", "orb2", "type",  NULL};
   try{
     if(!PyArg_ParseTupleAndKeywords(args, keywds, "sOD|iis", const_cast<char **>(kwlist),
                                      &name,
                                      &link_pyobj,
                                      &amplitude,
-                                     &band1,
-                                     &band2,
+                                     &orb1,
+                                     &orb2,
                                      &type
                                      ))
       qcm_throw("failed to read parameters in call to anomalous_operator "+string(name)+" (python)");
@@ -1788,7 +1788,7 @@ static PyObject* anomalous_operator_python(PyObject *self, PyObject *args, PyObj
     string the_type("singlet");
     if(type != nullptr) the_type = string(type);
     vector3D<int64_t> link = position_from_Py(link_pyobj);
-    QCM::anomalous_operator(string(name), link, amplitude, band1, band2, the_type);
+    QCM::anomalous_operator(string(name), link, amplitude, orb1, orb2, the_type);
   } catch(const string& s) {qcm_catch(s);}
   return Py_BuildValue("");
 }
@@ -1861,7 +1861,7 @@ arguments:
 kwargs:
   4. link (3 component integer vector) for bond density waves
   5. amplitude (complex number)
-  6. 'band' : int. Band label (0 by default = all bands)
+  6. 'orb' : int. lattice orbital label (0 by default = all orbitals)
   7. 'phase' : real phase (times pi)
 returns: None
 ){";
@@ -1871,12 +1871,12 @@ static PyObject* density_wave_python(PyObject *self, PyObject *args, PyObject *k
   char* name = nullptr;
   char* type = nullptr;
   complex<double> amplitude = 1.0;
-  int band=0;
+  int orb=0;
   double phase = 0.0;
   PyArrayObject *link_pyobj = nullptr;
   PyArrayObject *Q_pyobj = nullptr;
   
-  const char* kwlist[] = {"", "", "", "link", "amplitude", "band", "phase",  NULL};
+  const char* kwlist[] = {"", "", "", "link", "amplitude", "orb", "phase",  NULL};
   try{
     if(!PyArg_ParseTupleAndKeywords(args, keywds, "ssO|ODid", const_cast<char **>(kwlist),
                                      &name,
@@ -1884,14 +1884,14 @@ static PyObject* density_wave_python(PyObject *self, PyObject *args, PyObject *k
                                      &Q_pyobj,
                                      &link_pyobj,
                                      &amplitude,
-                                     &band,
+                                     &orb,
                                      &phase))
       qcm_throw("failed to read parameters in call to density_wave (python)");
   
     vector3D<int64_t> link(0,0,0);
     if(link_pyobj != nullptr and (PyObject*)link_pyobj != Py_None) link = position_from_Py(link_pyobj);
   
-    QCM::density_wave(string(name), link, amplitude, band, wavevector_from_Py(Q_pyobj), phase, string(type));
+    QCM::density_wave(string(name), link, amplitude, orb, wavevector_from_Py(Q_pyobj), phase, string(type));
   } catch(const string& s) {qcm_catch(s);}
   return Py_BuildValue("");
 }
@@ -1988,7 +1988,7 @@ R"{(
 computes a Lehmann representation of the periodized Green function at a given frequency and wavevectors
 arguments:
 1. k : single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3))
-2. band index (starts at 1)
+2. lattice orbital index (starts at 1)
 3. spin_down (optional): true is the spin down sector is to be computed (applies if mixing = 4)
 4. label (optional) :  label of the model instance (default 0)
 returns: a single (d,d) or an array (N,d,d) of complex-valued matrices. d is the reduced GF dimension.
@@ -1997,16 +1997,16 @@ returns: a single (d,d) or an array (N,d,d) of complex-valued matrices. d is the
 static PyObject* Lehmann_Green_function_python(PyObject *self, PyObject *args)
 {
   int label=0;
-  int band=1;
+  int orb=1;
   int spin_down=0;
   PyArrayObject *k_pyobj = nullptr;
   PyObject *lst;
 
   try{
-    if(!PyArg_ParseTuple(args, "O|iii", &k_pyobj, &band, &spin_down, &label))
+    if(!PyArg_ParseTuple(args, "O|iii", &k_pyobj, &orb, &spin_down, &label))
       qcm_throw("failed to read parameters in call to periodized_Green_function (python)");
   
-    band -= 1;
+    orb -= 1;
     int ndim = PyArray_NDIM(k_pyobj);
     if(ndim>2) qcm_throw("Argument 2 of 'Lehmann_Green_function' should be of dimension 1 or 2");
 
@@ -2018,7 +2018,7 @@ static PyObject* Lehmann_Green_function_python(PyObject *self, PyObject *args)
     else kk = wavevectors_from_Py(k_pyobj);
   
     lst = PyList_New(kk.size());
-    auto g = QCM::Lehmann_Green_function(kk, band, (bool)spin_down, label);
+    auto g = QCM::Lehmann_Green_function(kk, orb, (bool)spin_down, label);
 
     for(size_t i=0; i<g.size(); i++){
       auto P = PyTuple_New(2);
@@ -2047,7 +2047,7 @@ arguments:
 1. k : wavevector, position of the node
 2. a : float, half-side of the cube surrounding the node 
 3. nk : number of divisions along the side of the cube
-4. band : band to compute the charge of
+4. orb : lattice orbital to compute the charge of
 5. rec : boolean, true if subdivision is allowed
 6. label : int, label of the model instance
 returns: float
@@ -2057,17 +2057,17 @@ static PyObject* monopole_python(PyObject *self, PyObject *args)
 {
   int nk = 0;
   int label = 0;
-  int band = 0;
+  int orb = 0;
   int rec = 0;
   double a = 0.0;
   vector3D<double> k;
   PyArrayObject *k_pyobj = nullptr;
   try{
-    if(!PyArg_ParseTuple(args, "Odii|ii", &k_pyobj, &a, &nk, &band, &rec, &label))
+    if(!PyArg_ParseTuple(args, "Odii|ii", &k_pyobj, &a, &nk, &orb, &rec, &label))
       qcm_throw("failed to read parameters in call to monopole (python)");
     k = wavevector_from_Py(k_pyobj);
   } catch(const string& s) {qcm_catch(s);}
-  return Py_BuildValue("d", QCM::monopole(k, a, nk, band, rec, label));
+  return Py_BuildValue("d", QCM::monopole(k, a, nk, orb, rec, label));
 }
 
 

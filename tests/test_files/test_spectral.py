@@ -20,11 +20,11 @@ F = None
 # segment_dispersion(file = F, plt_ax=ax)
 # spectral_function(file = F, plt_ax=ax)
 # spectral_function_Lehmann(lims=(-5,5), file = F, plt_ax=ax)
-# spin_mdc(nk=20, band=1, file = F, plt_ax=ax, opt='spins')
-# spin_mdc(nk=200, band=1, file = F, plt_ax=ax, opt='spinp')
-# spin_mdc(nk=200, band=1, file = F, plt_ax=ax, opt='sz')
-# spin_mdc(nk=25, band=1, file = F, plt_ax=ax, opt='spins')
-# mdc_anomalous(bands=(1,1), self=True, quadrant=True, file = F, plt_ax=ax)
+# spin_mdc(nk=20, orb=1, file = F, plt_ax=ax, opt='spins')
+# spin_mdc(nk=200, orb=1, file = F, plt_ax=ax, opt='spinp')
+# spin_mdc(nk=200, orb=1, file = F, plt_ax=ax, opt='sz')
+# spin_mdc(nk=25, orb=1, file = F, plt_ax=ax, opt='spins')
+# mdc_anomalous(orbs=(1,1), self=True, quadrant=True, file = F, plt_ax=ax)
 
 #-----------------------------------------------------------------
 # import record_2x2_8b

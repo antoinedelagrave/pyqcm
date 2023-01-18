@@ -29,8 +29,8 @@ struct lattice_matrix_element;
  */
 namespace QCM{
   bool complex_HS(size_t label);
-  double Berry_flux(vector<vector3D<double>>& k, int band, int label);
-  double monopole(vector3D<double>& k, double a, int nk, int band, bool rec, int label);
+  double Berry_flux(vector<vector3D<double>>& k, int orb, int label);
+  double monopole(vector3D<double>& k, double a, int nk, int orb, bool rec, int label);
   double Potthoff_functional(int label);
   double potential_energy(int label);
   double spectral_average(const string& name, const complex<double> w, int label);
@@ -51,7 +51,7 @@ namespace QCM{
   pair<vector<array<double,9>>, vector<array<complex<double>, 11>>> site_and_bond_profile(int label);
   size_t Green_function_dimension();
   size_t reduced_Green_function_dimension();
-  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int band, bool rec, int dir, int label);
+  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, int label);
   vector<double> dos(const complex<double> w, int label);
   vector<double> momentum_profile(const string& op, const vector<vector3D<double>> &k_set, int label);
   vector<matrix<complex<double>>> CPT_Green_function_inverse(const complex<double> w, const vector<vector3D<double>> &k, bool spin_down, int label);
@@ -63,20 +63,20 @@ namespace QCM{
   vector<matrix<complex<double>>> tk(const vector<vector3D<double>> &k, bool spin_down, int label);
   vector<pair<double,string>> ground_state(int label);
   vector<pair<string,double>> averages(const vector<string> &_ops = {}, int label=0);
-  vector<pair<vector<double>, vector<double>>> Lehmann_Green_function(vector<vector3D<double>> &k, int band, bool spin_down, int label);
+  vector<pair<vector<double>, vector<double>>> Lehmann_Green_function(vector<vector3D<double>> &k, int orb, bool spin_down, int label);
   vector<tuple<string, int, int, int, int>> cluster_info();
   vector<vector<double>> dispersion(const vector<vector3D<double>> &k, bool spin_down, int label);
   void add_cluster(const string &name, const vector3D<int64_t> &cpos, const vector<vector3D<int64_t>> &pos, int ref=0);
-  void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int band1, int band2, const string& type);
-  void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int band, vector3D<double> Q, double phase, const string& type);
+  void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb1, int orb2, const string& type);
+  void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb, vector3D<double> Q, double phase, const string& type);
   void explicit_operator(const string &name, const string &type, const vector<tuple<vector3D<int64_t>, vector3D<int64_t>, complex<double>>> &elem, int tau=1, int sigma=0);
   void global_parameter_init();
-  void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int band1, int band2, int tau, int sigma);
-  void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int band1, int band2, const string &type);
+  void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int tau, int sigma);
+  void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, const string &type);
   void k_integral(int dim, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb=false);
   void new_lattice_model(const string &name, vector<int64_t> &superlattice, vector<int64_t> &lattice);
   void new_model_instance(int label);
-  void print_model(const string& filename, bool asy_operators=false, bool asy_labels=false, bool asy_band=false, bool asy_neighbors=false, bool asy_working_basis=false);
+  void print_model(const string& filename, bool asy_operators=false, bool asy_labels=false, bool asy_orb=false, bool asy_neighbors=false, bool asy_working_basis=false);
   void qcm_init();
   void set_basis(vector<double> &basis);
   void set_parameter(const string& name, double value);

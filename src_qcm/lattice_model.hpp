@@ -16,7 +16,7 @@
 struct site{
 	size_t cluster; // cluster index of the site (starts at 0)
 	size_t index_within_cluster; //
-	int band; // orbital label
+	int orb; // orbital label
 	vector3D<int64_t> position; // position of site in the repeated unit
 };
 
@@ -79,17 +79,17 @@ struct lattice_model{
 	vector<Complex> periodize(const vector3D<double> &k, vector<Complex> &mat);
 	void add_anomalous_elements(vector<lattice_matrix_element>& E, int s1, int s2, int ni, int ni_opp, Complex z, latt_op_type SC);
 	void add_chemical_potential();
-	void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int band1, int band2, const string& type);
+	void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb1, int orb2, const string& type);
 	void close_model(bool force=false);
-	void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int band, vector3D<double> Q, double phase, const string& type);
+	void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb, vector3D<double> Q, double phase, const string& type);
 	void explicit_operator(const string &name, const string &type, const vector<tuple<vector3D<int64_t>, vector3D<int64_t>, complex<double>>> &elem, int tau, int sigma);
 	void find_second_site(int s1, const vector3D<int64_t>& link, int& s2, int& ni, int& ni_opp);
-	void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int band1, int band2, int tau, int sigma);
-	void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int band1, int band2, const string &type);
+	void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int tau, int sigma);
+	void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, const string &type);
 	void one_body_matrix(lattice_operator& op);
 	void post_parameter_consolidate(size_t label);
 	void pre_operator_consolidate();
-	void print(ostream& fout, bool asy_operators=false, bool asy_labels=false, bool asy_band=false, bool asy_neighbors=false, bool asy_working_basis=false);
+	void print(ostream& fout, bool asy_operators=false, bool asy_labels=false, bool asy_orb=false, bool asy_neighbors=false, bool asy_working_basis=false);
 };
 
 

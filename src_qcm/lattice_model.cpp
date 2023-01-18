@@ -85,17 +85,17 @@ void lattice_model::pre_operator_consolidate()
   }
   
   //..............................................................................
-  // setting the bands
-  vector<vector3D<int64_t>> band_set;
+  // setting the lattice orbital labels
+  vector<vector3D<int64_t>> orb_set;
   for(size_t i=0; i< sites.size(); i++){
     vector3D<int64_t> R,S;
     unit_cell.fold(sites[i].position, R, S); // r = R + S,  R in lattice, S in unit cell
     int b=0;
-    for(b=0; b<band_set.size(); ++b) if(S == band_set[b]) break;
-    if(b==band_set.size()) band_set.push_back(S);
-    sites[i].band = b;
+    for(b=0; b<orb_set.size(); ++b) if(S == orb_set[b]) break;
+    if(b==orb_set.size()) orb_set.push_back(S);
+    sites[i].orb = b;
   }
-  n_band = band_set.size();
+  n_band = orb_set.size();
   lattice_index_pair::Nc = sites.size();
   Lc = sites.size()/n_band;
   
@@ -372,21 +372,21 @@ void lattice_model::post_parameter_consolidate(size_t label)
 		switch(mixing){
 			case HS_mixing::normal:
 			case HS_mixing::up_down:
-				reduced_Green_index[off+ic] = sites[i].band;
+				reduced_Green_index[off+ic] = sites[i].orb;
 				Green_to_position[off+ic] = superlattice.to(sites[i].position);
 				break;
 			case HS_mixing::spin_flip:
 			case HS_mixing::anomalous:
-				reduced_Green_index[off+ic] = sites[i].band;
-				reduced_Green_index[off+ic+ns] = sites[i].band + n_band;
+				reduced_Green_index[off+ic] = sites[i].orb;
+				reduced_Green_index[off+ic+ns] = sites[i].orb + n_band;
 				Green_to_position[off+ic] = superlattice.to(sites[i].position);
 				Green_to_position[off+ic+ns] = Green_to_position[off+ic];
 				break;
 			case HS_mixing::full:
-				reduced_Green_index[off+ic] = sites[i].band;
-				reduced_Green_index[off+ic+ns] = sites[i].band + n_band;
-				reduced_Green_index[off+ic+2*ns] = sites[i].band + 2*n_band;
-				reduced_Green_index[off+ic+3*ns] = sites[i].band + 3*n_band;
+				reduced_Green_index[off+ic] = sites[i].orb;
+				reduced_Green_index[off+ic+ns] = sites[i].orb + n_band;
+				reduced_Green_index[off+ic+2*ns] = sites[i].orb + 2*n_band;
+				reduced_Green_index[off+ic+3*ns] = sites[i].orb + 3*n_band;
 				Green_to_position[off+ic] = superlattice.to(sites[i].position);
 				Green_to_position[off+ic+ns] = Green_to_position[off+ic];
 				Green_to_position[off+ic+2*ns] = Green_to_position[off+ic];
@@ -578,7 +578,7 @@ void lattice_model::one_body_matrix(lattice_operator& op)
 //===============================================================================
 /**
  Periodizes a matrix (Green function, CPT Green function or self-energy)
- into the spin-band matrix gn  (of dimension nband*n_mixed)
+ into the spin-orbital matrix gn  (of dimension nband*n_mixed)
  @param k [in] wavevector in the superdual basis
  @param mat [in] input matrix in full orbital space (Green function, CPT Green function or self-energy)
  @returns a complex-valued, periodized matrix
@@ -635,11 +635,11 @@ vector<Complex> lattice_model::periodize(const vector3D<double> &k, vector<Compl
  @param fout [in] output channel
  @param asy_operators [in] if true, prints an asymptote file for each operator
  @param bool asy_labels [in] if true, adds labels to the asymptote graphics
- @param bool asy_band [in] if true, adds band labels to the asymptote graphics
+ @param bool asy_orb [in] if true, adds lattice orbital labels to the asymptote graphics
  @param bool asy_neighbors [in] if true, adds the neighboring clusters to the asymptote graphics
  @param bool asy_working_basis [in] if true, plots in the working basis instead of the physical basis
 */
-void lattice_model::print(ostream &fout, bool asy_operators, bool asy_labels, bool asy_band, bool asy_neighbors, bool asy_working_basis)
+void lattice_model::print(ostream &fout, bool asy_operators, bool asy_labels, bool asy_orb, bool asy_neighbors, bool asy_working_basis)
 {
   banner('=', "clusters", fout);
   fout << "No\tmodel\tn_sites\tposition\tref.\n";
@@ -648,13 +648,13 @@ void lattice_model::print(ostream &fout, bool asy_operators, bool asy_labels, bo
     fout << i+1 << '\t' << s.name << '\t' << s.n_sites << '\t' << s.position << '\t' << s.ref << endl;
   }
   banner('=', "sites", fout);
-  fout << "No\tcluster\tNo in cluster\tband\tposition\n";
+  fout << "No\tcluster\tNo in cluster\torbital\tposition\n";
   for(int i=0; i<sites.size(); i++){
     site& s = sites[i];
-    fout << i+1 << '\t' << s.cluster+1 << '\t' << s.index_within_cluster+1 << '\t' << s.band+1 << '\t' << s.position << endl;
+    fout << i+1 << '\t' << s.cluster+1 << '\t' << s.index_within_cluster+1 << '\t' << s.orb+1 << '\t' << s.position << endl;
   }
   banner('.', "NN bonds", fout);
-  fout << "No\tcluster\tNo in cluster\tband\tposition\n";
+  fout << "No\tcluster\tNo in cluster\torbital\tposition\n";
   for(auto& b : bonds){
     fout << b.first+1 << '\t' << sites[b.first].position << '\t' << b.second+1 << '\t' << sites[b.second].position << endl;
   }
@@ -753,8 +753,8 @@ pair<string, int> lattice_model::name_and_label(string &S, bool cut)
  @param name [in] name of the operator
  @param link [in] bond vector
  @param amplitude [in] overall multiplier
- @param b1 [in] band label of the first electron
- @param b2 [in] band label of the second electron
+ @param b1 [in] lattice orbital label of the first electron
+ @param b2 [in] lattice orbital label of the second electron
  @param type [in] type of interaction (Hubbard, i.e., density-density, if nothing is specified)
 */
 void lattice_model::interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int b1, int b2, const string &type)
@@ -785,11 +785,11 @@ void lattice_model::interaction_operator(const string &name, vector3D<int64_t> &
   
   // looping over sites of the super unit cell
   for(int s1=0; s1 < (int)sites.size(); s1++){
-    if(sites[s1].band != b1) continue;
+    if(sites[s1].orb != b1) continue;
     int s2, ni, ni_opp;
     find_second_site(s1, link, s2, ni, ni_opp);
     if(s2<0) continue;
-    if(sites[s2].band != b2) continue; // wrong band. skip.
+    if(sites[s2].orb != b2) continue; // wrong orbital. skip.
     
     switch(tmp_op->type){
       case latt_op_type::Hubbard:
@@ -825,8 +825,8 @@ void lattice_model::interaction_operator(const string &name, vector3D<int64_t> &
  @param name [in] name of the operator
  @param link [in] bond vector
  @param amplitude [in] overall multiplier
- @param b1 [in] band label of the first electron
- @param b2 [in] band label of the second electron
+ @param b1 [in] lattice orbital label of the first electron
+ @param b2 [in] lattice orbital label of the second electron
  @param tau [in] Pauli matrix for the orbital part
  @param sigma [in] Pauli matrix for the spin part
  */
@@ -855,11 +855,11 @@ void lattice_model::hopping_operator(const string &name, vector3D<int64_t> &link
   
   // looping over sites of the super unit cell
   for(int s1=0; s1 < (int)sites.size(); s1++){
-    if(sites[s1].band != b1) continue;
+    if(sites[s1].orb != b1) continue;
     int s2, ni, ni_opp;
     find_second_site(s1, link, s2, ni, ni_opp);
     if(s2<0) continue;
-    if(sites[s2].band != b2) continue; // wrong band. skip.
+    if(sites[s2].orb != b2) continue; // wrong orbital. skip.
     
     if(tau == 0){
       for(int alpha=0; alpha<2; alpha++){
@@ -898,8 +898,8 @@ void lattice_model::hopping_operator(const string &name, vector3D<int64_t> &link
  @param name [in] name of the operator
  @param link [in] bond vector
  @param amplitude [in] overall multiplier
- @param b1 [in] band label of the first electron
- @param b2 [in] band label of the second electron
+ @param b1 [in] lattice orbital label of the first electron
+ @param b2 [in] lattice orbital label of the second electron
  @param SC_str [in] type of superconductor (singlet, dz, dx, dy)
  */
 void lattice_model::anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int b1, int b2, const string& SC_str)
@@ -932,11 +932,11 @@ void lattice_model::anomalous_operator(const string &name, vector3D<int64_t> &li
   
   // looping over sites of the super unit cell
   for(int s1=0; s1 < (int)sites.size(); s1++){
-    if(sites[s1].band != b1) continue;
+    if(sites[s1].orb != b1) continue;
     int s2, ni, ni_opp;
     find_second_site(s1, link, s2, ni, ni_opp);
     if(s2<0) continue;
-    if(sites[s2].band != b2) continue; // wrong band. skip.
+    if(sites[s2].orb != b2) continue; // wrong orbital. skip.
     add_anomalous_elements(tmp_op->elements, s1, s2, ni, ni_opp, 0.5*amplitude, SC);
   }
 }
@@ -950,12 +950,12 @@ void lattice_model::anomalous_operator(const string &name, vector3D<int64_t> &li
  @param name [in] name of the operator
  @param cdw_link [in] bond for the density wave
  @param amplitude [in] overall multiplier of the operator
- @param band [in] band (=orbital) label affected
+ @param orb [in] lattice orbital label affected
  @param Q [in] wavevector
  @param phase [in] phase as it appears in the complex exponential
  @param type [in] type of density wave 
  */
-void lattice_model::density_wave(const string &name, vector3D<int64_t> &cdw_link, complex<double> amplitude, int band, vector3D<double> Q, double phase, const string& type)
+void lattice_model::density_wave(const string &name, vector3D<int64_t> &cdw_link, complex<double> amplitude, int orb, vector3D<double> Q, double phase, const string& type)
 {
   shared_ptr<lattice_operator> tmp_op;
   vector3D<int64_t> r, R, S;
@@ -1008,7 +1008,7 @@ void lattice_model::density_wave(const string &name, vector3D<int64_t> &cdw_link
   
   // loop over sites
   for(int i=0; i<sites.size(); i++){
-    if(band >= 0 && sites[i].band != band) continue; // wrong band
+    if(orb >= 0 && sites[i].orb != orb) continue; // wrong lattice orbital
     Complex z = amplitude*cos(Q*sites[i].position+phase);
     if(abs(z) > 1e-8){
       if(dw_type=='Z'){
@@ -1033,7 +1033,7 @@ void lattice_model::density_wave(const string &name, vector3D<int64_t> &cdw_link
   // loop over sites (bond CDWs)
   if(dw_type=='L'){
     for(int s1=0; s1 < (int)sites.size(); s1++){
-      if(band >= 0 && sites[s1].band != band) continue; // wrong band
+      if(orb >= 0 && sites[s1].orb != orb) continue; // wrong lattice orbital
       vector3D<int64_t>& r = sites[s1].position;
       int s2, ni, ni_opp;
       find_second_site(s1, cdw_link, s2, ni, ni_opp);

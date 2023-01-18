@@ -256,7 +256,7 @@ namespace ED {
     new_global_double(1e-12,"accur_band_lanczos","energy difference tolerance for stopping the BL process");
     new_global_double(0.01,"accur_continued_fraction","value of beta below which the simple Lanczod process stops");
     new_global_double(1.0e-5,"accur_Davidson","maximum norm of residuals in the Davidson-Liu algorithm");
-    new_global_double(1e-7,"accur_deflation","norm below which a vector is deflated in the Band Lanczos method");
+    new_global_double(1e-7,"accur_deflation","norm below which a vector is deflated in the band Lanczos method");
     new_global_double(1e-12,"accur_lanczos","tolerance of the Ritz residual estimate in the Lanczos method");
     new_global_double(1.0e-5,"accur_Q_matrix","tolerance in the normalization of the Q matrix");
     new_global_double(1e-5,"band_lanczos_minimum_gap","gap between the lowest two states in BL below which the method fails");

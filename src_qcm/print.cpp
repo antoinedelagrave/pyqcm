@@ -14,11 +14,11 @@ struct SC_link{
  produces an asymptote file describing the lattice operator op
  @param op [in] lattice operator
  @param asy_labels [in] if true, prints the labels on each site
- @param asy_band [in] if true, prints the band labels on each site
+ @param asy_orb [in] if true, prints the lattice orbital labels on each site
  @param asy_neighbors [in] if true, draws the sites of the neighboring clusters
  @param asy_working_basis [in] if true, works in the working basis, not the physical basis
  */
-void lattice_model::asy_print(const lattice_operator &op, bool asy_labels, bool asy_band, bool asy_neighbors, bool asy_working_basis)
+void lattice_model::asy_print(const lattice_operator &op, bool asy_labels, bool asy_orb, bool asy_neighbors, bool asy_working_basis)
 {
   // if(op.type == latt_op_type::Hubbard) return;
   
@@ -293,8 +293,8 @@ void lattice_model::asy_print(const lattice_operator &op, bool asy_labels, bool 
       fout << "draw(shift" << r << "*scale(" << zscale[z-zmin] << ")*unitcircle,site_pen); // site\n";
     }
 
-    if(asy_band){
-      if(n_band>1) fout << "label('" << sites[i].band+1 << "', " << r << ", NE, label_pen); // site\n";
+    if(asy_orb){
+      if(n_band>1) fout << "label('" << sites[i].orb+1 << "', " << r << ", NE, label_pen); // site\n";
     }
     if(asy_labels){
       fout << "circledlabel('" << i+1 << "', " << r << "); // site\n";

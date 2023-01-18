@@ -5,7 +5,7 @@ import pyqcm.spectral
 from pyqcm import qcm
 
 ################################################################################
-def Berry_curvature(nk=200, eta=0.0, period='G', range=None, label=0, band=None, subdivide=False, plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
+def Berry_curvature(nk=200, eta=0.0, period='G', range=None, label=0, orb=None, subdivide=False, plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
     """Draws a 2D density plot of the Berry curvature as a function of wavevector, on a square grid going from -pi to pi in each direction.
     
     :param int nk: number of wavevectors on the side of the grid
@@ -13,7 +13,7 @@ def Berry_curvature(nk=200, eta=0.0, period='G', range=None, label=0, band=None,
     :param str period: type of periodization used (e.g. 'G', 'M', 'None')
     :param list range: range of plot [originX, originY, side], in multiples of pi
     :param int label: label of the model instance (0 by default)
-    :param int band: the band to use in the computation (1 to number of bands). None (default) means a sum over all bands.
+    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
     :param int subdivide: True if plaquette subdivision is used.
     :param float k_perp: momentum component in the third direction (x pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
@@ -31,8 +31,8 @@ def Berry_curvature(nk=200, eta=0.0, period='G', range=None, label=0, band=None,
         ax = plt_ax
     ax.set_aspect(1)
 
-    if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+    if orb is None:
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
     pyqcm.set_global_parameter('eta', eta)
     pyqcm.set_global_parameter('periodization', period)
@@ -67,7 +67,7 @@ def Berry_curvature(nk=200, eta=0.0, period='G', range=None, label=0, band=None,
         k2 = [0.5*k_perp, range[0]+range[2], range[1]+range[2]]
         dir = 1
 
-    B = qcm.Berry_curvature(k1, k2, nk, band, subdivide, dir, label)
+    B = qcm.Berry_curvature(k1, k2, nk, orb, subdivide, dir, label)
     B *= (2*range[2]/nk)**2
 
     ax.set_aspect(1)
@@ -90,7 +90,7 @@ def Berry_curvature(nk=200, eta=0.0, period='G', range=None, label=0, band=None,
 
 
 ################################################################################
-def Chern_number(nk=100, eta=0.0, period='G', offset=[0., 0., 0.], label=0, band=None, subdivide=False):
+def Chern_number(nk=100, eta=0.0, period='G', offset=[0., 0., 0.], label=0, orb=None, subdivide=False):
     """Computes the Chern number by summing the Berry curvature over wavevectors on a square grid going from (0,0) to (pi,pi)
 
     :param int nk: number of wavevectors on the side of the grid
@@ -98,21 +98,21 @@ def Chern_number(nk=100, eta=0.0, period='G', offset=[0., 0., 0.], label=0, band
     :param str period: type of periodization used (e.g. 'G', 'M', 'None')
     :param wavevector offset: wavevector offset of the computation grid
     :param int label: label of the model instance (0 by default)
-    :param int band: the band to use in the computation (1 to number of bands). None (default) means a sum over all occupied bands.
+    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all occupied bands.
     :param boolean subdivide: recursivity flag (wavevector grid subdivision)
     :returns float: The Chern number
 
     """
 
-    if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+    if orb is None:
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
     pyqcm.set_global_parameter('eta', eta)
     offset = np.array(offset)
  
     pyqcm.set_global_parameter('dual_basis')
     pyqcm.set_global_parameter('periodization', period)
-    B = qcm.Berry_curvature(np.array([0.0, 0.0, 0.0])+offset, np.array([1.0, 1.0, 0.0])+offset, nk, band, subdivide, 3, label)
+    B = qcm.Berry_curvature(np.array([0.0, 0.0, 0.0])+offset, np.array([1.0, 1.0, 0.0])+offset, nk, orb, subdivide, 3, label)
     C = B.sum() / (nk * nk)
     if period == 'None':
         C /= pyqcm.model_size()[0]
@@ -121,14 +121,14 @@ def Chern_number(nk=100, eta=0.0, period='G', offset=[0., 0., 0.], label=0, band
 
 
 ################################################################################
-def monopole(k, a=0.01, nk=20, label=0, band=None, subdivide=False):
+def monopole(k, a=0.01, nk=20, label=0, orb=None, subdivide=False):
     """computes the topological charge of a node in a Weyl semi-metal
 
     :param [double] k: wavevector, position of the node
     :param float a: half-side of the cube surrounding the node 
     :param int nk: number of divisions along the side of the cube
     :param int label: label of the model instance (0 by default)
-    :param int band: band to compute the charge of (if None, sums over all bands)
+    :param int orb: orbital to compute the charge of (if None, sums over all bands)
     :param booleean subdivide: True if subdivision is allowed (False by default)
     :param int label: label of the model instance (0 by default)
     :return float: the monopole charge
@@ -136,13 +136,13 @@ def monopole(k, a=0.01, nk=20, label=0, band=None, subdivide=False):
     """
 
     if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
-    return qcm.monopole(0.5*np.array(k), a*0.5, nk, band, subdivide, label)
+    return qcm.monopole(0.5*np.array(k), a*0.5, nk, orb, subdivide, label)
     
 
 ################################################################################
-def Berry_flux(k0, R, nk=40, plane='xy', label=0, band=None):
+def Berry_flux(k0, R, nk=40, plane='xy', label=0, orb=None):
     """Computes the integral of the Berry connexion along a closed circle
     
     :param int k0: center of the circle
@@ -150,14 +150,14 @@ def Berry_flux(k0, R, nk=40, plane='xy', label=0, band=None):
     :param int nk: number of wavevectors on the circle
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param int label: label of the model instance (0 by default)
-    :param int band: the band to use in the computation (1 to number of bands). None (default) means a sum over all bands.
+    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
     :param int label: label of the model instance (0 by default)
     :returns float: the flux
 
     """
 
-    if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+    if orb is None:
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
     phi_list = np.linspace(0.0, 2*np.pi, nk, endpoint=False)
     k = np.zeros((nk,3))
@@ -181,17 +181,17 @@ def Berry_flux(k0, R, nk=40, plane='xy', label=0, band=None):
         k[i, d2] = 0.5*(k0[d2] + R*np.sin(phi))
         k[i, d3] = 0.5*k0[d3]
 
-    return qcm.Berry_flux(k, band, label)
+    return qcm.Berry_flux(k, orb, label)
 
 ################################################################################
-def monopole_map(nk=40, label=0, band=None, plane='z', k_perp=0.0, file=None, plt_ax = None, **kwargs):
+def monopole_map(nk=40, label=0, orb=None, plane='z', k_perp=0.0, file=None, plt_ax = None, **kwargs):
     """Creates a plot of the monopole density (divergence of B) as a function of wavevector
 
     :param int nk: number of wavevector grid points on each side
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str k_perp: offset in wavevector in the direction perpendicular to the plane (x pi)
     :param int label: label of the model instance (0 by default)
-    :param int band: the band to use in the computation (1 to number of bands). None (default) means a sum over all bands.
+    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
     :param str file: Name of the file to save the plot. If None, shows the plot on screen.
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
@@ -199,8 +199,8 @@ def monopole_map(nk=40, label=0, band=None, plane='z', k_perp=0.0, file=None, pl
 
     """
 
-    if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+    if orb is None:
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
     if plt_ax is None:
         plt.figure()
@@ -214,7 +214,7 @@ def monopole_map(nk=40, label=0, band=None, plane='z', k_perp=0.0, file=None, pl
     K = pyqcm.wavevector_grid(nk, orig=[-1.0, -1.0], side=2, k_perp = k_perp, plane=plane)
     B = np.zeros(nk*nk)
     for i, k in enumerate(K):
-        B[i] = monopole(2.0*k, a=2.0/nk, nk=5, band=band, label=label)
+        B[i] = monopole(2.0*k, a=2.0/nk, nk=5, orb=band, label=label)
 
     ext = [-1, 1,-1,1]
     B = np.reshape(B,(nk,nk)) # transpose because y affects the row number and x the column number
@@ -238,7 +238,7 @@ def monopole_map(nk=40, label=0, band=None, plane='z', k_perp=0.0, file=None, pl
     return CS
 
 ################################################################################
-def Berry_flux_map(nk=40, plane='z', dir='z', k_perp=0.0, label=0, band=None, npoints=4, radius=None, file=None, plt_ax = None, **kwargs):
+def Berry_flux_map(nk=40, plane='z', dir='z', k_perp=0.0, label=0, orb=None, npoints=4, radius=None, file=None, plt_ax = None, **kwargs):
     """Creates a plot of the Berry flux as a function of wavevector
 
     :param int nk: number of wavevector grid points on each side
@@ -246,7 +246,7 @@ def Berry_flux_map(nk=40, plane='z', dir='z', k_perp=0.0, label=0, band=None, np
     :param str dir: direction of flux, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str k_perp: offset in wavevector in the direction perpendicular to the plane (x pi)
     :param int label: label of the model instance (0 by default)
-    :param int band: the band to use in the computation (1 to number of bands). None (default) means a sum over all bands.
+    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
     :param int npoints: nombre de points sur chaque boucle
     :param str file: Name of the file to save the plot. If None, shows the plot on screen.
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
@@ -255,8 +255,8 @@ def Berry_flux_map(nk=40, plane='z', dir='z', k_perp=0.0, label=0, band=None, np
 
     """
 
-    if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+    if orb is None:
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
     if plt_ax is None:
         plt.figure()
@@ -273,7 +273,7 @@ def Berry_flux_map(nk=40, plane='z', dir='z', k_perp=0.0, label=0, band=None, np
     if radius is None:
         radius = 0.8/nk
     for i, k in enumerate(K):
-        B[i] = Berry_flux(2.0*k, radius, nk=npoints, plane=dir, band=band, label=label)
+        B[i] = Berry_flux(2.0*k, radius, nk=npoints, plane=dir, orb=orb, label=label)
 
     B = np.reshape(B,(nk,nk))
     ext = [-1, 1,-1,1]
@@ -299,7 +299,7 @@ def Berry_flux_map(nk=40, plane='z', dir='z', k_perp=0.0, label=0, band=None, np
     return CS
 
 ################################################################################
-def Berry_field_map(nk=40, nsides = 4, plane='z', k_perp=0.0, label=0, band=None, file=None, plt_ax = None, **kwargs):
+def Berry_field_map(nk=40, nsides = 4, plane='z', k_perp=0.0, label=0, orb=None, file=None, plt_ax = None, **kwargs):
     """Creates a plot of the Berry flux as a function of wavevector
 
     :param int nk: number of wavevector grid points on each side
@@ -307,7 +307,7 @@ def Berry_field_map(nk=40, nsides = 4, plane='z', k_perp=0.0, label=0, band=None
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str k_perp: offset in wavevector in the direction perpendicular to the plane (x pi)
     :param int label: label of the model instance (0 by default)
-    :param int band: the band to use in the computation (1 to number of bands). None (default) means a sum over all bands.
+    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
     :param str file: Name of the file to save the plot. If None, shows the plot on screen.
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
@@ -315,8 +315,8 @@ def Berry_field_map(nk=40, nsides = 4, plane='z', k_perp=0.0, label=0, band=None
 
     """
 
-    if band is None:
-        band=0 # this is a quick and simple uniformity change across pyqcm functions
+    if orb is None:
+        orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
     ax = None
     if plt_ax is None:
@@ -333,9 +333,9 @@ def Berry_field_map(nk=40, nsides = 4, plane='z', k_perp=0.0, label=0, band=None
     By = np.zeros(nk*nk)
     Bz = np.zeros(nk*nk)
     for i, k in enumerate(K):
-        Bx[i] = Berry_flux(2.0*k, 2.0/nk, nk=nsides, plane='x', band=band, label=label)
-        By[i] = Berry_flux(2.0*k, 2.0/nk, nk=nsides, plane='y', band=band, label=label)
-        Bz[i] = Berry_flux(2.0*k, 2.0/nk, nk=nsides, plane='z', band=band, label=label)
+        Bx[i] = Berry_flux(2.0*k, 2.0/nk, nk=nsides, plane='x', orb=orb, label=label)
+        By[i] = Berry_flux(2.0*k, 2.0/nk, nk=nsides, plane='y', orb=orb, label=label)
+        Bz[i] = Berry_flux(2.0*k, 2.0/nk, nk=nsides, plane='z', orb=orb, label=label)
 
     ext = [-1, 1,-1,1]
     Bx = np.reshape(Bx,(nk,nk))

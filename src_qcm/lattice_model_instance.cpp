@@ -637,13 +637,13 @@ void lattice_model_instance::print_info()
 /** 
  Produces the Lehmann form of an array of Green functions at fixed frequency 
  @param k [in] array of wavevectors
- @param band [in] band (=orbital) label
+ @param orb [in] lattice orbital label
  @param spin_down [in] true if the spin-down part is to be produced (mixing = 4)
  @returns for each wavevector, a pair of arrays giving the location of the pole and the residue
  */
-vector<pair<vector<double>, vector<double>>> lattice_model_instance::Lehmann_Green_function(vector<vector3D<double>> &k, int band, bool spin_down)
+vector<pair<vector<double>, vector<double>>> lattice_model_instance::Lehmann_Green_function(vector<vector3D<double>> &k, int orb, bool spin_down)
 {
-  if(band >= model->n_mixed*model->n_band) qcm_throw("the band number is out of range in Lehmann_Green_function");
+  if(orb >= model->n_mixed*model->n_band) qcm_throw("the lattice orbital label is out of range in Lehmann_Green_function");
   vector<pair<vector<double>, vector<double>>> res(k.size());
   auto G = cluster_Green_function(Complex(0., 1.0), false, spin_down);
   vector<double> Lambda;
@@ -678,7 +678,7 @@ vector<pair<vector<double>, vector<double>>> lattice_model_instance::Lehmann_Gre
     for(size_t a=0; a<m; ++a){
       Qk.extract_column(a,qk);
       auto psi = model->periodize(K.k, qk);
-      res[i].second[a] = abs(psi[band]*psi[band])*model->Lc;
+      res[i].second[a] = abs(psi[orb]*psi[orb])*model->Lc;
     }
     // cleaning up
     vector<double>& e = res[i].first;

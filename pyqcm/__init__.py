@@ -514,18 +514,18 @@ def cluster_averages(label=0):
     return qcm.cluster_averages(label)
 
 ################################################################################
-def Lehmann_Green_function(k, band=1, spin_down=False, label=0):
+def Lehmann_Green_function(k, orb=1, spin_down=False, label=0):
     """
     computes the Lehmann representation of the periodized Green function for a set of wavevectors
 
     :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`\pi`
-    :param int band: band index (starts at 1)
+    :param int orb: orbital index (starts at 1)
     :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
     :param int label:  label of the model instance
     :return: a list of pairs {poles, residues}, each of poles and residues being itself a list.
 
     """
-    return qcm.Lehmann_Green_function(k, band, spin_down, label)
+    return qcm.Lehmann_Green_function(k, orb, spin_down, label)
 
 ################################################################################
 def hybridization_function(clus, z, spin_down=False, label=0):
@@ -1169,38 +1169,38 @@ def set_basis(B):
     qcm.set_basis(B)
 
 ################################################################################
-def __band_manager(band1, band2):
+def __band_manager(orb1, orb2):
     """If a band is none, it is set to a list of all bands. If band is specified --> [band]
     """
 
-    if type(band1) is not int and band1 is not None:
-        raise ValueError("`band1` must be of type `int` or None (default)")
-    if type(band2) is not int and band2 is not None:
-        raise ValueError("`band2` must be of type `int` or None (default)")
+    if type(orb1) is not int and orb1 is not None:
+        raise ValueError("`orb1` must be of type `int` or None (default)")
+    if type(orb2) is not int and orb2 is not None:
+        raise ValueError("`orb2` must be of type `int` or None (default)")
 
     nbands = model_size()[1]
     complete_band_list = [i for i in range(1, nbands+1)]
 
-    if band1 is None:
-        band1 = complete_band_list
+    if orb1 is None:
+        orb1 = complete_band_list
     else:
-        band1 = [band1]
+        orb1 = [orb1]
 
-    if band2 is None:
-        band2 = complete_band_list
+    if orb2 is None:
+        orb2 = complete_band_list
     else:
-        band2 = [band2]
+        orb2 = [orb2]
 
-    return band1, band2
+    return orb1, orb2
     
 ################################################################################
-def interaction_operator(name, link=None, band1=None, band2=None, **kwargs):
+def interaction_operator(name, link=None, orb1=None, orb2=None, **kwargs):
     """
     Defines an interaction operator of type Hubbard, Hund, Heisenberg or X, Y, Z
 
     :param str name: name of the operator
-    :param int band1: number of the first band (None by default)
-    :param int band2: number of the second band (None by default)
+    :param int orb1: number of the first band (None by default)
+    :param int orb2: number of the second band (None by default)
     :param list link: link of the operator (None by default)
 
     :Keyword Arguments:
@@ -1216,13 +1216,13 @@ def interaction_operator(name, link=None, band1=None, band2=None, **kwargs):
     if type(the_model.sites) is list:
         the_model._finalize()
 
-    band1, band2 = __band_manager(band1, band2) 
+    orb1, orb2 = __band_manager(orb1, orb2) 
 
-    for band_no1 in band1:
-        for band_no2 in band2:
+    for band_no1 in orb1:
+        for band_no2 in orb2:
             the_model.record += "interaction_operator('"+name+"'"
-            the_model.record += ', band1='+str(band_no1)
-            the_model.record += ', band2='+str(band_no2)
+            the_model.record += ', orb1='+str(band_no1)
+            the_model.record += ', orb2='+str(band_no2)
             if link is not None:
                 the_model.record += ', link='+str(link)
 
@@ -1232,17 +1232,17 @@ def interaction_operator(name, link=None, band1=None, band2=None, **kwargs):
                 else:	
                     the_model.record += ', '+x+'='+str(kwargs[x])
             the_model.record += ')\n'	
-            qcm.interaction_operator(name, band1=band_no1, band2=band_no2, link=link, **kwargs)
+            qcm.interaction_operator(name, orb1=band_no1, orb2=band_no2, link=link, **kwargs)
 
 ################################################################################
-def hopping_operator(name, link, amplitude, band1=None, band2=None, **kwargs):
+def hopping_operator(name, link, amplitude, orb1=None, orb2=None, **kwargs):
     """Defines a hopping term or, more generally, a one-body operator
 
     :param str name: name of operator
     :param [int] link: bond vector (3-component integer array)
     :param float amplitude: hopping amplitude multiplier
-    :param int band1: number of the first band (None by default)
-    :param int band2: number of the second band (None by default)
+    :param int orb1: number of the first band (None by default)
+    :param int orb2: number of the second band (None by default)
     
     :Keyword Arguments:
 
@@ -1266,13 +1266,13 @@ def hopping_operator(name, link, amplitude, band1=None, band2=None, **kwargs):
     if type(the_model.sites) is list:
         the_model._finalize()
 
-    band1, band2 = __band_manager(band1, band2) 
+    orb1, orb2 = __band_manager(orb1, orb2) 
 
-    for band_no1 in band1:
-        for band_no2 in band2:
+    for band_no1 in orb1:
+        for band_no2 in orb2:
             the_model.record += "hopping_operator('"+name+"', "+str(link)+', '+str(amplitude)
-            the_model.record += ', band1='+str(band_no1)
-            the_model.record += ', band2='+str(band_no2)
+            the_model.record += ', orb1='+str(band_no1)
+            the_model.record += ', orb2='+str(band_no2)
 
             for x in kwargs:
                 if type(kwargs[x]) is str:
@@ -1281,17 +1281,17 @@ def hopping_operator(name, link, amplitude, band1=None, band2=None, **kwargs):
                     the_model.record += ', '+x+'='+str(kwargs[x])
             the_model.record += ')\n'
 
-            qcm.hopping_operator(name, link, amplitude, band1=band_no1, band2=band_no2, **kwargs)
+            qcm.hopping_operator(name, link, amplitude, orb1=band_no1, orb2=band_no2, **kwargs)
 
 ################################################################################
-def anomalous_operator(name, link, amplitude, band1=None, band2=None, **kwargs):
+def anomalous_operator(name, link, amplitude, orb1=None, orb2=None, **kwargs):
     """Defines an anomalous operator
 
     :param str name: name of operator
     :param [int] link: bond vector (3-component integer array)
     :param complex amplitude: pairing multiplier
-    :param int band1: number of the first band (None by default)
-    :param int band2: number of the second band (None by default)
+    :param int orb1: number of the first band (None by default)
+    :param int orb2: number of the second band (None by default)
 
     :Keyword Arguments:
     
@@ -1306,13 +1306,13 @@ def anomalous_operator(name, link, amplitude, band1=None, band2=None, **kwargs):
     if type(the_model.sites) is list:
         the_model._finalize() 
 
-    band1, band2 = __band_manager(band1, band2) 
+    orb1, orb2 = __band_manager(orb1, orb2) 
 
-    for band_no1 in band1:
-        for band_no2 in band2:
+    for band_no1 in orb1:
+        for band_no2 in orb2:
             the_model.record += "anomalous_operator('"+name+"', "+str(link)+', '+str(amplitude)
-            the_model.record += ', band1='+str(band_no1)
-            the_model.record += ', band2='+str(band_no2)
+            the_model.record += ', orb1='+str(band_no1)
+            the_model.record += ', orb2='+str(band_no2)
 
             for x in kwargs:
                 if type(kwargs[x]) is str:
@@ -1321,7 +1321,7 @@ def anomalous_operator(name, link, amplitude, band1=None, band2=None, **kwargs):
                     the_model.record += ', '+x+'='+str(kwargs[x])
             the_model.record += ')\n'
 
-            qcm.anomalous_operator(name, link, amplitude, band1=band_no1, band2=band_no2, **kwargs)
+            qcm.anomalous_operator(name, link, amplitude, orb1=band_no1, orb2=band_no2, **kwargs)
 
 ################################################################################
 def explicit_operator(name, elem, **kwargs):
@@ -1431,7 +1431,7 @@ def QP_weight(k, eta=0.01, band=1, spin_down=False, label=0):
 
     :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`\pi`
     :param float eta: increment in the imaginary axis direction used to computed the derivative of the self-energy
-    :param int band: band index (starts at 1)
+    :param int band: orbital index (starts at 1)
     :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
     :param int label:  label of the model instance
     :return: a single float or an array of floats, depending on the shape of k
@@ -1457,7 +1457,7 @@ def cluster_QP_weight(cluster=0, eta=0.01, band=1, spin_down=False, label=0):
 
     :param int cluster: cluster label (starts at 0)
     :param float eta: increment in the imaginary axis direction used to computed the derivative of the self-energy
-    :param int band: band index (starts at 1)
+    :param int band: orbital index (starts at 1)
     :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
     :param int label:  label of the model instance
     :return: a float
@@ -1477,7 +1477,7 @@ def spin_spectral_function(freq, k, band=1, label=0):
 
     :param freq: complex freqency
     :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`\pi`
-    :param int band: band index (starts at 1)
+    :param int band: orbital index (starts at 1)
     :param int label:  label of the model instance
     :return: depending on the shape of k, a nd.array(3) of nd.array(N,3)
 

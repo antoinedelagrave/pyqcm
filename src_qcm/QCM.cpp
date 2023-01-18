@@ -39,14 +39,14 @@ namespace QCM{
  * @param filename name of the output file
  * @param asy_operators true if asymptote files for the various operators are produced
  * @param asy_labels true if the site labels are written in these files
- * @param asy_band true if the band labels are written in these files
+ * @param asy_orb true if the lattice orbital labels are written in these files
  * @param asy_neighbors true if the neighboring clusters are drawn
  * @param asy_working_basis true if the drawing is done in the working basis instead of the physical basis
  */
-  void print_model(const string& filename, bool asy_operators, bool asy_labels, bool asy_band, bool asy_neighbors, bool asy_working_basis)
+  void print_model(const string& filename, bool asy_operators, bool asy_labels, bool asy_orb, bool asy_neighbors, bool asy_working_basis)
   {
     ofstream fout(filename);
-    qcm_model->print(fout, asy_operators, asy_labels, asy_band, asy_neighbors, asy_working_basis);
+    qcm_model->print(fout, asy_operators, asy_labels, asy_orb, asy_neighbors, asy_working_basis);
     fout.close();
   }
   
@@ -287,7 +287,7 @@ namespace QCM{
 
   
   /**
-   returns the density of states at a given frequency for the different bands
+   returns the density of states at a given frequency for the different lattice orbitals
    */
   vector<double> dos(const complex<double> w, int label)
   {
@@ -543,13 +543,13 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
    computes the Berry flux for model_instance label, through a contour specified by wavevectors k
    @param k array of wavevectors in the Brillouin zone ($\times\pi$)
    @param open true if the path defined by k is "open" in the Brillouin zone.
-   @param band band
+   @param orb lattice orbital label
    @param label label of the model instance
    */
-  double Berry_flux(vector<vector3D<double>>& k, int band, int label)
+  double Berry_flux(vector<vector3D<double>>& k, int orb, int label)
   {
     if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
-    return lattice_model_instances.at(label)->Berry_flux(k, band, false);
+    return lattice_model_instances.at(label)->Berry_flux(k, orb, false);
   }
 
 
@@ -562,13 +562,13 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
    @param k1 lowest-left corner of the region in the Brillouin zone ($\times\pi$)
    @param k2 upper-right corner of the region in the Brillouin zone ($\times\pi$)
    @param nk number of wavevectors on the side of the grid
-   @param band band
+   @param orb lattice orbital label
    @param label label of the model instance
    */
-  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int band, bool rec, int dir, int label)
+  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, int label)
   {
     if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
-    return lattice_model_instances.at(label)->Berry_curvature(k1, k2, nk, band, rec, dir);
+    return lattice_model_instances.at(label)->Berry_curvature(k1, k2, nk, orb, rec, dir);
   }
   
   
@@ -662,18 +662,18 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
    * @param name name of the operator
    * @param link bond vector on which the operator is defined
    * @param amplitude default amplitude of the operator, that multiplies all matrix elements and its given value
-   * @param band1 index of the first band (from 1 to nband)
-   * @param band2 index of the second band (from 1 to nband)
+   * @param orb1 index of the first orbital (from 1 to nband)
+   * @param orb2 index of the second orbital (from 1 to nband)
    * @param type type of interaction operator
    */
-  void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int band1, int band2, const string &type)
+  void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, const string &type)
   {
     if(qcm_model->is_closed){
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
     try{
-      qcm_model->interaction_operator(name, link, amplitude, band1-1, band2-1, type);
+      qcm_model->interaction_operator(name, link, amplitude, orb1-1, orb2-1, type);
     } catch(const string& s) {qcm_catch(s);}
   }
   
@@ -685,19 +685,19 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
    * @param name name given to the operator
    * @param link bond vector on which the operator is defined
    * @param amplitude default amplitude of the operator, that multiplies all matrix elements and its given value
-   * @param band1 index of the first band (from 1 to nband)
-   * @param band2 index of the second band (from 1 to nband)
+   * @param orb1 index of the first orbital (from 1 to nband)
+   * @param orb2 index of the second orbital (from 1 to nband)
    * @param tau label (0,1,2,3) of the Pauli matrix defining the orbital component (a in the formula above)
    * @param sigma label (0,1,2,3) of the Pauli matrix defining the spin component (b in the formula above)
    */
-  void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int band1, int band2, int tau, int sigma)
+  void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int tau, int sigma)
   {
     if(qcm_model->is_closed){
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
     try{
-      qcm_model->hopping_operator(name, link, amplitude, band1-1, band2-1, tau, sigma);
+      qcm_model->hopping_operator(name, link, amplitude, orb1-1, orb2-1, tau, sigma);
     } catch(const string& s) {qcm_catch(s);}
   }
   
@@ -707,18 +707,18 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
    * @param name name given to the operator
    * @param link bond vector on which the operator is defined
    * @param amplitude default amplitude of the operator, that multiplies all matrix elements and its given value
-   * @param band1 index of the first band (from 1 to nband)
-   * @param band2 index of the second band (from 1 to nband)
+   * @param orb1 index of the first orbital (from 1 to nband)
+   * @param orb2 index of the second orbital (from 1 to nband)
    * @param type type of pairing: singlet, dx, dy, dz
    */
-  void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int band1, int band2, const string& type)
+  void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb1, int orb2, const string& type)
   {
     if(qcm_model->is_closed){
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
     try{
-      qcm_model->anomalous_operator(name, link, amplitude, band1-1, band2-1, type);
+      qcm_model->anomalous_operator(name, link, amplitude, orb1-1, orb2-1, type);
     } catch(const string& s) {qcm_catch(s);}
   }
   
@@ -727,19 +727,19 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
    * @param name name given to the operator
    * @param link bond vector on which the operator is defined
    * @param amplitude default amplitude of the operator, that multiplies all matrix elements and its given value
-   * @param band index of the first site of the pair (from 1 to nband). 0 if all bands.
+   * @param orb index of the first site of the pair (from 1 to nband, the number of lattice orbitals). 0 if all orbitals.
    * @param Q wavevector ($\times\pi$) of the density wave
    * @param phase constant phase (see general documentation for the formula)
    * @param type type of pairing: cdw, X, Z, singlet, dx, dy, dz
    */
-  void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int band, vector3D<double> Q, double phase, const string& type)
+  void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb, vector3D<double> Q, double phase, const string& type)
   {
     if(qcm_model->is_closed){
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
     try{
-      qcm_model->density_wave(name, link, amplitude, band-1, Q, phase, type);
+      qcm_model->density_wave(name, link, amplitude, orb-1, Q, phase, type);
     } catch(const string& s) {qcm_catch(s);}
   }
 
@@ -798,11 +798,11 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
 /**
    * @param spin_down true if the spin-down sector is covered
  */
-  vector<pair<vector<double>, vector<double>>> Lehmann_Green_function(vector<vector3D<double>> &k, int band, bool spin_down, int label)
+  vector<pair<vector<double>, vector<double>>> Lehmann_Green_function(vector<vector3D<double>> &k, int orb, bool spin_down, int label)
   {
     if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     for(size_t i = 0; i< k.size(); i++) k[i] = qcm_model->superdual.to(qcm_model->physdual.from(k[i]));
-    return lattice_model_instances[label]->Lehmann_Green_function(k, band, spin_down);
+    return lattice_model_instances[label]->Lehmann_Green_function(k, orb, spin_down);
   }
 
 
@@ -829,9 +829,9 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
   }
 
 
-  double monopole(vector3D<double>& k, double a, int nk, int band, bool rec, int label)
+  double monopole(vector3D<double>& k, double a, int nk, int orb, bool rec, int label)
   {
-    return lattice_model_instances.at(label)->monopole(k, a, nk, band, rec); 
+    return lattice_model_instances.at(label)->monopole(k, a, nk, orb, rec); 
   }
 
   /**

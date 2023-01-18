@@ -597,7 +597,7 @@ matrix<Complex> model_instance<HilbertField>::self_energy(const Complex &z, bool
 
 
 /**
- Constructs the Q_matrix (Lehmann representation) from the Band Lanczos method,
+ Constructs the Q_matrix (Lehmann representation) from the band Lanczos method,
  or full diagonalization if the dimension is small enough.
  @param Omega		state on which the GF is built
  @param spin_down			true if we are building the spin down component of the GF
@@ -633,7 +633,7 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
       if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
     }
     if(skip_sector) continue;
-    // Assembling the Hamiltonian and Band Lanczos procedure
+    // Assembling the Hamiltonian and band Lanczos procedure
     Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
     if(H->dim==0) continue;
     

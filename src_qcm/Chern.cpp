@@ -106,17 +106,17 @@ vector3D<double> increment(double d, int no, int dir)
 /**
 Computes the integral of the Berry connexion along a closed contour, specified as a list of wavevectors
 @param k [in] array of wavevectors
-@param band [in] band=0 means a sum over all bands, otherwise the band specified
+@param orb [in] orb=0 means a sum over all lattice orbitals, otherwise the lattice orbital specified
 @param spin_down [in] true if the spin down sector is considered
 */
-double lattice_model_instance::Berry_flux(const vector<vector3D<double>> &k, int band, bool spin_down)
+double lattice_model_instance::Berry_flux(const vector<vector3D<double>> &k, int orb, bool spin_down)
 {
   check_signals();
   double eta = global_double("eta");
   Green_function G = cluster_Green_function(Complex(0, eta), false, spin_down);
 
   size_t ng = model->dim_reduced_GF;
-  if(band > ng) qcm_throw("the band number specified in Berry curvature computations is beyond the number of bands");
+  if(orb > ng) qcm_throw("the orbital number specified in Berry curvature computations is beyond the number of orbitals in the lattice model");
 	
   matrix<Complex> U(ng), U0(ng), U1(ng);
 	vector<Complex> u(ng);
@@ -130,18 +130,18 @@ double lattice_model_instance::Berry_flux(const vector<vector3D<double>> &k, int
   for(int i=1; i<k.size(); i++){
     Green_eigensystem(G, k[i], e, U, 0); for(auto& x : e) x = -1.0/x;
     gauge_field(U0, U, u);
-    if (band==0){
+    if (orb==0){
       for(int b=0; b<ng; b++) if(e[b] < 0.0) z *= u[b];
     }
-    else z *= u[band-1];
+    else z *= u[orb-1];
     U0 = U;
     e0 = e;
   }
   gauge_field(U0, U1, u);
-  if (band==0){
+  if (orb==0){
       for(int b=0; b<ng; b++) if(e0[b]+e[b] < 0.0) z *= u[b];
   }
-  else z *= u[band-1];
+  else z *= u[orb-1];
   double flux = -arg(z)/(2*M_PI);
 
   if(model->mixing == HS_mixing::normal) flux *= 2.0;
@@ -160,16 +160,16 @@ Computes the flux of the Berry curvature through a square plaquette with a corne
 @param deltay [in] wavevector step in direction 2
 @param opt [in] option, like in function Green_eigensystem above
 @param dir [in] direction of perpendicular to plaquette (x=1, y=2, z=3)
-@param band [in] band=0 means a sum over all bands, otherwise the band specified
+@param orb [in] orb=0 means a sum over all lattice orbitals, otherwise the orbital specified
 */
-double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int band)
+double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int orb)
 {
   check_signals();
 
   size_t ng;
   if(opt&2) ng = model->dim_GF;
   else ng = model->dim_reduced_GF;
-  if(band > ng) qcm_throw("the band number specified in Berry curvature computations is beyond the number of bands");
+  if(orb > ng) qcm_throw("the orbital label specified in Berry curvature computations is beyond the number of orbitals in the lattice model");
 
 	matrix<Complex> U1(ng), U2(ng), U3(ng), U4(ng);
 	vector<Complex> u1(ng), u2(ng), u3(ng), u4(ng);
@@ -196,13 +196,13 @@ double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D
 	gauge_field(U3, U4, u3);
 	gauge_field(U4, U1, u4);
 	Complex z(1.0);
-  if (band==0){
+  if (orb==0){
     for(int b=0; b<ng; b++){
       if(e1[b]+e2[b]+e3[b]+e4[b] < 0.0) z *= u1[b]*u2[b]*u3[b]*u4[b];
     }
   }
   else{
-    int b = band-1;
+    int b = orb-1;
     z *= u1[b]*u2[b]*u3[b]*u4[b];
   }
   double phase = arg(z);
@@ -211,13 +211,13 @@ double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D
     double dx = deltax/2;
     double dy = deltay/2;
     k = k1;
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, band);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
     k += increment(dx, 0, dir);
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, band);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
     k += increment(dy, 1, dir);
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, band);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
     k += increment(dx, 2, dir);
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, band);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
   }
 
 
@@ -236,11 +236,11 @@ double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D
  @param k1 [in] lower left corner of the wavevector domain
  @param k2 [in] upper right of the wavevector domain
  @param nk [in] number of wavevectors on the side of the Brillouin zone (nk x nk grid) 
- @param band [in] band number (0 means a sum over all bands)
+ @param orb [in] orbital label (0 means a sum over all lattice orbitals)
  @param rec [in] if true, refines reursively the grid if needed
  @param dir [in] direction of perpendicular to plaquette (x=1, y=2, z=3)
  */
-vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int band, bool rec, int dir)
+vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir)
 {
   recursive = rec;
 
@@ -286,7 +286,7 @@ vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vec
   // #pragma omp parallel for
 	for(int j=0; j<nk; j++){
 		for(int i=0; i<nk; i++){
-			B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, band);
+			B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, orb);
 		}
 	}
 	
@@ -294,7 +294,7 @@ vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vec
 		G = cluster_Green_function(Complex(0, 1e-8), false, true);
     for(int j=0; j<nk; j++){
       for(int i=0; i<nk; i++){
-        B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, band);
+        B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, orb);
       }
     }
   }
@@ -314,11 +314,11 @@ vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vec
  @param k [in] node wavevector
  @param a [in] half side of the cube
  @param nk [in] number of wavevectors on the side of the Brillouin zone 
- @param band [in] band number (0 means a sum over all bands)
+ @param orb [in] orbital label (0 means a sum over all lattice orbitals)
  @param rec [in] if true, refines reursively the grid if needed
  @param dir [in] direction of perpendicular to plaquette (x=1, y=2, z=3)
  */
-double lattice_model_instance::monopole_part(vector3D<double>& k, double a, int nk, int band, bool rec, int dir, bool spin_down)
+double lattice_model_instance::monopole_part(vector3D<double>& k, double a, int nk, int orb, bool rec, int dir, bool spin_down)
 {
   recursive = rec;
 
@@ -368,7 +368,7 @@ double lattice_model_instance::monopole_part(vector3D<double>& k, double a, int 
           kb.y -= j*d - a;
           break;
       }
-			charge += Berry_plaquette(G, kb, d, d, opt, dir, band);
+			charge += Berry_plaquette(G, kb, d, d, opt, dir, orb);
 		}
 	} 
   return charge;
@@ -381,10 +381,10 @@ double lattice_model_instance::monopole_part(vector3D<double>& k, double a, int 
  @param k [in] wavevector at the center of the cube
  @param a [in] half side of the cube
  @param nk [in] number of wavevectors on the side of the Brillouin zone 
- @param band [in] band number (0 means a sum over all bands)
+ @param orb [in] orbital label (0 means a sum over all lattice orbitals)
  @param rec [in] if true, refines reursively the grid if needed
  */
-double lattice_model_instance::monopole(vector3D<double>& k, double a, int nk, int band, bool rec)
+double lattice_model_instance::monopole(vector3D<double>& k, double a, int nk, int orb, bool rec)
 {
   recursive = rec;
 
@@ -394,20 +394,20 @@ double lattice_model_instance::monopole(vector3D<double>& k, double a, int nk, i
   
 	double charge = 0.0;
 
-  charge += monopole_part(k, a, nk, band, rec, 1, false);
-  charge += monopole_part(k, a, nk, band, rec,-1, false);
-  charge += monopole_part(k, a, nk, band, rec, 2, false);
-  charge += monopole_part(k, a, nk, band, rec,-2, false);
-  charge += monopole_part(k, a, nk, band, rec, 3, false);
-  charge += monopole_part(k, a, nk, band, rec,-3, false);
+  charge += monopole_part(k, a, nk, orb, rec, 1, false);
+  charge += monopole_part(k, a, nk, orb, rec,-1, false);
+  charge += monopole_part(k, a, nk, orb, rec, 2, false);
+  charge += monopole_part(k, a, nk, orb, rec,-2, false);
+  charge += monopole_part(k, a, nk, orb, rec, 3, false);
+  charge += monopole_part(k, a, nk, orb, rec,-3, false);
  
   if(model->mixing == HS_mixing::up_down){
-    charge += monopole_part(k, a, nk, band, rec, 1, true);
-    charge += monopole_part(k, a, nk, band, rec,-1, true);
-    charge += monopole_part(k, a, nk, band, rec, 2, true);
-    charge += monopole_part(k, a, nk, band, rec,-2, true);
-    charge += monopole_part(k, a, nk, band, rec, 3, true);
-    charge += monopole_part(k, a, nk, band, rec,-3, true);
+    charge += monopole_part(k, a, nk, orb, rec, 1, true);
+    charge += monopole_part(k, a, nk, orb, rec,-1, true);
+    charge += monopole_part(k, a, nk, orb, rec, 2, true);
+    charge += monopole_part(k, a, nk, orb, rec,-2, true);
+    charge += monopole_part(k, a, nk, orb, rec, 3, true);
+    charge += monopole_part(k, a, nk, orb, rec,-3, true);
   }
   else if(model->mixing == HS_mixing::normal) charge *= 2.0;
   charge *= -1.0/(2*M_PI);

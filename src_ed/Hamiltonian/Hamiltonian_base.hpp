@@ -141,7 +141,7 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
 
 
 /**
- Constructs the Q_matrix (Lehmann representation) from the Band Lanczos method,
+ Constructs the Q_matrix (Lehmann representation) from the band Lanczos method,
  or full diagonalization if the dimension is small enough.
  @param phi the initial vectors
  */
@@ -161,7 +161,7 @@ Q_matrix<HilbertField> Hamiltonian<HilbertField>::build_Q_matrix(
     matrix<HilbertField> U;  // eigenvectors of the reduced Hamiltonian
     matrix<HilbertField> P; // matrix of inner products <b[i]|v[j]>
   
-    if(BandLanczos(*this, phi, eval, U, P, M,  global_bool("verb_ED"))){
+    if(bandLanczos(*this, phi, eval, U, P, M,  global_bool("verb_ED"))){
         Q_matrix<HilbertField> Q(phi.size(),M);
         if(Q.M > 0) {
             Q.e = eval; 

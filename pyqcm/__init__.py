@@ -1169,7 +1169,28 @@ def set_basis(B):
     qcm.set_basis(B)
 
 ################################################################################
-def __orbital_manager(orbitals):
+def orbital_manager(orbitals, from_zero=False):
+    """
+    """
+
+    if orbitals is None:
+        nbands = model_size()[1]
+        orb_list = [i for i in range(1, nbands+1)]
+
+    elif type(orbitals) is int:
+        orb_list = [orbitals]
+    elif type(orbitals) is list:
+        orb_list = orbitals
+    elif type(orbitals) is tuple:
+        orb_list = orbitals
+    else:
+        raise ValueError('The list of orbitals does not have the right format (None, int, tuple or list)')
+    if from_zero:
+        orb_list = [x-1 for x in orb_list]
+    return orb_list
+
+################################################################################
+def __orbital_pair_manager(orbitals):
     """
     """
 
@@ -1180,7 +1201,7 @@ def __orbital_manager(orbitals):
         nbands = model_size()[1]
         orb_list = [i for i in range(1, nbands+1)]
         return orb_list, orb_list
-    
+
 ################################################################################
 def interaction_operator(name, link=None, orbitals=None, **kwargs):
     """
@@ -1203,7 +1224,7 @@ def interaction_operator(name, link=None, orbitals=None, **kwargs):
     if type(the_model.sites) is list:
         the_model._finalize()
 
-    orb1, orb2 = __orbital_manager(orbitals) 
+    orb1, orb2 = __orbital_pair_manager(orbitals) 
 
     for orb_no1 in orb1:
         for orb_no2 in orb2:
@@ -1252,7 +1273,7 @@ def hopping_operator(name, link, amplitude, orbitals=None, **kwargs):
     if type(the_model.sites) is list:
         the_model._finalize()
 
-    orb1, orb2 = __orbital_manager(orbitals) 
+    orb1, orb2 = __orbital_pair_manager(orbitals) 
 
     for orb_no1 in orb1:
         for orb_no2 in orb2:
@@ -1291,7 +1312,7 @@ def anomalous_operator(name, link, amplitude, orbitals=None, **kwargs):
     if type(the_model.sites) is list:
         the_model._finalize() 
 
-    orb1, orb2 = __orbital_manager(orbitals) 
+    orb1, orb2 = __orbital_pair_manager(orbitals) 
 
     for orb_no1 in orb1:
         for orb_no2 in orb2:
@@ -1456,17 +1477,19 @@ def cluster_QP_weight(cluster=0, eta=0.01, orb=1, spin_down=False, label=0):
     
 
 ################################################################################
-def spin_spectral_function(freq, k, orb=1, label=0):
+def spin_spectral_function(freq, k, orb=None, label=0):
     """
     computes the k-dependent spin-resolved spectral function
 
     :param freq: complex freqency
     :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`\pi`
-    :param int orb: orbital index (starts at 1)
+    :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param int label:  label of the model instance
     :return: depending on the shape of k, a nd.array(3) of nd.array(N,3)
 
     """
+    orbs = orbital_manager(orb, from_zero=True)
+
     mix = mixing()
     ds, nbands = reduced_Green_function_dimension()
     if mix != 2 and mix != 3:
@@ -1481,40 +1504,22 @@ def spin_spectral_function(freq, k, orb=1, label=0):
     if len(G.shape) == 3:
         nk = G.shape[0]
         S = np.zeros((nk,4))
-        if orb is None:
-            for l in range(ds):
-                s1 = G[:, l, l+ds]
-                s2 = G[:, l+ds, l]
-                S[:,1] += -(s1+s2).imag
-                S[:,2] +=  (s1-s2).real
-                S[:,3] += -(G[:, l, l] - G[:, l+ds, l+ds]).imag
-                S[:,0] += -(G[:, l, l] + G[:, l+ds, l+ds]).imag
-        else:
-            l = orb-1
+        for l in orbs:
             s1 = G[:, l, l+ds]
             s2 = G[:, l+ds, l]
-            S[:,1] = -(s1+s2).imag
-            S[:,2] =  (s1-s2).real
-            S[:,3] = -(G[:, l, l] - G[:, l+ds, l+ds]).imag
-            S[:,0] = -(G[:, l, l] + G[:, l+ds, l+ds]).imag
+            S[:,1] += -(s1+s2).imag
+            S[:,2] +=  (s1-s2).real
+            S[:,3] += -(G[:, l, l] - G[:, l+ds, l+ds]).imag
+            S[:,0] += -(G[:, l, l] + G[:, l+ds, l+ds]).imag
     else:
         S = np.zeros(4)
-        if orb is None:
-            for l in range(ds):
-                s1 = G[l, l+ds]
-                s2 = G[l+ds, l]
-                S[1] += -(s1+s2).imag
-                S[2] +=  (s1-s2).real
-                S[3] += -(G[l, l] - G[l+ds, l+ds]).imag
-                S[0] += -(G[l, l] + G[l+ds, l+ds]).imag
-        else:
-            l = orb-1
+        for l in orbs:
             s1 = G[l, l+ds]
             s2 = G[l+ds, l]
-            S[1] = -(s1+s2).imag
-            S[2] =  (s1-s2).real
-            S[3] = -(G[l, l] - G[l+ds, l+ds]).imag
-            S[0] = -(G[l, l] + G[l+ds, l+ds]).imag
+            S[1] += -(s1+s2).imag
+            S[2] +=  (s1-s2).real
+            S[3] += -(G[l, l] - G[l+ds, l+ds]).imag
+            S[0] += -(G[l, l] + G[l+ds, l+ds]).imag
 
     return 0.5*S
 

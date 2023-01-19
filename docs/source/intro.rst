@@ -36,10 +36,6 @@ The source code can be cloned with the following command::
     #or, from github:
     git clone https://github.com/dsenech/qcm_wed.git
 
-Checkout the latest pyqcm version::
-
-    git checkout v1.0.8 #latest version
-
 Compiling can be done with pip::
 
     cd <path_to_qcm_wed_folder>

@@ -46,7 +46,7 @@ def test_spectral():
     read_cluster_model_instance(record_2x2_anom.solution[0], 9)
 
     F = 'test_DoS.pdf'
-    banner('testing DoS()', c='#', skip=1); DoS(w=4, eta=0.2, label = Lab, file = F, plt_ax=ax)
+    banner('testing DoS()', c='#', skip=1); DoS(w=2, eta=0.2, label = Lab, file = F, plt_ax=ax)
     
     F = 'test_G_dispersion.pdf'
     banner('testing G_dispersion()', c='#', skip=1); G_dispersion(max=20, label = Lab, file = F, plt_ax=ax)
@@ -58,7 +58,7 @@ def test_spectral():
     banner('testing cluster_spectral_function()', c='#', skip=1); cluster_spectral_function(label = Lab, file = F, plt_ax=ax)
     
     F = 'test_mdc.pdf'
-    banner('testing mdc()', c='#', skip=1); mdc(label = Lab, file = F, plt_ax=ax)
+    banner('testing mdc()', c='#', skip=1); mdc(nk = 50, label = Lab, file = F, plt_ax=ax)
     
     F = 'test_momentum_profile.pdf'
     banner('testing momentum_profile()', c='#', skip=1); momentum_profile('t', label = Lab, file = F, plt_ax=ax)

@@ -87,6 +87,8 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, orb=N
 
     """
 
+    orbs = pyqcm.orbital_manager(orb, from_zero=True)
+
     if plt_ax is None:
         plt.figure()
         plt.gcf().set_size_inches(13.5/2.54, 9/2.54)
@@ -123,19 +125,13 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, orb=N
         if opt=='Sy':
             assert mix&2, 'option Sy in spectral_function() only makes sense if spin-flip terms are present'
         for j in range(len(k)):
-            if orb is None:
-                for l in range(nbands): 
-                    A[i, j] += -g[j, l, l].imag
-            else:
-                A[i, j] += -g[j, orb, orb].imag
+            for l in orbs: 
+                A[i, j] += -g[j, l, l].imag
 
             if mix&2:  
                 plot_down = True
-                if orb is None:
-                    for l in range(nbands): 
-                        A_down[i, j] += -g[j, nbands+l, nbands+l].imag
-                else:
-                    A_down[i, j] += -g[j, nbands+orb, nbands+orb].imag
+                for l in orbs: 
+                    A_down[i, j] += -g[j, nbands+l, nbands+l].imag
 
     if mix == 1:
         # add the contribution to the Nambu channel, but with opposite frequency
@@ -152,11 +148,8 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, orb=N
                 g = pyqcm.periodized_Green_function(W, k, False, label)
             for j in range(len(k)):
                 plot_down = True
-                if orb is None:
-                    for l in range(nbands): 
-                        A_down[i, j] += -g[j, nbands+l, nbands+l].imag
-                else:
-                    A_down[i, j] += -g[j, nbands+orb, nbands+orb].imag
+                for l in orbs: 
+                    A_down[i, j] += -g[j, nbands+l, nbands+l].imag
 
     if mix == 4:
         plot_down = True
@@ -167,11 +160,8 @@ def spectral_function(wmax=6.0, eta=0.05, path='triangle', nk=32, label=0, orb=N
             else:
                 g = pyqcm.periodized_Green_function(w[i], k, True, label)
             for j in range(len(k)):
-                if orb is None:
-                    for l in range(nbands): 
-                        A_down[i, j] += -g[j, l, l].imag
-                else:
-                    A_down[i, j] += -g[j, orb, orb].imag
+                for l in orbs: 
+                    A_down[i, j] += -g[j, l, l].imag
     
 
     ax.set_xlim(np.real(w[0]), np.real(w[-1]))
@@ -538,7 +528,7 @@ def DoS(w, eta = 0.1, label=0, sum=False, progress = True, labels=None, colors=N
 
 
 ################################################################################
-def mdc(nk=200, eta=0.1, label=0, orb=None, spin_down=False, quadrant=False, opt='GF', k_perp = 0, freq = 0.0, max=None, plane = 'xy', size=1.0, orb_basis=False, sym=None, file=None, plt_ax=None, **kwargs):
+def mdc(nk=200, eta=0.1, label=0, orb=None, spin_down=False, quadrant=False, opt='GF', k_perp = 0, freq = 0.0, max=None, plane = 'xy', size=1.0, band_basis=False, sym=None, file=None, plt_ax=None, **kwargs):
     """Plots the spectral weight at zero frequency in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
@@ -552,7 +542,7 @@ def mdc(nk=200, eta=0.1, label=0, orb=None, spin_down=False, quadrant=False, opt
     :param float freq: frequency at which the spectral function is computed (0 by default)
     :param float max: maximum value of the plotting range (if None, maximum of the data)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
-    :param band_basis: uses the band basis instead of the orbital basis (for multiband models)
+    :param boolean band_basis: uses the band basis instead of the orbital basis (for multiband models)
     :param str sym: symmetrization option for the mdc
     :param float size: size of the plot, in multiple of the default (2 pi on the side)
     :param str file: if not None, saves the plot in a file with that name
@@ -577,26 +567,25 @@ def mdc(nk=200, eta=0.1, label=0, orb=None, spin_down=False, quadrant=False, opt
     A = np.zeros(nk * nk)
     d, nbands = pyqcm.reduced_Green_function_dimension()
 
+    orbs = pyqcm.orbital_manager(orb, from_zero=True)
+
     # computes the spectral function
     if opt == 'self':
         g = pyqcm.self_energy(eta * 1j, k)
-        if orb is None:
-            for l in range(nbands): 
-                A += -g[:, l, l].imag
-        else:
-            A = -g[:, orb-1, orb-1].imag
+        for l in orbs: 
+            A += -g[:, l, l].imag
 
     elif opt == 'Z':
-        A = pyqcm.QP_weight(k, eta, orb)
+        for l in orbs: 
+            A = pyqcm.QP_weight(k, eta, l+1)
+
+    elif band_basis:
+        for l in orbs: 
+            A = -pyqcm.band_Green_function(freq + eta * 1j, k, spin_down=spin_down, label=label)[:, l, l].imag
 
     else:
-        if orb is None:
-            for l in range(d): 
-                A += -pyqcm.periodized_Green_function_element(l, l, freq + eta * 1j, k, spin_down=spin_down, label=label).imag
-        elif not band_basis:
-            A = -pyqcm.periodized_Green_function_element(orb-1, orb-1, freq + eta * 1j, k, spin_down=spin_down, label=label).imag
-        else:
-            A = -pyqcm.band_Green_function(freq + eta * 1j, k, spin_down=spin_down, label=label)[:, orb-1, orb-1].imag
+        for l in orbs: 
+            A += -pyqcm.periodized_Green_function_element(l, l, freq + eta * 1j, k, spin_down=spin_down, label=label).imag
 
     A = np.reshape(A, (nk, nk))
 
@@ -630,12 +619,13 @@ def mdc(nk=200, eta=0.1, label=0, orb=None, spin_down=False, quadrant=False, opt
         axis += ', $\omega = {:1.3f}$'.format(freq)
 
     title = axis
-    if orb_basis != None:
-        title = 'orbital {:d} : '.format(orb) + title
     if opt == 'self':
-        title = r"$\Sigma''(k,0)$ : "+title
+        title = r"$\Sigma''(k)$ : "+title
     elif opt == 'Z':
-        title = r"$Z(k,0)$ : "+title
+        title = r"$Z(k)$ : "+title
+    else:
+        title = r"$A(k)$ : "+title
+
 
     if max is None:
         max = A.max()
@@ -739,12 +729,12 @@ def spin_mdc(nk=200, eta=0.1, label=0, orb=None, quadrant=False, opt='spin', fre
         axis += ', $\omega = {:1.3f}$'.format(freq)
 
     title = axis
-    if orb != None:
+    if type(orb) is int:
         title = 'orb {:d} : '.format(orb) + title
     if opt == 'self':
-        title = r"$\Sigma''(k,0)$ : "+title
+        title = r"$\Sigma''(k)$ : "+title
     elif opt == 'Z':
-        title = r"$Z(k,0)$ : "+title
+        title = r"$Z(k)$ : "+title
 
 #------------------------------------------------------------------
     if opt == 'spins':
@@ -883,6 +873,7 @@ def plot_dispersion(nk=64, label=0, spin_down=False, orb=None, contour=False, da
     :returns: None
 
     """
+    orbs = pyqcm.orbital_manager(orb, from_zero=True)
 
     if plt_ax is None:
         plt.figure()
@@ -913,18 +904,14 @@ def plot_dispersion(nk=64, label=0, spin_down=False, orb=None, contour=False, da
     print('plotting...')
 
     if contour:
-        if orb is None:
-            print('Contour plots of the dispersion with more than one orbital make no sense visually! orbital label set to 1')
-            orb=1
-        CS = plt.contour(x, x, e[:, :, orb-1], linewidths=0.5)
+        if len(orbs) > 1:
+            print('Contour plots of the dispersion with more than one orbital make no sense visually! first label used only')
+        CS = plt.contour(x, x, e[:, :, orbs[0]], linewidths=0.5)
         ax.clabel(CS, inline=True, fontsize=9)
     else:
         x, y = np.meshgrid(x, x)
-        if orb is None:
-            for j in range(d):
-                ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
-        else:
-            ax.plot_surface(x, y, e[:, :, orb-1], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
+        for j in orbs:
+            ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
             
     if plt_ax is None:
         axis = set_legend_mdc(plane, k_perp)
@@ -1001,7 +988,7 @@ def Fermi_surface(nk=64, label=0, orb=None, quadrant=False, plane='xy', k_perp=0
     :returns: None
 
     """
-
+    orbs = pyqcm.orbital_manager(orb, from_zero=True)
     if plt_ax is None:
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
@@ -1018,11 +1005,8 @@ def Fermi_surface(nk=64, label=0, orb=None, quadrant=False, plane='xy', k_perp=0
     k.shape = (nk, nk, 3)
     e.shape = (nk, nk, d)
 
-    if orb is None:
-        for j in range(d):
-            plt.contour(x, x, e[:, :, j], levels=[0.0], **kwargs)
-    else:
-        plt.contour(x, x, e[:, :, orb-1], levels=[0.0], **kwargs)
+    for j in orbs:
+        plt.contour(x, x, e[:, :, j], levels=[0.0], **kwargs)
 
     if plt_ax is None:
         axis = set_legend_mdc('xy', 0.0)
@@ -1056,6 +1040,7 @@ def G_dispersion(nk=64, label=0, orb=None, period = 'G', contour=False, inv=Fals
     
     """
 
+    orbs = pyqcm.orbital_manager(orb, from_zero=True)
     if plt_ax is None:
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
@@ -1097,10 +1082,9 @@ def G_dispersion(nk=64, label=0, orb=None, period = 'G', contour=False, inv=Fals
         return
 
     if contour:
-        if orb is None:
-            print('Contour plots of the dispersion with more than one orbital make no sense visually! orbital set to 1')
-            orb=1
-        A = e[:, :, orb-1]
+        if len(orbs) >1:
+            print('Contour plots of the dispersion with more than one orbital make no sense visually! first value used')
+        A = e[:, :, orbs[0]]
         CS = plt.contour(x, x, A, **kwargs)
         ax.clabel(CS, inline=True, fontsize=9)
     else:    
@@ -1113,11 +1097,8 @@ def G_dispersion(nk=64, label=0, orb=None, period = 'G', contour=False, inv=Fals
         else:
             plt.xticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
             plt.yticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
-        if orb is None:
-            for j in range(d):
-                ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
-        else:
-            ax.plot_surface(x, y, e[:, :, orb], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
+        for j in orbs:
+            ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
 
     if file is not None:
         plt.savefig(file)

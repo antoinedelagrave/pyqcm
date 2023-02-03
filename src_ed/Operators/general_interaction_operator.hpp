@@ -39,6 +39,7 @@ general_interaction_operator<op_field>::general_interaction_operator(const strin
 : Hermitian_operator(_name, _the_model), elements(_elements)
 {
   set_target(the_model->in_bath);
+  is_interaction = true;
   // checks on _elements not done here. Should be done.
 }
 

@@ -72,6 +72,7 @@ static PyMethodDef methods[] = {
   { "dos", dos_python, METH_VARARGS, dos_help },
   { "explicit_operator", (PyCFunction)explicit_operator_python, METH_VARARGS | METH_KEYWORDS, explicit_operator_help },
   { "get_global_parameter", get_global_parameter_python, METH_VARARGS, get_global_parameter_help },
+  { "get_CDMFT_host", get_CDMFT_host_python, METH_VARARGS, get_CDMFT_host_help },
   { "Green_function_dimension", Green_function_dimension_python, METH_VARARGS, Green_function_dimension_help },
   { "Green_function_solve", Green_function_solve_python, METH_VARARGS, Green_function_solve_help },
   { "ground_state", ground_state_python, METH_VARARGS, ground_state_help },

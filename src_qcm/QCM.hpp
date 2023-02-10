@@ -87,7 +87,7 @@ namespace QCM{
   void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label);
   double CDMFT_distance(const vector<double>& p, int label);
   void switch_cluster_model(const string &name);
-
+  vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down, int label);
 };
 
 #endif /* QCM_hpp */

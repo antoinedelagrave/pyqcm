@@ -651,7 +651,7 @@ def cdmft(
     else:
         pyqcm.banner('Failure of the CDMFT algorithm', '*')
     
-    return superiter, observable_series_length
+    return wr, superiter, observable_series_length
 
 
 
@@ -728,9 +728,6 @@ def forcing_sequence(f1, f2, beta1, beta2, n=6):
     l = np.append(l,1e-8)
     lb = np.append(lb,lb[-1])
     return list(l), list(lb)
-
-
-
 
 
 ######################################################################
@@ -1320,7 +1317,8 @@ class hybridization:
         # print('M : '); print(M)
         # print('Delta : '); print(self.Delta)
         
-        return np.linalg.norm(M-self.Delta)
+        dist = np.linalg.norm(M-self.Delta)
+        return dist*dist/self.nw
 
     def __str__(self):
         S = ""
@@ -1328,7 +1326,7 @@ class hybridization:
             S += 'w = ' + self.w[i].__str__() + '\n' + self.Delta[i].__str__() + '\n\n'
         return S
 
-    def optimize_bath(self, varia, x):
+    def optimize_bath(self, varia, x, method='Nelder-Mead', accur = 1e-4, accur_dist = 1e-8):
         """
         Optimizes the bath parameters to fit the hybridization function delta
         :param [str] varia: list of variational parameters (bath parameters) from PyQCM
@@ -1342,5 +1340,7 @@ class hybridization:
             pyqcm.new_model_instance(1)
             return self.distance(1)
 
-        return optimize(tmp_distance, x)
+        return optimize(tmp_distance, x, method=method, accur = accur, accur_dist = accur_dist)
+
+
 

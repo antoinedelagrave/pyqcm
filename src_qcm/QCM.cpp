@@ -822,6 +822,13 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
     lattice_model_instances.at(label)->CDMFT_Host(freqs, weights); 
   }
 
+  vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down, int label)
+  {
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
+    return lattice_model_instances.at(label)->get_CDMFT_host(spin_down); 
+  }
+
+
 
   double CDMFT_distance(const vector<double>& p, int label)
   {

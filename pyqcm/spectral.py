@@ -257,7 +257,7 @@ def hybridization_function(wmax=6, eta=0.01, imaginary=False, clus = 0, realpart
 
 
 ################################################################################
-def cluster_spectral_function(wmax=6, eta = 0.05, imaginary=False, clus=0, label=0, offset=2, full=False, opt=None, spin_down=False, blocks=False, file=None, plt_ax=None, realpart=False, color = 'b', **kwargs):
+def cluster_spectral_function(wmax=6, eta = 0.05, imaginary=False, clus=0, label=0, offset=2, full=False, opt=None, spin_down=False, blocks=False, file=None, plt_ax=None, color = 'b', **kwargs):
     """Plots the spectral function of the cluster in the site basis
     
     :param float wmax: the frequency range is from -wmax to wmax if w is a float. If wmax is a tuple then the range is (wmax[0], wmax[1]). wmax can also be an explicit list of real frequencies
@@ -306,7 +306,7 @@ def cluster_spectral_function(wmax=6, eta = 0.05, imaginary=False, clus=0, label
         elif opt == "self":
             g = pyqcm.cluster_self_energy(clus, w[i], spin_down, label) # self-energy functionnal
         elif opt == "hyb":
-            g = pyqcm.hybridization_function(clus, w[i], realpart, label) # hybridization function
+            g = pyqcm.hybridization_function(clus, w[i], spin_down, label) # hybridization function
         else:
             raise ValueError(f"'{opt}' is not a valid option, must be one of 'self', 'hyb' or None.")
         if full:
@@ -1192,3 +1192,47 @@ def momentum_profile(op, nk=50, label=0, quadrant=False, k_perp=0.0, plane='xy',
         plt.close()
     else:
         plt.show()
+
+
+######################################################################
+def plot_host_hybrid(w, e, clus=0, file=None, plt_ax=None, **kwargs):
+    """plots a comparison between the host function and the hybridization function
+
+    :param [float] w : array of frequencies used
+    :param (int,int) e: matrix element to plot
+    :param int clus: cluster label (starts at 0)
+    :param str file: if not None, saves the plot in a file with that name
+    :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
+    :param kwargs: keyword arguments passed to the matplotlib 'plot' function
+    :returns: None
+
+    """
+    H = pyqcm.qcm.get_CDMFT_host(clus)
+    assert(H.shape[0] == w.shape[0])
+
+    if plt_ax is None:
+        plt.figure()
+        plt.gcf().set_size_inches(14/2.54, 14/2.54)
+        ax = plt.gca()
+    else:
+        ax = plt_ax
+
+    hyb = np.empty(H.shape, dtype=complex)
+    for i in range(w.shape[0]):
+        hyb[i,:,:] = pyqcm.hybridization_function(clus, w[i]*1j)
+
+    ax.plot(w, -H[:,e[0],e[1]].real,'bo-',label='host (real)', lw=1, **kwargs)
+    ax.plot(w, -H[:,e[0],e[1]].imag,'bo--',label='host (imag)', lw=1, **kwargs)
+    ax.plot(w, hyb[:,e[0],e[1]].real,'rs-',label='hyb. (real)', lw=1, **kwargs)
+    ax.plot(w, hyb[:,e[0],e[1]].imag,'rs--',label='hyb. (imag)', lw=1, **kwargs)
+    if plt_ax is None:
+        ax.legend()
+        ax.set_xlabel('$i\omega_n$')
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
+        else:
+            plt.show()
+
+
+

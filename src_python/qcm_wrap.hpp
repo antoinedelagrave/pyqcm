@@ -370,7 +370,7 @@ static PyObject*  CDMFT_host_python(PyObject *self, PyObject *args)
 
   try{
     if(!PyArg_ParseTuple(args, "OO|i", &freqs, &weights, &label))
-      qcm_throw("failed to read parameters in call to CPT_Green_function (python)");
+      qcm_throw("failed to read parameters in call to CDMFT_host (python)");
     vector<double> _freqs = doubles_from_Py(freqs);
     vector<double> _weights = doubles_from_Py(weights);
     QCM::CDMFT_host(_freqs, _weights, 0);
@@ -379,7 +379,51 @@ static PyObject*  CDMFT_host_python(PyObject *self, PyObject *args)
 }
 
   
- 
+
+//==============================================================================
+const char*  get_CDMFT_host_help =
+R"{(
+retrieves the CDMFT host function
+arguments:
+1. int : the cluster label (from 0 to the number of clusters - 1)
+2. boolean : spin_down sector flag
+3. int : label of instance
+){";
+//------------------------------------------------------------------------------
+static PyObject*  get_CDMFT_host_python(PyObject *self, PyObject *args)
+{
+  int label = 0;
+  int spin_down = 0;
+  int clus = 0;
+  PyObject *out;
+
+  try{
+    if(!PyArg_ParseTuple(args, "|iii", &clus, &spin_down, &label))
+      qcm_throw("failed to read parameters in call to get_CDMFT_host (python)");
+    auto g = QCM::get_CDMFT_host(spin_down, label);
+    size_t d = qcm_model->GF_dims[clus];
+    npy_intp dims[3];
+    dims[0] = g.size();
+    dims[1] = dims[2] = d;
+
+    vector<Complex> H(d*d*dims[0]);
+    int l = 0;
+    for(int i=0; i<dims[0]; i++){
+      for(int j=0; j<d; j++){
+        for(int k=0; k<d; k++){
+          H[l++] = g[i][clus](j,k);
+        }
+      } 
+    }
+    
+    out = PyArray_SimpleNew(3, dims, NPY_COMPLEX128);
+    memcpy(PyArray_DATA((PyArrayObject*) out), H.data(), dims[0]*d*d*sizeof(complex<double>));
+    PyArray_ENABLEFLAGS((PyArrayObject*) out, NPY_ARRAY_OWNDATA);
+  
+  }catch(const string& s) {qcm_catch(s);}
+  return out;
+}
+
 
 //==============================================================================
 const char*  CDMFT_distance_help =

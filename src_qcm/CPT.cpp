@@ -3,6 +3,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#include <fstream>
 extern shared_ptr<parameter_set> param_set;
 
 //==============================================================================
@@ -364,6 +365,10 @@ void lattice_model_instance::CDMFT_Host(const vector<double>& freqs, const vecto
 	}
 }
 
+vector<vector<matrix<Complex>>> lattice_model_instance::get_CDMFT_host(bool spin_down){
+	if(spin_down) return G_host_down;
+	else return G_host;
+}
 
 //==============================================================================
 /** 

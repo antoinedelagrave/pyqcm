@@ -66,6 +66,7 @@ struct lattice_model_instance{
 	vector<pair<double,string>> ground_state();
 	vector<pair<string,double>> averages(const vector<string> &_ops);
 	vector<pair<vector<double>, vector<double>>> Lehmann_Green_function(vector<vector3D<double>> &k, int orb, bool spin_down);
+	vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down);
 	void average_integrand_per(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void average_integrand(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void build_cluster_H();

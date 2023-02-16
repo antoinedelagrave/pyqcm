@@ -315,6 +315,14 @@ def cdw_eigenstates(C, _V, plt_ax=None, basis=np.eye(3), file=None, silent=False
 
     w, v = np.linalg.eigh(Vic)
     w = np.round(w,10)
+    v = np.round(v,10)
+    # making sure the first nonzero component of the eigenvector is positive
+    for i in range(w.shape[0]):
+        for j in range(w.shape[0]):
+            if np.abs(v[j,i]) > 1e-6 and v[j,i] < 0:
+                v[:,i] *= -1
+                break
+
 
     if silent == False:
         print('intra-cluster V matrix:\n',Vc)

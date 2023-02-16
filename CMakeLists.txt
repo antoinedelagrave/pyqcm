@@ -16,6 +16,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g -ftree-vectorize")
+    set(OpenMP_CXX_INCLUDE_DIR "/opt/homebrew/opt/libomp/include")
 else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g -march=native -ftree-vectorize")
 endif()
@@ -169,7 +170,7 @@ if (DOWNLOAD_CUBA)
 else()
     find_library(CUBA_LIBRARY
         NAMES libcuba.a
-        HINTS "${CUBA_DIR}" "/usr/local/lib" "$ENV{HOME}/lib"
+        HINTS "${CUBA_DIR}" "/usr/local/lib" "$ENV{HOME}/lib" "${CMAKE_SOURCE_DIR}/external/cuba/"
     )
 endif()
 

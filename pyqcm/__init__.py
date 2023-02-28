@@ -1,5 +1,6 @@
 
 import os
+import sys
 #Moise: note I don't like set environment variable here, because if someone uses QCM library to built c++ application, the problem will still occur...
 #must be before importing qcm
 if "OPENBLAS_NUM_THREADS" not in os.environ.keys():
@@ -41,7 +42,7 @@ np.set_printoptions(precision=6, linewidth=200, suppress=True, sign=' ')
 solver = 'ED'
 
 # special wavevectors
-wavevector_M = (2/3)*np.array([1,0,0])
+wavevector_M = (2/3)*np.array(( 1, 0, 0))
 wavevector_K = (2/3)*np.array([1,1/np.sqrt(3),0])
 
 ################################################################################
@@ -126,6 +127,8 @@ class model_instance:
 
 the_model = model()
 
+def script_file():
+    return os.path.basename(sys.argv[0])
 
 ################################################################################
 def model_is_closed():
@@ -1269,10 +1272,10 @@ def hopping_operator(name, link, amplitude, orbitals=None, **kwargs):
 
     global the_model
 
-    if link == [0,0,0]:
+    if link == ( 0, 0, 0):
         if "tau" in kwargs:
             if kwargs["tau"] != 0:
-                warn("***** Setting tau=0 since the link is [0,0,0] (on-site operator). *****")
+                warn("***** Setting tau=0 since the link is ( 0, 0, 0) (on-site operator). *****")
                 kwargs["tau"] = 0
         else:
             kwargs["tau"] = 0
@@ -1646,7 +1649,6 @@ def __dependent_parameter_string():
 def write_summary(f, suppl_descr=None, suppl_values=None, first_of_series=False):
     first_in_file =False
     des, val = properties()
-    dependent_parameters = __dependent_parameter_string()
     try:
         des_prev = des_dict[f]
     except:
@@ -1659,16 +1661,16 @@ def write_summary(f, suppl_descr=None, suppl_values=None, first_of_series=False)
         first = True
         des_dict[f] = copy.copy(des)
     if suppl_values != None:
-        val = suppl_values + val
-    val += time.strftime("%Y-%m-%d@%H:%M", time.localtime())
+        val = val + suppl_values
+    val += script_file() + '\t' + time.strftime("%Y-%m-%d@%H:%M", time.localtime()) # adds the timestamp
     fout = open(f, 'a')
     if first:
         if suppl_descr != None:
-            des = suppl_descr + des
-        des += 'time\tdependent_parameters\t'
+            des = des + suppl_descr
+        des += 'script\ttime\t'
         if first_in_file is False: fout.write('\n')
         fout.write(des + '\n')
-    fout.write(val + '\t' + dependent_parameters + '\n')
+    fout.write(val  + '\n')
     fout.close()
 
 

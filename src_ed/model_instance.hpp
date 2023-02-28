@@ -351,6 +351,17 @@ void model_instance<HilbertField>::compute_weights(){
     return;
   }
   
+
+  // removing states whose energies are too high
+  auto it = states.begin();
+  while(it != states.end()){
+    if((*it)->energy - GS_energy > max_gap){
+      ((shared_ptr<state<HilbertField>>)*it).reset();
+      states.erase(it++);
+    }
+    else ++it;
+  }
+
   // compute the partition function
   double Z = 0.0;
   for(auto &x : states){
@@ -363,10 +374,14 @@ void model_instance<HilbertField>::compute_weights(){
   for(auto &x : states){
     x->weight *= Z;
   }
-  
+
+  if(global_bool("verb_ED")){
+    cout << "list of states/sectors conserved:\n";
+    for(auto &x : states){
+      cout << x->sec << "\tenergy = " << x->energy << "\tweight = " << x->weight << endl;
+    }
+  }
 }
-
-
 
 
 /**

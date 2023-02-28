@@ -581,8 +581,8 @@ template <typename T> struct matrix {
   }
 
   bool printable() {
-    size_t dim_max_print = global_int("dim_max_print");
-    if (r > dim_max_print or c > dim_max_print) return false;
+    size_t max_dim_print = global_int("max_dim_print");
+    if (r > max_dim_print or c > max_dim_print) return false;
     return true;
   }
 
@@ -705,8 +705,8 @@ template <typename T> struct matrix {
 
 
   friend std::ostream &operator<<(std::ostream &flux, const matrix<T> &A) {
-    size_t dim_max_print = global_int("dim_max_print");
-    if (A.r > dim_max_print or A.c > dim_max_print) return flux;
+    size_t max_dim_print = global_int("max_dim_print");
+    if (A.r > max_dim_print or A.c > max_dim_print) return flux;
     for (size_t i = 0; i < A.r; ++i) {
       for (size_t j = 0; j < A.c; ++j) flux << chop(A(i, j)) << '\t';
       flux << '\n';

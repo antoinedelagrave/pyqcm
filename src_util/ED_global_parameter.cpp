@@ -265,7 +265,7 @@ namespace ED {
     new_global_double(0.0,"temperature", "Temperature of the system.");
 
     new_global_int(2,"Davidson_states","Number of states requested in the Davidson-Liu algorithm");
-    new_global_int(64,"dim_max_print","Maximum dimension for printing vectors and matrices");
+    new_global_int(64,"max_dim_print","Maximum dimension for printing vectors and matrices");
     new_global_int(256,"max_dim_full","Maximum dimension for using full diagonalization");
     new_global_int(600,"max_iter_BL","Maximum number of iterations in the band Lanczos procedure");
     new_global_int(400,"max_iter_CF","Maximum number of iterations in the continuous fraction Lanczos procedure");

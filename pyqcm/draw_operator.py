@@ -195,7 +195,7 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
                 plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='center', c='r')
 
     fac = 0.15
-    print(spin)
+    # print(spin)
     for e in spin:
         if ';0' not in e: continue
         s1 = Si[e][0]

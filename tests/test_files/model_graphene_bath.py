@@ -40,16 +40,16 @@ new_cluster_operator('clus', 'eb2', 'one-body', [
 
 ######################################################################
 
-add_cluster('clus', [0,0,0], [[0,0,0], [1,0,0]]) # Adding the cluster in
-lattice_model('Graphene_2', [[1,-1,0], [2,1,0]], [[1,-1,0], [2,1,0]]) # Tiling like an old scissorgrid elevator
-set_basis([[1,0,0],[-0.5,np.sqrt(3)/2,0]]) # Classic Graphene basis (for simplicity and graphical purposes)
+add_cluster('clus', ( 0, 0, 0), [( 0, 0, 0), ( 1, 0, 0)]) # Adding the cluster in
+lattice_model('Graphene_2', [( 1,-1, 0), [2,1,0]], [( 1,-1, 0), [2,1,0]]) # Tiling like an old scissorgrid elevator
+set_basis([( 1, 0, 0),[-0.5,np.sqrt(3)/2,0]]) # Classic Graphene basis (for simplicity and graphical purposes)
 
 # Defining the interaction operator on BOTH bands
 interaction_operator('U', orbitals=(1,1))
 interaction_operator('U', orbitals=(2,2))
 
 # Defining NN hopping terms
-hopping_operator('t', [1,0,0], -1, orbitals=(1,2)) # All hops here are from one band to another
-hopping_operator('t', [0,1,0], -1, orbitals=(1,2))
+hopping_operator('t', ( 1, 0, 0), -1, orbitals=(1,2)) # All hops here are from one band to another
+hopping_operator('t', ( 0, 1, 0), -1, orbitals=(1,2))
 hopping_operator('t', [-1,-1,0], -1, orbitals=(1,2))
 

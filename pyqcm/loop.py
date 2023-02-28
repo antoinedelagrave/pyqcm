@@ -388,7 +388,7 @@ def fade(F, p1, p2, n):
 
 
 ################################################################################
-def Hartree(F, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False, double_counting_correct = None
+def Hartree(F, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False, double_counting_correct = None, pr = False
 ):
 	"""Performs the Hartree approximation
 
@@ -426,7 +426,7 @@ def Hartree(F, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False,
 		diff_tot = 0
 		hartree_converged = True
 		for i,C in enumerate(couplings):
-			C.update()
+			C.update(pr=pr)
 			C.print()
 			diff_tot += np.abs(C.diff)
 			hartree_converged = hartree_converged and C.converged()

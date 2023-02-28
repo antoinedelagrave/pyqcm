@@ -100,7 +100,7 @@ struct state
   void write_wavefunction(ostream& fout, const ED_basis &B)
   {
     fout << "state\n" << sec << '\t' << energy << '\t' << weight << endl;
-    if(B.dim <= global_int("dim_max_print")){
+    if(B.dim <= global_int("max_dim_print")){
       for(int i=0; i<B.dim; i++){
         fout << abs(psi[i])*abs(psi[i]) << '\t' << psi[i] << '\t';
         B.print_state(fout,i);

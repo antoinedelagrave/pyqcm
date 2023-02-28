@@ -186,11 +186,11 @@ class DCA_cluster:
 
 ##### 2x3 #####
 sites = [
-    [0,0,0],
-    [1,0,0],
-    [2,0,0],
-    [0,1,0],
-    [1,1,0],
+    ( 0, 0, 0),
+    ( 1, 0, 0),
+    ( 2, 0, 0),
+    ( 0, 1, 0),
+    ( 1, 1, 0),
     [2,1,0],
 ]
 # superlattice=[
@@ -201,7 +201,7 @@ superlattice=[
     [3, 0, 0],
     [1, 2, 0]
 ]
-basis = [[1, 0, 0], [-0.5, 0.866025403784438, 0]]
+basis = [( 1, 0, 0), [-0.5, 0.866025403784438, 0]]
 
 X = DCA_cluster(name='G6', sites=sites, superlattice=superlattice, basis=None)
 X.draw_patches()
@@ -209,16 +209,16 @@ X.draw_patches()
 
 ##### G6 #####
 # sites = [
-#     [ 1, 0, 0],
-#     [ 1, 1, 0],
-#     [ 0, 1, 0],
-#     [-1, 0, 0],
+#     ( 1, 0, 0),
+#     ( 1, 1, 0),
+#     ( 0, 1, 0),
+#     (-1, 0, 0),
 #     [-1,-1, 0],
 #     [ 0,-1, 0],
 # ]
 # lattice = [[1, -1, 0], [2, 1, 0]]
 # superlattice= [[3, 0, 0], [0, 3, 0]]
-# basis = [[1, 0, 0], [-0.5, 0.866025403784438, 0]]
+# basis = [( 1, 0, 0), [-0.5, 0.866025403784438, 0]]
 
 # X = DCA_cluster(name='G6', sites=sites, superlattice=superlattice, lattice=lattice, basis=basis)
 # X.draw_patches()
@@ -227,9 +227,9 @@ X.draw_patches()
 ##### 9 sites triangular #####
 # sites = [
 #     [ 0, 0, 0],
-#     [ 1, 0, 0],
-#     [ 2, 0, 0],
-#     [ 1, 1, 0],
+#     ( 1, 0, 0),
+#     ( 2, 0, 0),
+#     ( 1, 1, 0),
 #     [ 2, 1, 0],
 #     [ 3, 1, 0],
 #     [ 2, 2, 0],
@@ -237,7 +237,7 @@ X.draw_patches()
 #     [ 4, 2, 0]
 # ]
 # superlattice= [[3, 0, 0], [3, 3, 0]]
-# basis = [[1, 0, 0], [-0.5, 0.866025403784438, 0]]
+# basis = [( 1, 0, 0), [-0.5, 0.866025403784438, 0]]
 
 # X = DCA_cluster(name='G6', sites=sites, superlattice=superlattice, basis=basis)
 # X.draw_patches(lim=2)
@@ -249,7 +249,7 @@ X.draw_patches()
 #     [ 1,  1,  0]     
 # ]
 # superlattice=[[1, -1, 0], [2, 1, 0]]
-# basis = [[1, 0, 0], [-0.5, 0.866025403784438, 0]]
+# basis = [( 1, 0, 0), [-0.5, 0.866025403784438, 0]]
 
 # X = DCA_cluster(name='G6', sites=sites, superlattice=superlattice, basis=basis)
 # X.draw_patches(lim=2)
@@ -259,16 +259,16 @@ X.draw_patches()
 
 ##### T7 #####
 # sites = [
-#     [1, 0, 0],
-#     [1, 1, 0],
-#     [0, 1, 0],
-#     [-1, 0, 0],
+#     ( 1, 0, 0),
+#     ( 1, 1, 0),
+#     ( 0, 1, 0),
+#     (-1, 0, 0),
 #     [-1, -1, 0],
 #     [0, -1, 0],
 #     [0, 0, 0]
 # ]
 # superlattice= [[2, -1, 0], [1, 3, 0]]
-# basis = [[1, 0, 0], [-0.5, 0.866025403784438, 0]]
+# basis = [( 1, 0, 0), [-0.5, 0.866025403784438, 0]]
 
 # X = DCA_cluster(name='G6', sites=sites, superlattice=superlattice, basis=basis)
 # X.draw_patches(center=True, lim=1.5)

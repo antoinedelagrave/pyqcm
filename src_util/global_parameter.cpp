@@ -28,7 +28,7 @@ namespace QCM {
     new_global_int(16000,"cuba3D_mineval","minimum number of integrand evaluations in CUBA (3D)");
     new_global_int(32,"kgrid_side","number of wavevectors on the side in a fixed wavevector grid");
     new_global_int(60,"max_iter_QN","maximum number of iterations in the quasi-Newton method");
-    new_global_int(64,"dim_max_print","Maximum dimension for printing vectors and matrices");
+    new_global_int(64,"max_dim_print","Maximum dimension for printing vectors and matrices");
     new_global_int(8, "GK_min_regions","minimum number of regions in the Gauss-Kronrod method");
     new_global_int(8,"print_precision","precision of printed output");
 
@@ -63,7 +63,7 @@ namespace QCM {
     new_global_double(0.0,"temperature", "Temperature of the system.");
 
     new_global_int(1,"Davidson_states","Number of states requested in the Davidson-Liu algorithm");
-    new_global_int(64,"dim_max_print","Maximum dimension for printing vectors and matrices");
+    new_global_int(64,"max_dim_print","Maximum dimension for printing vectors and matrices");
     new_global_int(256,"max_dim_full","Maximum dimension for using full diagonalization");
     new_global_int(600,"max_iter_BL","Maximum number of iterations in the band Lanczos procedure");
     new_global_int(400,"max_iter_CF","Maximum number of iterations in the continuous fraction Lanczos procedure");

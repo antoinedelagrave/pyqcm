@@ -29,7 +29,7 @@ pair<vector<array<double,9>>, vector<array<complex<double>, 11>>> lattice_model_
     bond_ave[i][2] = complex<double>(R.z, Ri.z);
   }
 
-  // loop over clusers
+  // loop over clusters
   int s_off = 3;
   int b_off = 3;
   for(int clus = 0; clus < model->clusters.size(); clus++){

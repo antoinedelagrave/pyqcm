@@ -63,6 +63,7 @@ namespace QCM{
     lattice_model_instances[label] = unique_ptr<lattice_model_instance>(new lattice_model_instance(qcm_model, param_set->value_map(), target_sectors, label));
   }
   
+
   
   
   /**
@@ -90,14 +91,23 @@ namespace QCM{
   /**
    outputs a map of the parameters for model instance 'label'
    */
-  map<string,double> parameters(int label)
+  map<string,double> parameters()
+  {
+    return param_set->value_map();
+  }
+  
+    
+
+
+  /**
+   outputs a map of the parameters for model instance 'label'
+   */
+  map<string,double> instance_parameters(int label)
   {
     if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->params;
   }
-  
-  
-  
+
   
   
   /**

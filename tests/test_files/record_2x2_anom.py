@@ -1,7 +1,7 @@
 from pyqcm import *
 set_global_parameter("nosym")
 new_cluster_model('2x2_C2', 4, 0, generators=None, bath_irrep=False)
-add_cluster('2x2_C2', [0, 0, 0], [[0, 0, 0], ( 1, 0, 0), ( 0, 1, 0), ( 1, 1, 0)], ref = 0)
+add_cluster('2x2_C2', [0, 0, 0], [(0, 0, 0), ( 1, 0, 0), ( 0, 1, 0), ( 1, 1, 0)], ref = 0)
 lattice_model('2x2_C2', [( 2, 0, 0), ( 0, 2, 0)], None)
 interaction_operator('U')
 interaction_operator('J', link=( 1, 0, 0), type='Hund')

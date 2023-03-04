@@ -76,7 +76,7 @@ struct model_instance : model_instance_base
   void Green_function_solve();
   pair<double, string> one_body_solve();
   matrix<Complex>  Green_function(const Complex &z, bool spin_down, bool blocks);
-  matrix<Complex>  Green_function_average(bool spin_down);
+  void Green_function_average();
   matrix<Complex>  self_energy(const Complex &z, bool spin_down);
   matrix<Complex>  hopping_matrix(bool spin_down);
   matrix<Complex>  hopping_matrix_full(bool spin_down);
@@ -85,6 +85,7 @@ struct model_instance : model_instance_base
   vector<Complex>  susceptibility(shared_ptr<Hermitian_operator> h, const vector<Complex> &w);
   vector<pair<double,double>> susceptibility_poles(shared_ptr<Hermitian_operator> h);
   double fidelity(model_instance<HilbertField>& inst);
+  void Green_function_density();
   void print(ostream& fout);
   void write(ostream& fout);
   void read(istream& fin);
@@ -505,6 +506,10 @@ void model_instance<HilbertField>::Green_function_solve()
     }
   }
   gf_solved = true;
+  M.set_size(dim_GF);
+  if(mixing&HS_mixing::up_down) M_down.set_size(dim_GF);
+  Green_function_average();
+  Green_function_density();
 }
 
 
@@ -565,24 +570,37 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
  Evaluates the Green function average G (column-order format)
  */
 template<typename HilbertField>
-matrix<Complex> model_instance<HilbertField>::Green_function_average(bool spin_down)
+void model_instance<HilbertField>::Green_function_average()
 {
-  if(spin_down and !(mixing&HS_mixing::up_down)) qcm_ED_throw("spin_down=True impossible with Hilbert space mixing "+to_string(mixing));
-  if(!gf_solved and !gf_read) Green_function_solve();
-
-  matrix<Complex> Gint(n_mixed*(the_model->n_sites));
+  // if(!gf_solved and !gf_read) Green_function_solve();
   block_matrix<Complex> G(the_model->group->site_irrep_dim*n_mixed);
-  if(spin_down and mixing&HS_mixing::up_down){
-    for(auto& x : states) x->gf_down->integrated_Green_function(G);
+  for(auto& x : states) x->gf->integrated_Green_function(G);
+  the_model->group->to_site_basis(G, M, n_mixed);
+  if(mixing&HS_mixing::up_down){
+    block_matrix<Complex> G_down(the_model->group->site_irrep_dim*n_mixed);
+    for(auto& x : states) x->gf_down->integrated_Green_function(G_down);
+    the_model->group->to_site_basis(G_down, M_down, n_mixed);
   }
-  else{
-    for(auto& x : states) x->gf->integrated_Green_function(G);
-  }
-  the_model->group->to_site_basis(G, Gint, n_mixed);
-  return Gint;
 }
 
 
+
+/**
+ Evaluates the density from the Green function average
+ */
+template<typename HilbertField>
+void model_instance<HilbertField>::Green_function_density()
+{
+  int I = the_model->n_sites;
+  if(mixing&HS_mixing::spin_flip or mixing&HS_mixing::anomalous) I *= 2; 
+  double nG = 0;
+  for(int i=0; i<I; i++) nG += M(i,i).real();
+  if(mixing&HS_mixing::up_down){
+    for(int i=0; i<I; i++) nG += M_down(i,i).real();
+  }
+  GF_density = nG/the_model->n_sites;
+  if(mixing == HS_mixing::normal) GF_density *= 2;
+}
 
 
 
@@ -909,8 +927,8 @@ pair<double, string> model_instance<HilbertField>::one_body_solve()
         } 
       }
     }
-
   }
+  Green_function_density();
 
 
   // Nambu correction to the ground state energy
@@ -1068,10 +1086,13 @@ void model_instance<HilbertField>::read(istream& fin)
     if(input.size()==0) break;
     states.insert(shared_ptr<state<HilbertField>>(new state<HilbertField>(fin, the_model->group, mixing, GF_solver)));
   }
-  gf_read = true;
   is_correlated = true; // added to remove confusion when dealing with read instances
-  M = Green_function_average(false);
-  if(mixing & HS_mixing::up_down) M_down = Green_function_average(true);
+  M.set_size(dim_GF);
+  if(mixing&HS_mixing::up_down) M_down.set_size(dim_GF);
+  Green_function_average();
+  Green_function_density();
+  cout << " ******** " << M << '\n' << GF_density << endl; 
+  gf_read = true;
 }
 
 

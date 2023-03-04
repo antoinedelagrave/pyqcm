@@ -31,7 +31,7 @@ if pyqcm.mixing() == 4:
     print('\naverages of c^\dagger_i c_j (spin down):\n\n', ave)
 
 print('\naverage of t from GF= ', -(ave[0,1]+ave[1,2]+ave[2,3]))
-print('average of mu from GF = ', 2*(ave[0,0]))
+print('average of mu from GF = ', pyqcm.Green_function_density())
 
 
 

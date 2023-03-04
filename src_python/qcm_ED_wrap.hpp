@@ -158,6 +158,29 @@ static PyObject* Green_function_average_python(PyObject *self, PyObject *args)
   return out;
 }
 //==============================================================================
+const char* Green_function_density_help =
+R"(
+arguments:
+1. label of model_instance (optional, default=0)
+returns:
+the density of the cluster, computed from the trace of the Green function average
+)";
+//------------------------------------------------------------------------------
+static PyObject* Green_function_density_python(PyObject *self, PyObject *args)
+{
+  int label=0;
+  double dens = 0.0;
+  try{
+    if(!PyArg_ParseTuple(args, "|i", &label))
+      qcm_ED_throw("failed to read parameters in call to Green_function_average (python)");
+  } catch(const string& s) {qcm_ED_catch(s);}
+  try{
+    dens = ED::Green_function_density((size_t)label);
+  } catch(const string& s) {qcm_ED_catch(s);}
+
+  return Py_BuildValue("d", dens);
+}
+//==============================================================================
 const char* Green_function_dimensionC_help =
 R"(
 arguments:

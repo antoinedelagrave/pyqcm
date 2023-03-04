@@ -36,7 +36,8 @@ namespace QCM{
   double spectral_average(const string& name, const complex<double> w, int label);
   int mixing();
   int spatial_dimension();
-  map<string,double> parameters(int label);
+  map<string,double> parameters();
+  map<string,double> instance_parameters(int label);
   matrix<complex<double>> cluster_Green_function(size_t i, complex<double> w, bool spin_down, int label, bool blocks);
   matrix<complex<double>> cluster_self_energy(size_t i, complex<double> w, bool spin_down, int label);
   matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down, int label);

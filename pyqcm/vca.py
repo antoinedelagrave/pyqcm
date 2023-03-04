@@ -490,7 +490,7 @@ def __minimax(names, var_max_start, start=None, step=None, accur=None, max=10,  
 
     """
 
-    ftol = 2*pyqcm.qcm.get_global_parameter('accur_SEF')
+    ftol = 10*pyqcm.qcm.get_global_parameter('accur_SEF')
     nvar_max = len(names) - var_max_start
     nvar_min = var_max_start
     steps_min = step[0:nvar_min]
@@ -534,7 +534,7 @@ def __minimax(names, var_max_start, start=None, step=None, accur=None, max=10,  
             initial_simplex[i, :] = x_min
         for i in range(nvar):
             initial_simplex[i+1, i] += steps[i]
-        if type(accur) == list:
+        if is_sequence(accur) == True:
             accur = accur[0]
         solution = minimize(F_min, x_min, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
         iter_done = solution.nit
@@ -589,9 +589,9 @@ def vca(
     var2sef=None,
     varia=None, 
     start=None, 
-    steps=None, 
-    accur=None, 
-    max=None,
+    steps=0.01, 
+    accur=1e-4, 
+    max=100,
     file="vca.tsv",
     accur_grad=1e-6, 
     max_iter=30, 
@@ -626,34 +626,16 @@ def vca(
     if is_sequence(varia) == False:
         if type(varia) != str:
             raise ValueError('argument varia of vca() must be a string or a sequence of strings')
-        single = True
-        varia = [varia]
-        if start != None:
-            if type(start) != float and type(start) != int:
-                raise ValueError('argument start of vca() must be a float or a sequence of float')
-            start = [start]
-        if type(steps) != float:
-            raise ValueError('argument steps of vca() must be a float')
-        if type(accur) != float:
-            raise ValueError('argument accur of vca() must be a float')
-        if type(max) != float and type(max) != int:
-            raise ValueError('argument max of vca() must be a float')
-        steps = [steps]
-        accur = [accur]
-        max = [max]
-        nvar = 1
-    else:
-        nvar = len(varia)  # number of variational parameters
-        if start != None:
-            if len(start) != nvar:
-                raise ValueError('argument max of vca() must contain {:d} elements'.format(nvar))
-        if type(steps) != list or type(accur) != list or type(max) != list:
-            raise ValueError('arguments steps, accur and max of vca() must be lists of {:d} elements each'.format(nvar))
-        if len(steps) != nvar or len(accur) != nvar or len(max) != nvar:
-            raise ValueError('arguments steps, accur and max of vca() must be lists of {:d} elements each'.format(nvar))
+        varia = (varia,)
 
-    if type(hartree) is not list and hartree is not None:
-        hartree = [hartree] # fixes possible type error
+
+    nvar = len(varia)
+    if type(steps) != list: 
+        if type(steps) == float : steps = [steps]*nvar
+        else : steps = list(steps)
+    if is_sequence(accur) == False: accur = (accur,)*nvar
+    if is_sequence(max) == False: max = (max,)*nvar
+    if is_sequence(hartree) == False and hartree is not None: hartree = (hartree,)
 
     global first_time
     pyqcm.new_model_instance()

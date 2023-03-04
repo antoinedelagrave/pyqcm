@@ -57,7 +57,6 @@ struct lattice_model_instance{
 	matrix<Complex> upgrade_cluster_matrix_anomalous(int latt_mix, int clus_mix, matrix<Complex> &g, matrix<Complex> &gm);
 	matrix<Complex> upgrade_cluster_matrix(int latt_mix, int clus_mix, matrix<Complex> &g);
 	pair<vector<array<double,9>>, vector<array<complex<double>, 11>>> site_and_bond_profile();
-	vector<complex<double>> Green_function_average(int clus, bool spin_down);
 	vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool recursive=false, int dir=3);
 	vector<double> dispersion(Green_function_k &M);
 	vector<double> dos(const complex<double> w);

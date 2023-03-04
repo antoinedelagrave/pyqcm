@@ -2,6 +2,7 @@ import numpy as np
 import pyqcm
 import pyqcm.cdmft
 import os
+from numpy.distutils.misc_util import is_sequence
 
 first_time=True
 
@@ -82,8 +83,8 @@ def controlled_loop(
 		raise ValueError('the loop range is incoherent: step has wrong sign')
 	if varia is None:
 		raise pyqcm.MissingArgError('variational parameters (varia) must be specified')
-	if type(varia) != list:
-		raise TypeError('the argument "varia" of controlled_loop must be a list')
+	if is_sequence(varia) == False:
+		raise TypeError('the argument "varia" of controlled_loop must be a sequence (list, tuple, etc.)')
 
 	nvar = len(varia)  # number of variational parameters
 	sol = np.empty((4, nvar))  # current solution + 3 previous solutions

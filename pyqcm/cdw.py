@@ -336,7 +336,7 @@ def cdw_eigenstates(C, _V, plt_ax=None, basis=np.eye(3), file=None, silent=False
         for i in range(C.N):
             print('\neigenvalue ', w[i], ' :\n', v[:, i])
             C.draw_cdw(v[:, i], basis=basis, plt_ax = ax[i])
-            ax[i].set_title('$\\lambda = {:f}$'.format(w[i]))
+            ax[i].set_title(r'No ${:d}, \lambda = {:f}$'.format(i, w[i]), fontsize=9)
             ax[i].tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
 
         # plt.tight_layout()

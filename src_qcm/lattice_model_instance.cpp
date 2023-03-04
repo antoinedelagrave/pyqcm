@@ -626,6 +626,10 @@ void lattice_model_instance::print_info()
     if(model->clusters[i].ref != i) continue;
     ostr1 << "E0_" << i+1 << "\tsector_"  << i+1 << '\t';
     ostr2 << setprecision(print_precision) << gs[i].first << '\t' << gs[i].second << '\t';
+    if(gf_solved){
+      ostr1 << "n_" << i+1 << '\t';
+      ostr2 << setprecision(print_precision) << ED::Green_function_density(i) << '\t';
+    }
   }
   line_info_names = ostr1.str();
   line_info_values = ostr2.str();

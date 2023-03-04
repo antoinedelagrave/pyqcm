@@ -20,7 +20,7 @@ ave = pyqcm.Green_function_average()
 print('\naverages of c^\dagger_i c_j :\n\n', ave)
 
 print('\naverage of t from GF= ', -2*(ave[0,1]))
-print('average of mu from GF = ', 2*(ave[0,0]))
+print('average of mu from GF = ', pyqcm.Green_function_density())
 
 
 

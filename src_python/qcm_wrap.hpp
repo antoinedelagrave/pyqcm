@@ -1051,13 +1051,32 @@ static PyObject* set_target_sectors_python(PyObject *self, PyObject *args)
 //==============================================================================
 const char* parameters_help =
 R"{(
+returns the values of the parameters in the parameter set
+returns: a dictionary of string/real pairs
+){";
+//------------------------------------------------------------------------------
+static PyObject* parameters_python(PyObject *self, PyObject *args)
+{
+  map<string,double> gs = QCM::parameters();
+  PyObject *lst = PyDict_New();
+  for(auto& x : gs){
+    PyDict_SetItem(lst, Py_BuildValue("s#", x.first.c_str(), x.first.length()), Py_BuildValue("d", x.second));
+  }
+  return lst;
+}
+
+
+
+//==============================================================================
+const char* instance_parameters_help =
+R"{(
 returns the values of the parameters in a given instance
 arguments:
 1. label (optional) :  label of the model instance (default 0)
 returns: a dictionary of string/real pairs
 ){";
 //------------------------------------------------------------------------------
-static PyObject* parameters_python(PyObject *self, PyObject *args)
+static PyObject* instance_parameters_python(PyObject *self, PyObject *args)
 {
   int label=0;
   try{
@@ -1065,13 +1084,14 @@ static PyObject* parameters_python(PyObject *self, PyObject *args)
       qcm_throw("failed to read parameters in call to parameters (python)");
   } catch(const string& s) {qcm_catch(s);}
   
-  map<string,double> gs = QCM::parameters(label);
+  map<string,double> gs = QCM::instance_parameters(label);
   PyObject *lst = PyDict_New();
   for(auto& x : gs){
     PyDict_SetItem(lst, Py_BuildValue("s#", x.first.c_str(), x.first.length()), Py_BuildValue("d", x.second));
   }
   return lst;
 }
+
 
 
 

@@ -143,7 +143,16 @@ namespace ED{
   
   
   
-  
+    /**
+   function that evaluates the cluster density from the integrated Green function
+   label : label of the model instance (in case there are many)
+   output : the density
+   */
+  double Green_function_density(const size_t label);
+
+
+
+
   /**
    function that evaluates the self-energy at a given complex frequency
    z : complex frequency

@@ -298,7 +298,6 @@ def cdmft(
     eps_algo=0, 
     initial_step = 0.1, 
     hartree=None, 
-    check_sectors=None, 
     grid_type = 'sharp', 
     counterterms=None, 
     SEF=False, 
@@ -329,7 +328,6 @@ def cdmft(
     :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
     :param float initial_step: initial step in the minimization routine
     :param [class hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
-    :param boolean check_sectors: the ground state is checked against the ground states of the sectors contained in target_sectors
     :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
     :param [str] counterterms: list of counterterms names (cluster operators that should strive to have zero average)
     :param boolean SEF: if True, computes the Potthoff functional at the end
@@ -509,11 +507,13 @@ def cdmft(
 
         diff_param = np.linalg.norm(params_array - sol.x)/np.sqrt(nvar)
         initial_step = diff_param
+        gs = pyqcm.ground_state()
+        print('\nGS sector : ', [x[1] for x in gs])
         if superiter > 0:
             diffH = __diff_hybrid(Hyb, Hyb0)
-            print('\nCDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}, diff hybrid = {: #.2e}, diff E0 = {: #.2g}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(superiter+1, dist_value, diff_param, diffH, diff_E0, iter_done, time_MIN/time_ED), flush=True)
+            print('CDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}, diff hybrid = {: #.2e}, diff E0 = {: #.2g}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(superiter+1, dist_value, diff_param, diffH, diff_E0, iter_done, time_MIN/time_ED), flush=True)
         else:
-            print('\nCDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(superiter+1, dist_value, diff_param, iter_done, time_MIN/time_ED), flush=True)
+            print('CDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(superiter+1, dist_value, diff_param, iter_done, time_MIN/time_ED), flush=True)
 
         #--------------------------------- Hartree step ---------------------------------
         if hartree != None:
@@ -609,12 +609,6 @@ def cdmft(
 
         var_val = pyqcm.__varia_table(var,sol.x)
         print(var_val)
-
-        GS0 = pyqcm.ground_state()
-        if check_sectors:
-            GS = pyqcm.ground_state()
-            if GS != GS0:
-                raise ValueError(f'Ground state inconsistent : {GS} from the converged parameters and {GS0} initially')
 
         ave = pyqcm.averages()
         if compute_potential_energy : pyqcm.potential_energy()
@@ -845,8 +839,8 @@ class general_bath:
             self.sites = [range(1,ns+1) for i in range(nb)]
         else:
             if len(sites) != nb :
-                print('the format of the argument "sites" is incorrect : it should be a list of ', ns, ' lists')
-                raise ValueError(f'the format of the argument "sites" is incorrect : it should be a list of {ns} lists')
+                print('the format of the argument "sites" is incorrect : it should be a sequence of ', ns, ' sequences')
+                raise ValueError(f'the format of the argument "sites" is incorrect : it should be a sequence of {ns} sequences')
             self.sites = sites
 
         self.nmixed = 1

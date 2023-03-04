@@ -222,11 +222,17 @@ namespace ED{
 
   matrix<complex<double>> Green_function_average(bool spin_down, const size_t label)
   {
-    return model_instances.at(label)->Green_function_average(spin_down);
+    Green_function_solve(label);
+    if(spin_down) return model_instances.at(label)->M_down;
+    else return model_instances.at(label)->M;
   }
 
   
-  
+  double Green_function_density(const size_t label)
+  {
+    return model_instances.at(label)->GF_density;
+  }
+
 
   matrix<complex<double>> self_energy(const Complex &z, bool spin_down, const size_t label)
   {

@@ -846,13 +846,23 @@ def sectors(R=None, N=None, S=None):
 ################################################################################
 def parameters(label=0):
     """
+    returns the values of the parameters in the parameter set
+
+    :return: a dict {string,float}
+
+    """
+    return qcm.parameters()
+
+################################################################################
+def instance_parameters(label=0):
+    """
     returns the values of the parameters in a given instance
 
     :param int label:  label of the model instance
     :return: a dict {string,float}
 
     """
-    return qcm.parameters(label)
+    return qcm.instance_parameters(label)
 
 ################################################################################
 def cluster_parameters(label=0):
@@ -1937,17 +1947,21 @@ def set_params_from_file(out_file, n=0):
     """
     par = qcm.parameter_set()
     try:
-        D = np.genfromtxt(out_file, names=True)
+        D = np.genfromtxt(out_file, names=True, dtype=None, encoding='utf8')
     except:
         raise("The file containing the solutions could not be read!")
     if len(D.shape) == 0:
-        np.reshape(D,(1,len(D.dtype)))
-        assert(n == 0)
-    for x in par:
-        if par[x][1] != None:
-            continue
-        if x in D.dtype.names:
-            set_parameter(x,D[x][n],pr=True)
+        for x in par:
+            if par[x][1] != None:
+                continue
+            if x in D.dtype.names:
+                set_parameter(x,D[x],pr=True)
+    else:
+        for x in par:
+            if par[x][1] != None:
+                continue
+            if x in D.dtype.names:
+                set_parameter(x,D[x][n],pr=True)
 
 ################################################################################
 def parameter_string(lattice=True, CR=False):
@@ -2090,3 +2104,14 @@ def double_counting_correct(DC):
     
 
 
+######################################################################
+def Green_function_density(cluster=0):
+    """
+    Computes the density from the Green function average
+    return (float) : the density
+    """
+    return qcm.Green_function_density(cluster)
+
+
+
+    

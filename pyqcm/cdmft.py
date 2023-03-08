@@ -291,7 +291,6 @@ def cdmft(
     accur_dist=1e-10,
     accur_E0=1e-10,
     alpha = 0.0,
-    displaymin=False, 
     method='Nelder-Mead', 
     file='cdmft.tsv', 
     averages=False, 
@@ -634,7 +633,7 @@ def cdmft(
         if file != None:
             des = 'iterations\tdist_function\tdistance\tdiff_hybrid\t'
             if GS_consistent : val = '{:d}\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(superiter, dist_function, dist_value, diffH)
-            else : val = '{:d} *\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(superiter, dist_function, dist_value, diffH)
+            else : val = '{:d}*\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(superiter, dist_function, dist_value, diffH)
             if SEF : 
                 des += 'omegaH\t'
                 val += '{: #.8g}\t'.format(omegaH)

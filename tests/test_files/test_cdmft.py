@@ -1,6 +1,5 @@
 import pyqcm2 as pyqcm
 from pyqcm2.cdmft import CDMFT
-from pyqcm2.loop import controlled_loop
 
 import model_graphene_bath as M
 
@@ -21,11 +20,12 @@ M.model.set_parameters("""
 
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():
-    CDMFT(M.model, varia=["tb1_1", "eb1_1"], wc=10, grid_type='self') # setting the bath operators as the variationnal parameters
+    X = CDMFT(M.model, varia=["tb1_1", "eb1_1"], wc=10, grid_type='self') # setting the bath operators as the variationnal 
+    return X.I
 
 # Looping over values of U
-controlled_loop(
-    func=run_cdmft, 
+M.model.controlled_loop(
+    task=run_cdmft, 
     varia=["tb1_1", "eb1_1"], 
     loop_param="U", 
     loop_range=(2, 4.1, 0.5)

@@ -152,14 +152,17 @@ class CDMFT:
 
 
             # check convergence in the DVMC case
-            if pyqcm.solver == 'dvmc':
-                print('E0_VMC = ', E0_VMC, '\tE0_err_VMC = ', E0_err_VMC)
-                E0[superiter] = E0_VMC
-                E0_err[superiter] = E0_err_VMC
-            else:
-                gs = self.I.ground_state()
-                for x in gs:
-                    E0[superiter] += x[0]
+            # if pyqcm.solver == 'dvmc':
+            #     print('E0_VMC = ', E0_VMC, '\tE0_err_VMC = ', E0_err_VMC)
+            #     E0[superiter] = E0_VMC
+            #     E0_err[superiter] = E0_err_VMC
+            # else:
+            #     gs = self.I.ground_state()
+            #     for x in gs:
+            #         E0[superiter] += x[0]
+            gs = self.I.ground_state()
+            for x in gs:
+                E0[superiter] += x[0]
             if superiter >= min_iter_E0-1:
                 moving_ave[superiter] = 0.0
                 tmp_norm = 0.0
@@ -266,7 +269,7 @@ class CDMFT:
             # for the moment, this works only for observables belonging to the first cluster
             obs_converged = True
             if observables != None:
-                ave = I.cluster_averages()  ### WARNING CHECK
+                ave = self.I.cluster_averages()  ### WARNING CHECK
                 observable_series_length = 0
                 for x in observables:
                     val = ave[x.name[0:-2]][0]

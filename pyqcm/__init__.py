@@ -75,14 +75,9 @@ class ParseError(Exception):
 class WrongArgumentError(ValueError):
     pass
 
-
 def script_file():
     return os.path.basename(sys.argv[0])
 
-
-
-
-    
 ####################################################################################################
 # CLASSES
 
@@ -101,7 +96,6 @@ class cluster_model:
 
         """creates a new operator from its matrix elements
         
-        :param str name: name of the cluster model to which the operator will belong
         :param str op_name: name of the operator
         :param str op_type: type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z')
         :param [(int,int,float)] elem: array of matrix elements (list of tuples)
@@ -120,11 +114,10 @@ class cluster_model:
         qcm.new_operator(self.name, op_name, op_type, elem)
 
     #-----------------------------------------------------------------------------------------------
-    def new_operator_complex(self, name, op_name, op_type, elem):
+    def new_operator_complex(self, op_name, op_type, elem):
 
         """creates a new operator from its complex-valued matrix elements
 
-        :param str name: name of the cluster model to which the operator will belong
         :param str op_name: name of the operator
         :param str op_type: type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z')
         :param [(int, int, complex)] elem: array of matrix elements (list of tuples)
@@ -142,7 +135,7 @@ class cluster_model:
                 if x[0] >= x[1] :
                     raise ValueError(f'anomalous matrix elements of {op_name} must be such that row index < column index')
 
-        qcm.new_operator_complex(name, op_name, op_type, elem)
+        qcm.new_operator_complex(self.name, op_name, op_type, elem)
 
     #-----------------------------------------------------------------------------------------------
     def matrix_elements(self, op):
@@ -191,16 +184,6 @@ class cluster:
         """
 
         qcm.print_graph(self.cluster_model.name, self.sites)
-
-    #-----------------------------------------------------------------------------------------------
-    def cluster_Green_function_dimension():
-        """
-        returns the dimension of the cluster Green function matrix
-        :return: int
-
-        """
-        return qcm.Green_function_dimensionC(clus)
-
 
 ####################################################################################################
 class lattice_model:
@@ -566,6 +549,8 @@ class lattice_model:
         for i in range(self.nclus): self.dimGFC[i] = self.clus[i].nsites*self.nmixed
         self.is_closed = True
 
+    from ._loop import loop_from_file, linear_loop, controlled_loop, fixed_density_loop, fade, Hartree_procedure
+
 ####################################################################################################
 class model_instance:
     def __init__(self, model, label=0):
@@ -622,6 +607,16 @@ class model_instance:
         """
 
         qcm.write_instance_to_file(filename, self.label)
+
+    #-----------------------------------------------------------------------------------------------
+    def parameters(self):
+        """
+        returns the values of the parameters of the instance
+
+        :return: a dict {string,float}
+
+        """
+        return qcm.instance_parameters(self.label)
 
     #-----------------------------------------------------------------------------------------------
     def averages(self, ops=[], file='averages.tsv', pr=False):
@@ -986,13 +981,14 @@ class model_instance:
 
         if symmetrized_operator is not None:
             try:
-                P = parameters()
+                P = self.parameters()
                 x = P[symmetrized_operator]
-                set_parameter(symmetrized_operator,-x)
-                new_model_instance()
-                OMsym = qcm.Potthoff_functional(self.label)
+                self.model.set_parameter(symmetrized_operator,-x)
+                I = model_instance(label=1)
+                OMsym = qcm.Potthoff_functional(I.label)
+                I = model_instance(label=1) # effectively clears model instance 1
                 OM = 0.5*(OM + OMsym)
-                set_parameter(symmetrized_operator, x)
+                self.model.set_parameter(symmetrized_operator, x)
             except:
                 pass
                 
@@ -1134,8 +1130,8 @@ class model_instance:
         :return: a float
 
         """
-        sigma1 = cluster_self_energy(cluster, -eta*1j, spin_down, self.label*self.model.nclus+clus)
-        sigma2 = cluster_self_energy(cluster, eta*1j, spin_down, self.label*self.model.nclus+clus)
+        sigma1 = self.cluster_self_energy(cluster, -eta*1j, spin_down, self.label*self.model.nclus+clus)
+        sigma2 = self.cluster_self_energy(cluster, eta*1j, spin_down, self.label*self.model.nclus+clus)
         Z = (sigma1[orb-1,orb-1].imag - sigma2[orb-1,orb-1].imag)/(2*eta) + 1.0
         Z = 1.0/Z
         return Z
@@ -1226,7 +1222,7 @@ class model_instance:
         """
         
         ave = self.averages()
-        P = parameters()
+        P = self.parameters()
         if type(DC) is tuple: DC = [DC]
         corr = {}
         for x in DC:
@@ -1238,16 +1234,14 @@ class model_instance:
                 corr[x[0]] = x[4] + P[x[1]]*ave[x[2]]*x[3]
 
         for x in corr:
-            set_parameter(x, corr[x], pr=True)
+            self.model.set_parameter(x, corr[x], pr=True)
     
     #-----------------------------------------------------------------------------------------------
     # methods from _spectral.py
     
-    from ._spectral import spectral_function, plot_hybridization_function, cluster_spectral_function, spectral_function_Lehmann, gap, DoS, mdc, spin_mdc, mdc_anomalous, plot_dispersion, segment_dispersion, Fermi_surface, G_dispersion, Luttinger_surface, plot_momentum_profile, plot_host_hybrid, Berry_field_map, Berry_flux_map, monopole_map, Berry_flux, monopole, Chern_number, Berry_curvature
-
+    from ._spectral import spectral_function, plot_hybridization_function, cluster_spectral_function, spectral_function_Lehmann, gap, DoS, mdc, spin_mdc, mdc_anomalous, plot_dispersion, segment_dispersion, Fermi_surface, G_dispersion, Luttinger_surface, plot_momentum_profile, plot_host_hybrid, Berry_field_map, Berry_flux_map, monopole_map, Berry_flux, monopole, Chern_number, Berry_curvature, plot_profile
 
 ####################################################################################################
-
 class hartree:
     """This class contains the elements needed to perform the Hartree approximation for the inter-cluster components of an
     extended interaction. The basic self-consistency relation is
@@ -1268,8 +1262,6 @@ class hartree:
 
     """
 
-    size0 = 0
-
     #-----------------------------------------------------------------------------------------------
     def __init__(self, model, Vm, V, eig, accur=1e-4, lattice=False):
         """
@@ -1282,8 +1274,6 @@ class hartree:
         :param boolean lattice: if True, the lattice average is used, otherwise the cluster average
 
         """
-        # if len(pyqcm.the_model.clusters) > 1:
-        #     raise ValueError('For the moment, Hartree couplings are only possible in a model with a single cluster')
 
         self.model = model
         self.Vm = Vm
@@ -1297,28 +1287,29 @@ class hartree:
         self.epsilon = False
         self.iter = 0
 
-        self.L = model.nsites
+        self.L = self.model.nsites
         if lattice == False:
-            assert(model.nclus == 1, 'A Hartree coupling with lattice=False needs a single-cluster model')
+            assert model.nclus == 1, 'A Hartree coupling with lattice=False needs a single-cluster model'
     
 
     #-----------------------------------------------------------------------------------------------
-    def update(self, pr=False):
+    def update(self, I, pr=False):
         """Updates the value of the mean-field operator based on its average
         
+        :param model_instance I: instance of the lattice model
         :param boolean pr: if True, progress is printed on the screen
 
         """
 
-        par = self.model.parameters()
+        par = I.parameters()
         v = par[self.V]
         vm0 = par[self.Vm]
         if not self.lattice:
-            self.ave = pyqcm.cluster_averages()[self.Vm][0]*self.L
+            self.ave = I.cluster_averages()[self.Vm][0]*self.L
         else:
-            self.ave = pyqcm.averages()[self.Vm]*self.L
+            self.ave = I.averages()[self.Vm]*self.L
         self.vm = self.eig*v*self.ave
-        pyqcm.set_parameter(self.Vm, self.vm)
+        self.model.set_parameter(self.Vm, self.vm)
         self.diff = self.vm-vm0
         self.diff_rel = np.abs(self.diff)/(np.abs(self.vm)+1e-6)
         meta_pr = ''
@@ -1326,25 +1317,26 @@ class hartree:
             eps_length = 2*self.epsilon + 1
             self.data[self.iter] = self.vm
             if self.iter >= 2*eps_length and self.iter%(2*eps_length) == 0:
-                self.vm = pyqcm.epsilon(self.data[self.iter-eps_length:self.iter])
+                self.vm = epsilon(self.data[self.iter-eps_length:self.iter])
                 meta_pr = ' (epsilon algo)'
         self.iter += 1
         if pr:
             print('delta {:s} = {:1.3g} ( {:1.3g}%)'.format(self.Vm, self.diff, 100*self.diff_rel), meta_pr)
 
     #-----------------------------------------------------------------------------------------------
-    def omega(self):
+    def omega(self, I):
         """returns the constant contribution, added to the Potthoff functional
         
+        :param I model_instance: the current model_instance
         """
 
         par = self.model.parameters()
         v = par[self.V]
         vm0 = par[self.Vm]
         if not self.lattice:
-            self.ave = pyqcm.cluster_averages()[self.Vm][0]
+            self.ave = I.cluster_averages()[self.Vm][0]
         else:
-            self.ave = pyqcm.averages()[self.Vm]
+            self.ave = I.averages()[self.Vm]
         return -0.5*self.eig*v*self.ave*self.ave
 
     #-----------------------------------------------------------------------------------------------
@@ -1387,8 +1379,6 @@ class hartree:
         self.epsilon = eps_length
         self.iter = 0
 
-
-
 ####################################################################################################
 # OTHER FUNCTIONS
 
@@ -1398,76 +1388,9 @@ def cluster_info():
     :return:A list of 4-tuples: (str, int, int, int, int): name of the cluster model, number of physical sites, number of bath sites, dimension of the Green function, number of point-group symmetry operations
     """
     return qcm.cluster_info()
-
-
-
-
-def __sector_string_builder(R, N, S):
-    """Takes non-None values of R, N and S and inserts them in the correct string format for set_target_sectors()
-    
-    :param int R: Symmetry sector
-    :param int N: Particle number sector
-    :param int S: Spin sector
-
-    :return string: A string formatted for use with set_target_sectors
-
-    """
-    R_string = ""
-    N_string = ""
-    S_string = ""
-
-    if R is not None:
-        R_string = f"R{R}"
-    if N is not None:
-        N_string = f"N{N}"
-    if S is not None:
-        S_string = f"S{S}"
-
-    return f"{R_string}:{N_string}:{S_string}"
-
-
-def __cluster_sector_string_builder(R, N, S):
-    sector_string = ""
-    for i in range(len(R)):
-        sector_string += f"{__sector_string_builder(R[i], N[i], S[i])}/"
-    return sector_string[:-1] # removes the last caracter (/) from string
-
-
-def sectors(R=None, N=None, S=None):
-    """Alternative method of setting target sectors (see `set_target_sectors(...)`). An example of usage is, R = [[1,2], [3,4]] --> ["R1.../R2...", "R3.../R4..."].
-    
-    :param int or [int] or [[int]] R: Symmetry sector.
-    :param int or [int] or [[int]] N: Particle number.
-    :param int or [int] or [[int]] S: Total spin.
-
-    :return: None
-
-    """
-    sector_string_list = []
-    
-    if type(R) is not list and type(N) is not list and type(S) is not list:
-        sector_string_list.append(__sector_string_builder(R, N, S)) # if all arguments are int
-
-    elif type(R) is list and type(N) is list and type(S) is list:
-        if len(R) != len(N) or len(N) != len(S):
-            raise ValueError("The lengths of R, N and S must be the same!")
-
-        if type(R[0]) is list:
-            for i in range(len(R)):
-                if len(R[i]) != len(N[i]) or len(N[i]) != len(S[i]):
-                    raise ValueError("Sublists at same indices must have same length!")
-                sector_string_list.append(__cluster_sector_string_builder(R[i], N[i], S[i])) # if all arguments are nested lists
-        else:
-            sector_string_list.append(__cluster_sector_string_builder(R, N, S)) # if all arguments are lists
-         
-    else:
-        raise ValueError(f"R, N and S are mismatched! Here, type(R)={type(R)}, type(N)={type(N)}, type(S)={type(S)}")
-
-    set_target_sectors(sector_string_list)
     
 ####################################################################################################
 # FUNCTIONS RELATION TO PARAMETERS
-
 
 #---------------------------------------------------------------------------------------------------
 def set_global_parameter(name, value=None):

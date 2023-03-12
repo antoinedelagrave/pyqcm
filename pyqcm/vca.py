@@ -472,111 +472,6 @@ def _altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_
 
     return np.array([xp]), np.array([der1]), np.array([[1.0/der2]])
 
-################################################################################
-# minimax method
-
-def _minimax(names, var_max_start, start=None, step=None, accur=None, max=10,  max_iteration=30, hartree=None):
-    """Applies a minimization of a subset of variables and a maximization on the remainder
-    
-    :param ['str'] names : names of variational parameters (minimal ones first, then maximal ones)
-    :param int var_max_start : label of the first maximal variational parameter (= number of minimal variational parameters)
-    :param [float] start: the starting values
-    :param [float] step: the steps used to computed the numerical second derivatives
-    :param [float] accur: the required accuracy for each variable
-    :param [float] max: maximum absolute value of each parameter
-    :param int max_iterations:  maximum number of iterations, beyond which an exception is raised
-    :returns [float]: the value of the variables
-
-    """
-
-    ftol = 10*pyqcm.qcm.get_global_parameter('accur_SEF')
-    nvar_max = len(names) - var_max_start
-    nvar_min = var_max_start
-    steps_min = step[0:nvar_min]
-    steps_max = step[nvar_min:nvar_min+nvar_max]
-    iter = 0
-    nvar_tot = nvar_min+nvar_max
-
-    def F_min(x):
-        global SEF_eval
-        for i in range(nvar_min): 
-            model.set_parameter(names[i], x[i])
-        print('(min) x = ', x) # new
-        SEF_eval += 1
-        I = pyqcm.model_instance(model)
-        return I.Potthoff_functional(hartree)
-    def F_max(x):
-        global SEF_eval
-        for i in range(nvar_max): 
-            model.set_parameter(names[i+nvar_min], x[i])
-        print('(max) x = ', x) # new
-        SEF_eval += 1
-        I = pyqcm.model_instance(model)
-        return -I.Potthoff_functional(hartree)
-
-
-    X0 = np.array(start)
-
-    while iter < max_iteration:
-        P = model.parameters()
-        x_min = [P[names[i]] for i in range(nvar_min)]
-        x_max = [P[names[i]] for i in range(nvar_min, nvar_tot)]
-
-        if iter > 0:
-            steps_min = np.abs(diff[0:nvar_min])
-            steps_max = np.abs(diff[nvar_min:nvar_min+nvar_max])
-
-        nvar = nvar_min
-        steps = steps_min
-        initial_simplex = np.zeros((nvar+1,nvar))
-        for i in range(nvar+1):
-            initial_simplex[i, :] = x_min
-        for i in range(nvar):
-            initial_simplex[i+1, i] += steps[i]
-        if pyqcm.is_sequence(accur) == True:
-            accur = accur[0]
-        solution = minimize(F_min, x_min, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
-        iter_done = solution.nit
-        sol_min = solution.x
-        for i in range(nvar_min):
-            model.set_parameter(names[i], sol_min[i])
-        
-        nvar = nvar_max
-        steps = steps_max
-        initial_simplex = np.zeros((nvar+1,nvar))
-        for i in range(nvar+1):
-            initial_simplex[i, :] = x_max
-        for i in range(nvar):
-            initial_simplex[i+1, i] += steps[i]
-        if type(accur) == list:
-            accur = accur[0]
-        solution = minimize(F_max, x_max, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
-        iter_done = solution.nit
-        sol_max = solution.x
-        for i in range(nvar_max):
-            model.set_parameter(names[i+nvar_min], sol_max[i])
-
-        sol = np.concatenate((sol_min, sol_max))
-
-        hartree_converged = True
-        if hartree != None:
-            hartree_converged = True
-            for C in hartree:
-                C.update(pr=True)
-                hartree_converged  = hartree_converged and C.converged()
-
-        diff = sol - X0
-        X0 = sol
-        iter += 1
-        converged = True
-        for i in range(nvar_tot):
-            if np.abs(diff[i]) > accur: converged = False
-
-        if converged and hartree_converged:
-            return sol
-    
-    raise(pyqcm.TooManyIterationsError(max_iteration))
-    return sol
 
 ####################################################################################################
 # performs the VCA
@@ -637,7 +532,7 @@ class VCA:
         if pyqcm.is_sequence(hartree) == False and hartree is not None: hartree = (hartree,)
 
         global first_time
-        I = pyqcm.model_instance(model)
+        self.I = pyqcm.model_instance(model)
         L = model.nsites
 
         hartree_self = None
@@ -688,8 +583,8 @@ class VCA:
             else:
                 var2sef(x)    
             SEF_eval += 1
-            I = pyqcm.model_instance(model)
-            return I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator)
+            self.I = pyqcm.model_instance(model)
+            return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator)
             
         if hartree is None:
             pyqcm.banner('VCA procedure, method {:s}'.format(method), '*')
@@ -708,7 +603,7 @@ class VCA:
         ftol = 2*pyqcm.qcm.get_global_parameter('accur_SEF')
         iH = None
 
-        #------------------------------------- SWITCH ACCORDING TO METHOD -----------------------------------------
+        #..................................... SWITCH ACCORDING TO METHOD .........................................
         try:
             if method == 'altNR':
                 if nvar != 1:
@@ -761,11 +656,11 @@ class VCA:
                 sol = solution.x
 
             elif method == 'minimax':
-                sol = _minimax(varia, var_max_start, start, steps, accur, max, max_iteration=max_iter, hartree=hartree)
+                sol = self._minimax(varia, var_max_start, start, steps, accur, max, max_iteration=max_iter, hartree=hartree)
             else:
                 raise ValueError('method {:s} unknown in VCA'.format(method))
 
-        #----------------------------------------------------------------------------------------------------------
+        #..........................................................................................................
 
         except pyqcm.OutOfBoundsError as E:
             print(E)
@@ -786,7 +681,7 @@ class VCA:
                 print('eigenvalues of Hessian :', np.linalg.eigh(H)[0])
             print('computing properties of converged solution...')
             print('omega = ', omega)
-        ave = I.averages()
+        ave = self.I.averages()
 
 
         # writes the solution in the standard file
@@ -801,7 +696,7 @@ class VCA:
             if hartree != None:
                 val += '{:.8g}\t'.format(omega)
                 des += 'omegaH\t'
-            I.write_summary(file, suppl_descr = des, suppl_values = val)
+            self.I.write_summary(file, suppl_descr = des, suppl_values = val)
             first_time = False
 
         if root:
@@ -810,6 +705,113 @@ class VCA:
         self.hessian = None
         if scipy_minimization is False:
             self.hessian = 1.0/np.diag(iH)
+
+
+    #----------------------------------------------------------------------------------------------------------
+    # minimax method
+
+    def _minimax(self, names, var_max_start, start=None, step=None, accur=None, max=10,  max_iteration=30, hartree=None):
+        """Applies a minimization of a subset of variables and a maximization on the remainder
+        
+        :param ['str'] names : names of variational parameters (minimal ones first, then maximal ones)
+        :param int var_max_start : label of the first maximal variational parameter (= number of minimal variational parameters)
+        :param [float] start: the starting values
+        :param [float] step: the steps used to computed the numerical second derivatives
+        :param [float] accur: the required accuracy for each variable
+        :param [float] max: maximum absolute value of each parameter
+        :param int max_iterations:  maximum number of iterations, beyond which an exception is raised
+        :returns [float]: the value of the variables
+
+        """
+
+        ftol = 10*pyqcm.qcm.get_global_parameter('accur_SEF')
+        nvar_max = len(names) - var_max_start
+        nvar_min = var_max_start
+        steps_min = step[0:nvar_min]
+        steps_max = step[nvar_min:nvar_min+nvar_max]
+        iter = 0
+        nvar_tot = nvar_min+nvar_max
+
+        def F_min(x):
+            global SEF_eval
+            for i in range(nvar_min): 
+                self.model.set_parameter(names[i], x[i])
+            print('(min) x = ', x) # new
+            SEF_eval += 1
+            self.I = pyqcm.model_instance(self.model)
+            return self.I.Potthoff_functional(hartree)
+        def F_max(x):
+            global SEF_eval
+            for i in range(nvar_max): 
+                self.model.set_parameter(names[i+nvar_min], x[i])
+            print('(max) x = ', x) # new
+            SEF_eval += 1
+            self.I = pyqcm.model_instance(self.model)
+            return -self.I.Potthoff_functional(hartree)
+
+
+        X0 = np.array(start)
+
+        while iter < max_iteration:
+            P = self.model.parameters()
+            x_min = [P[names[i]] for i in range(nvar_min)]
+            x_max = [P[names[i]] for i in range(nvar_min, nvar_tot)]
+
+            if iter > 0:
+                steps_min = np.abs(diff[0:nvar_min])
+                steps_max = np.abs(diff[nvar_min:nvar_min+nvar_max])
+
+            nvar = nvar_min
+            steps = steps_min
+            initial_simplex = np.zeros((nvar+1,nvar))
+            for i in range(nvar+1):
+                initial_simplex[i, :] = x_min
+            for i in range(nvar):
+                initial_simplex[i+1, i] += steps[i]
+            if pyqcm.is_sequence(accur) == True:
+                accur = accur[0]
+            solution = minimize(F_min, x_min, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
+            iter_done = solution.nit
+            sol_min = solution.x
+            for i in range(nvar_min):
+                self.model.set_parameter(names[i], sol_min[i])
+            
+            nvar = nvar_max
+            steps = steps_max
+            initial_simplex = np.zeros((nvar+1,nvar))
+            for i in range(nvar+1):
+                initial_simplex[i, :] = x_max
+            for i in range(nvar):
+                initial_simplex[i+1, i] += steps[i]
+            if type(accur) == list:
+                accur = accur[0]
+            solution = minimize(F_max, x_max, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
+            iter_done = solution.nit
+            sol_max = solution.x
+            for i in range(nvar_max):
+                self.model.set_parameter(names[i+nvar_min], sol_max[i])
+
+            sol = np.concatenate((sol_min, sol_max))
+
+            hartree_converged = True
+            if hartree != None:
+                hartree_converged = True
+                for C in hartree:
+                    C.update(pr=True)
+                    hartree_converged  = hartree_converged and C.converged()
+
+            diff = sol - X0
+            X0 = sol
+            iter += 1
+            converged = True
+            for i in range(nvar_tot):
+                if np.abs(diff[i]) > accur: converged = False
+
+            if converged and hartree_converged:
+                return sol
+        
+        raise(pyqcm.TooManyIterationsError(max_iteration))
+        return sol
 
 ################################################################################
 def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True, symmetrized_operator=None):
@@ -826,15 +828,15 @@ def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, sh
     """
     L = model.nsites
 
-    if type(file) != str:
+    if isinstance(file, str) == False:
 	    raise TypeError('the argument "file" of plot_sef() must be a string')
-    if type(accur_SEF) != float:
+    if isinstance(accur_SEF, float) == False:
 	    raise TypeError('the argument "accur_SEF" of plot_sef() must be a float')
-    if type(param) != str:
+    if isinstance(param, str) == False:
 	    raise TypeError('the argument "param" of plot_sef() must be a string, the name of a parameter')
 
-    if type(hartree) is not list and hartree is not None:
-        hartree = [hartree]
+    if pyqcm.is_sequence(hartree) == False and hartree is not None:
+        hartree = (hartree,)
 
     pyqcm.set_global_parameter('accur_SEF', accur_SEF)
     omega = np.empty(len(prm))

@@ -81,6 +81,9 @@ def test_spectral():
         F = 'test_mdc_anomalous.pdf'
         pyqcm.banner('testing mdc_anomalous()', c='#', skip=1); I.mdc_anomalous(nk=40, file = F, plt_ax=ax)
 
+        F = 'test_plot_profile.pdf'
+        pyqcm.banner('testing plot_profile()', c='#', skip=1); I.plot_profile(file = F)
+
     F = 'test_Fermi_surface.pdf'
     pyqcm.banner('testing Fermi_surface()', c='#', skip=1); I.Fermi_surface(file = F, plt_ax=ax)
     

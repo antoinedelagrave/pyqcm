@@ -1,11 +1,10 @@
-from pyqcm import *
-from pyqcm.loop import *
+import pyqcm2 as pyqcm
+import model_1D_4_C2 as M
+import numpy as np
 
-import model_1D_4
-set_global_parameter('accur_OP', 1e-3)
-set_target_sectors(['R0:N4:S0'])
-set_parameters("""
-t = 1
+M.model.set_target_sectors(['R0:N4:S0'])
+M.model.set_parameters("""
+t=1
 U = 4
 mu = 8
 """)
@@ -15,18 +14,17 @@ mu = 8
 
 def test_fixed_density_loop():
 
-    banner('testing fixed_density_loop()', c='#', skip=1)
+    pyqcm.banner('testing fixed_density_loop()', c='#', skip=1)
 
     def F():
-        new_model_instance()
-        averages()
+        return pyqcm.model_instance(M.model)
 
-    fixed_density_loop(
-        5,  # starting  value of mu
+    M.model.fixed_density_loop(
+        F,
         1.1, # target density
+        5,  # starting  value of mu
         kappa=1.0,
         maxdmu=0.5,  # maximum change in mu
-        func=F,
         loop_param='U', 
         loop_values=np.arange(6, 4, -0.2),
         dens_tol=0.002,

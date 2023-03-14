@@ -621,7 +621,7 @@ def cdmft(
                 pyqcm.banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}, DENSITY DIFFERENCE = {:1.5f}".format(i+1,diffGS), '+', skip=1)
                 if check_ground_state:
                     raise ValueError("failed GS consistency for cluster {:d} in CDMFT".format(i+1))
-            else: GS_con += 'Y'
+            else: GS_cons += 'Y'
                 
 
         var_val = pyqcm.__varia_table(var,sol.x)

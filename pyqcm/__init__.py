@@ -164,7 +164,7 @@ class cluster_model:
 
 ####################################################################################################
 class cluster:
-    def __init__(self, clus_model, pos, sites, ref=0):
+    def __init__(self, clus_model, pos, sites, ref=None):
         
         self.cluster_model = clus_model
         self.pos = pos
@@ -204,9 +204,11 @@ class lattice_model:
         for i,x in enumerate(self.clus):
             if isinstance(x, cluster) == False:
                 raise ValueError("The argument 'clus' of 'model' should be of type 'cluster' or a sequence thereof")
-            qcm.add_cluster(x.cluster_model.name, x.pos, x.sites, x.ref)
-            x.index = i
+            x.index = i+1
             self.nsites += x.nsites
+            if x.ref != None: ref = x.ref.index
+            else: ref = 0
+            qcm.add_cluster(x.cluster_model.name, x.pos, x.sites, ref)
 
         qcm.lattice_model(name, superlattice, lattice)
 

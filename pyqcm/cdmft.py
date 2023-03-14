@@ -318,7 +318,7 @@ class CDMFT:
                     pyqcm.banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}, DENSITY DIFFERENCE = {:1.5f}".format(i+1,diffGS), '+', skip=1)
                     if check_ground_state:
                         raise ValueError("failed GS consistency for cluster {:d} in CDMFT".format(i+1))
-                else: GS_con += 'Y'
+                else: GS_cons += 'Y'
             
             var_val = pyqcm.varia_table(var,sol.x)
             print(var_val)
@@ -331,7 +331,7 @@ class CDMFT:
 
             if file != None:
                 des = 'GS_consistency\titerations\tdist_function\tdistance\tdiff_hybrid\t'
-                val = '{:s}\t{:d}\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(GS_cons, superiter, dist_function, dist_value, diffH)
+                val = '{:s}\t{:d}\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(GS_cons, superiter, self.grid.dist_function, dist_value, diffH)
                 if SEF : 
                     des += 'omegaH\t'
                     val += '{: #.8g}\t'.format(omegaH)

@@ -2094,5 +2094,12 @@ def Green_function_density(cluster=0):
     return qcm.Green_function_density(cluster)
 
 
+#---------------------------------------------------------------------------------------------------
+def model_reset():
+    banner("RESETTING THE MODEL", c='#', skip=1)
+    lattice_model.called = False
+    set_target_sectors.called = False
+    set_parameters.called = False
+    qcm.great_reset()
 
     

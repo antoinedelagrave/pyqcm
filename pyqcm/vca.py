@@ -3,7 +3,6 @@
 ################################################################################
 
 import numpy as np
-from numpy.distutils.misc_util import is_sequence
 import pyqcm
 import time
 from scipy.optimize import minimize
@@ -21,23 +20,24 @@ try:
 except ImportError:
     root = True
 
-first_time = True
+current_instance = None
 
 ################################################################################
 # PRIVATE FUNCTIONS
 ################################################################################
 
+
 ################################################################################
 # evaluation of many instances of a function in parallel
 
-def __evalF(func, x):
+def _evalF(func, x):
     n = x.shape[0]
     y = np.empty(n)
     for i in range(n):
         y[i] = func(x[i,:])
     return y    
 
-def __evalF_mpi(func, x):
+def _evalF_mpi(func, x):
     n = x.shape[0]
     nproc = comm.Get_size()
     rank = comm.Get_rank()
@@ -55,7 +55,7 @@ def __evalF_mpi(func, x):
 ################################################################################
 # quasi-Newton method function evaluation
 
-def __QN_values(func, x, step):
+def _QN_values(func, x, step):
     """Computes the function func of n variables at :math:`2n+1` points at x and at n pairs of points located at :math:`\pm` step from x in each direction. For use in the quasi-Newton method.
 
     :param func: function of n variables
@@ -77,15 +77,15 @@ def __QN_values(func, x, step):
         xp[k, i] -= step[i]
 
     if comm is None:
-        return __evalF(func, xp)
+        return _evalF(func, xp)
     else:    
-        return __evalF_mpi(func, xp)
+        return _evalF_mpi(func, xp)
 
 
 ################################################################################
 # quasi-Newton method
 
-def __quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, bfgs=False, max_iteration=30, max_iter_diff=None, hartree=None):
+def _quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, bfgs=False, max_iteration=30, max_iter_diff=None, hartree=None):
     """Performs the quasi_newton procedure
     
     :param func: a function of N variables
@@ -114,14 +114,14 @@ def __quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e
 
     while iteration < max_iteration:
         x0 = x
-        x, dx, gradient, ihessian = __quasi_newton_step(iteration, func, x0, step, gradient, dx, bfgs)
-        __vca_accuracy_warning(accur, ihessian)
+        x, dx, gradient, ihessian = _quasi_newton_step(iteration, func, x0, step, gradient, dx, bfgs)
+        _vca_accuracy_warning(accur, ihessian)
         iteration += 1
 
         if hartree != None:
             hartree_converged = True
             for C in hartree:
-                C.update()
+                C.update(current_instance)
                 C.print()
                 hartree_converged = hartree_converged and C.converged()
 
@@ -157,7 +157,7 @@ def __quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e
 ################################################################################
 # quasi-Newton method (step)
 
-def __quasi_newton_step(iteration = 0, func=None, x=None, step=None, gradient=None, dx=None, bfgs=False, max_diff=None):
+def _quasi_newton_step(iteration = 0, func=None, x=None, step=None, gradient=None, dx=None, bfgs=False, max_diff=None):
     """Performs a step of the quasi_newton procedure
     
     :param int iter: iteration number
@@ -174,7 +174,7 @@ def __quasi_newton_step(iteration = 0, func=None, x=None, step=None, gradient=No
     y = np.zeros(n)
     ihessian = np.eye(n)  # inverse Hessian matrix
 
-    F = __QN_values(func, x, step)
+    F = _QN_values(func, x, step)
     gradient0 = np.copy(gradient)
     for i in range(n):
         gradient[i] = (F[2 * i + 1] - F[2 * i + 2]) / (2 * step[i])
@@ -221,7 +221,7 @@ def __quasi_newton_step(iteration = 0, func=None, x=None, step=None, gradient=No
 ################################################################################
 # Newton-Raphson method :  computation of the Hessian
 
-def __NR_Hessian(func, x, step):
+def _NR_Hessian(func, x, step):
     """Computes the function func of n variables at :math:`1 + 2n + n(n-1)/2` points in order to fit a quadratic form x and n pairs of points located at :math:`\pm` step from x in each direction
     
     :param func: the function
@@ -255,9 +255,9 @@ def __NR_Hessian(func, x, step):
             xp[k, j] += 0.707*(2*(j%2)-1)*step[j]
 
     if comm is None:
-        y = __evalF(func, xp)
+        y = _evalF(func, xp)
     else:    
-        y = __evalF_mpi(func, xp)
+        y = _evalF_mpi(func, xp)
 
     # setting fit coefficients
     A = np.empty((N,N))
@@ -297,7 +297,7 @@ def __NR_Hessian(func, x, step):
 ################################################################################
 # Newton-Raphson method
 
-def __newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_iteration=30, max_iter_diff=None, hartree=None):
+def _newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_iteration=30, max_iter_diff=None, hartree=None):
     """Performs the Newton-Raphson procedure
     
     :param func: a function of N variables
@@ -312,6 +312,8 @@ def __newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=
     :returns (float, [float], [[float]]): the value of the function, the gradient, and the Hessian
 
     """
+    global current_instance
+
     n = len(start)
     gradient = np.zeros(n)
     dx = np.zeros(n)
@@ -325,14 +327,14 @@ def __newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=
         iteration += 1
 
         gradient0 = np.copy(gradient)
-        dx, F, gradient, hessian = __newton_raphson_step(func, x, step)
+        dx, F, gradient, hessian = _newton_raphson_step(func, x, step)
         ihessian = np.linalg.inv(hessian)
-        __vca_accuracy_warning(accur, ihessian)
+        _vca_accuracy_warning(accur, ihessian)
 
         if hartree != None:
             hartree_converged = True
             for C in hartree:
-                C.update(pr=True)
+                C.update(current_instance, pr=True)
                 hartree_converged  = hartree_converged and C.converged()
 
         if np.linalg.norm(gradient) < gtol and hartree_converged:
@@ -383,7 +385,7 @@ def __newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=
 ################################################################################
 # Newton-Raphson step
 
-def __newton_raphson_step(func=None, x=None, step=None):
+def _newton_raphson_step(func=None, x=None, step=None):
     """Performs a Newton-Raphson step
     
     :param func: a function of N variables
@@ -393,7 +395,7 @@ def __newton_raphson_step(func=None, x=None, step=None):
 
     """
 
-    F, gradient, hessian = __NR_Hessian(func, x, step)
+    F, gradient, hessian = _NR_Hessian(func, x, step)
     ihessian = np.linalg.inv(hessian)
     dx = -np.dot(ihessian, gradient)
 
@@ -403,7 +405,7 @@ def __newton_raphson_step(func=None, x=None, step=None):
 ################################################################################
 # checking consistency of accuracy with effective precision
 
-def __vca_accuracy_warning(accur, ihessian):
+def _vca_accuracy_warning(accur, ihessian):
 
     accur_SEF = pyqcm.get_global_parameter('accur_SEF')
     inv_der2 = np.diagonal(ihessian)
@@ -417,7 +419,7 @@ def __vca_accuracy_warning(accur, ihessian):
 ################################################################################
 # Newton-Raphson in 1D
 
-def __altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_iteration=30, max_iter_diff=None, hartree=None):
+def _altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_iteration=30, max_iter_diff=None, hartree=None):
     """Performs a Newton-Raphson procedure in one variable by reusing old points as much as possible
     
     :param func: a function of 1 variable
@@ -473,355 +475,355 @@ def __altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max
 
     return np.array([xp]), np.array([der1]), np.array([[1.0/der2]])
 
-################################################################################
-# minimax method
 
-def __minimax(names, var_max_start, start=None, step=None, accur=None, max=10,  max_iteration=30, hartree=None):
-    """Applies a minimization of a subset of variables and a maximization on the remainder
-    
-    :param ['str'] names : names of variational parameters (minimal ones first, then maximal ones)
-    :param int var_max_start : label of the first maximal variational parameter (= number of minimal variational parameters)
-    :param [float] start: the starting values
-    :param [float] step: the steps used to computed the numerical second derivatives
-    :param [float] accur: the required accuracy for each variable
-    :param [float] max: maximum absolute value of each parameter
-    :param int max_iterations:  maximum number of iterations, beyond which an exception is raised
-    :returns [float]: the value of the variables
-
-    """
-
-    ftol = 10*pyqcm.qcm.get_global_parameter('accur_SEF')
-    nvar_max = len(names) - var_max_start
-    nvar_min = var_max_start
-    steps_min = step[0:nvar_min]
-    steps_max = step[nvar_min:nvar_min+nvar_max]
-    iter = 0
-    nvar_tot = nvar_min+nvar_max
-
-    def F_min(x):
-        global SEF_eval
-        for i in range(nvar_min): 
-            pyqcm.set_parameter(names[i], x[i])
-        print('(min) x = ', x) # new
-        SEF_eval += 1
-        pyqcm.new_model_instance()
-        return pyqcm.Potthoff_functional(hartree)
-    def F_max(x):
-        global SEF_eval
-        for i in range(nvar_max): 
-            pyqcm.set_parameter(names[i+nvar_min], x[i])
-        print('(max) x = ', x) # new
-        SEF_eval += 1
-        pyqcm.new_model_instance()
-        return -pyqcm.Potthoff_functional(hartree)
-
-
-    X0 = np.array(start)
-
-    while iter < max_iteration:
-        P = pyqcm.parameters()
-        x_min = [P[names[i]] for i in range(nvar_min)]
-        x_max = [P[names[i]] for i in range(nvar_min, nvar_tot)]
-
-        if iter > 0:
-            steps_min = np.abs(diff[0:nvar_min])
-            steps_max = np.abs(diff[nvar_min:nvar_min+nvar_max])
-
-        nvar = nvar_min
-        steps = steps_min
-        initial_simplex = np.zeros((nvar+1,nvar))
-        for i in range(nvar+1):
-            initial_simplex[i, :] = x_min
-        for i in range(nvar):
-            initial_simplex[i+1, i] += steps[i]
-        if is_sequence(accur) == True:
-            accur = accur[0]
-        solution = minimize(F_min, x_min, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
-        iter_done = solution.nit
-        sol_min = solution.x
-        for i in range(nvar_min):
-            pyqcm.set_parameter(names[i], sol_min[i])
-        
-        nvar = nvar_max
-        steps = steps_max
-        initial_simplex = np.zeros((nvar+1,nvar))
-        for i in range(nvar+1):
-            initial_simplex[i, :] = x_max
-        for i in range(nvar):
-            initial_simplex[i+1, i] += steps[i]
-        if type(accur) == list:
-            accur = accur[0]
-        solution = minimize(F_max, x_max, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
-        iter_done = solution.nit
-        sol_max = solution.x
-        for i in range(nvar_max):
-            pyqcm.set_parameter(names[i+nvar_min], sol_max[i])
-
-        sol = np.concatenate((sol_min, sol_max))
-
-        hartree_converged = True
-        if hartree != None:
-            hartree_converged = True
-            for C in hartree:
-                C.update(pr=True)
-                hartree_converged  = hartree_converged and C.converged()
-
-        diff = sol - X0
-        X0 = sol
-        iter += 1
-        converged = True
-        for i in range(nvar_tot):
-            if np.abs(diff[i]) > accur: converged = False
-
-        if converged and hartree_converged:
-            return sol
-    
-    raise(pyqcm.TooManyIterationsError(max_iteration))
-    return sol
-
-################################################################################
-# PUBLIC FUNCTIONS
-################################################################################
+####################################################################################################
 # performs the VCA
 SEF_eval = 0
 
-def vca(
-    var2sef=None,
-    varia=None, 
-    start=None, 
-    steps=0.01, 
-    accur=1e-4, 
-    max=100,
-    file="vca.tsv",
-    accur_grad=1e-6, 
-    max_iter=30, 
-    max_iter_diff=None, 
-    method='NR', 
-    hartree=None, 
-    hartree_self_consistent=False,
-    symmetrized_operator=None,
-    var_max_start = None
-):
-    """Performs a VCA with the QN or NR method
-    
-    :param var2sef: function that converts variational parameters to model parameters
-    :param str or [str] varia: variational parameters (list or tuple)
-    :param float or [float] start: starting values
-    :param float or [float] steps: initial steps
-    :param float or [float] accur: accuracy of parameters (also step for 2nd derivatives)
-    :param float or [float] max: maximum values that are tolerated
-    :param float accur_grad: max value of gradient for convergence
-    :param int max_iter: maximum number of iterations in the procedure
-    :param float max_iter_diff: optional maximum value of the maximum step in the quasi-Newton method
-    :param str method: method used to optimize ('SYMR1', 'NR', 'BFGS', 'altNR', 'Nelder-Mead', 'COBYLA', 'Powell', 'CG', 'minimax')
-    :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
-    :param boolean hartree_self_consistent: True if the Hartree approximation is treated in the self-consistent, rather than variational, way.
-    :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
-    :param int var_max_start: label of the first variable for which the function is a maximum (minimal vars first, maximal vars last)
-    :return: None
-    
-    """
-    global SEF_eval
-    # type and length checks
-    if is_sequence(varia) == False:
-        if type(varia) != str:
-            raise ValueError('argument varia of vca() must be a string or a sequence of strings')
-        varia = (varia,)
-
-
-    nvar = len(varia)
-    if type(steps) != list: 
-        if type(steps) == float : steps = [steps]*nvar
-        else : steps = list(steps)
-    if is_sequence(accur) == False: accur = (accur,)*nvar
-    if is_sequence(max) == False: max = (max,)*nvar
-    if is_sequence(hartree) == False and hartree is not None: hartree = (hartree,)
-
-    global first_time
-    pyqcm.new_model_instance()
-    L = pyqcm.model_size()[0]
-    pyqcm.first_SEF = True
-
-    hartree_self = None
-    if hartree_self_consistent:
-        hartree_self = hartree
-
-
-    if varia is None:
-        print('missing argument varia : variational parameters must be specified')
-        raise pyqcm.MissingArgError('varia')
-
-
-    if max is None:
-        max = 10*np.ones(nvar)
-    elif len(max) != nvar:
-        print('the argument "max" should have ', nvar, ' components')
-        raise pyqcm.MissingArgError('max')
-
-    if start is None:
-        if var2sef != None:
-            raise ValueError('the start argument is missing in vca(). Should be specified if var2sef is not None')
-        start = [0.0]*nvar
-        P = pyqcm.parameters()
-        for i,v in enumerate(varia):
-            start[i] = P[v]
-
-    elif len(start) != nvar:
-        print('the argument "start" should have ', nvar, ' components')
-        raise pyqcm.MissingArgError('start')
-
-    if accur is None:
-        accur = 1e-4*np.ones(nvar)
-
-    if steps is None:
-        steps = 10*np.array(accur)
-    elif len(steps) != nvar:
-        print('the argument "steps" should have ', nvar, ' components')
-        raise pyqcm.MissingArgError('steps')
-
-    SEF_eval = 0
-    def var2x(x):
-        for i in range(len(x)):
-            if np.abs(x[i]) > max[i]:
-                raise pyqcm.OutOfBoundsError(variable=varia[i])
-        global SEF_eval
-        if var2sef is None:
-            for i in range(len(varia)): 
-                pyqcm.set_parameter(varia[i], x[i])
-            print('x = ', x) # new
-        else:
-            var2sef(x)    
-        SEF_eval += 1
-        pyqcm.new_model_instance()
-        return pyqcm.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator)
+class VCA:
+    first_time = True
+    def __init__(self, model,
+        var2sef=None,
+        varia=None, 
+        start=None, 
+        steps=0.01, 
+        accur=1e-4, 
+        max=100,
+        file="vca.tsv",
+        accur_grad=1e-6, 
+        max_iter=30, 
+        max_iter_diff=None, 
+        method='NR', 
+        hartree=None, 
+        hartree_self_consistent=False,
+        symmetrized_operator=None,
+        var_max_start = None
+    ):
+        """Performs a VCA with the QN or NR method
         
-    if hartree is None:
-        pyqcm.banner('VCA procedure, method {:s}'.format(method), '*')
-    else:
-        pyqcm.banner('VCA procedure, (combined with Hartree procedure) method {:s}'.format(method), '*')
-    var_val = pyqcm.__varia_table(varia,start)
-    print(var_val)
+        :param var2sef: function that converts variational parameters to model parameters
+        :param str or [str] varia: variational parameters (list or tuple)
+        :param float or [float] start: starting values
+        :param float or [float] steps: initial steps
+        :param float or [float] accur: accuracy of parameters (also step for 2nd derivatives)
+        :param float or [float] max: maximum values that are tolerated
+        :param float accur_grad: max value of gradient for convergence
+        :param int max_iter: maximum number of iterations in the procedure
+        :param float max_iter_diff: optional maximum value of the maximum step in the quasi-Newton method
+        :param str method: method used to optimize ('SYMR1', 'NR', 'BFGS', 'altNR', 'Nelder-Mead', 'COBYLA', 'Powell', 'CG', 'minimax')
+        :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+        :param boolean hartree_self_consistent: True if the Hartree approximation is treated in the self-consistent, rather than variational, way.
+        :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
+        :param int var_max_start: label of the first variable for which the function is a maximum (minimal vars first, maximal vars last)
+        :return: None
+        
+        """
+        self.model = model
+        global SEF_eval
+        # type and length checks
+        if pyqcm.is_sequence(varia) == False:
+            if type(varia) != str:
+                raise ValueError('argument varia of vca() must be a string or a sequence of strings')
+            varia = (varia,)
 
-    scipy_minimization = False
-    if method == 'Nelder-Mead' or method == 'COBYLA' or method == 'Powell'  or method == 'CG'  or method == 'BFGS'  or method == 'minimax':
-        scipy_minimization = True
+        nvar = len(varia)
+        if type(steps) != list: 
+            if type(steps) == float : steps = [steps]*nvar
+            else : steps = list(steps)
+        if pyqcm.is_sequence(accur) == False: accur = (accur,)*nvar
+        if pyqcm.is_sequence(max) == False: max = (max,)*nvar
+        if pyqcm.is_sequence(hartree) == False and hartree is not None: hartree = (hartree,)
 
-    if scipy_minimization and hartree_self_consistent:
-        raise ValueError('Hartree self-consistency not allowed when using SciPy minimization methods in VCA')
+        self.I = pyqcm.model_instance(model)
+        L = model.nsites
 
-    ftol = 2*pyqcm.qcm.get_global_parameter('accur_SEF')
-    iH = None
+        hartree_self = None
+        if hartree_self_consistent:
+            hartree_self = hartree
 
-    #------------------------------------- SWITCH ACCORDING TO METHOD -----------------------------------------
-    try:
-        if method == 'altNR':
-            if nvar != 1:
-                raise ValueError('vca method altNR only works with one variable')
-            sol, grad, iH = __altNR(var2x, start, steps, accur, max, accur_grad, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # special Newton-Raphson process in 1 variable
+        if varia is None:
+            print('missing argument varia : variational parameters must be specified')
+            raise pyqcm.MissingArgError('varia')
 
-        elif method == 'NR' :
-            sol, grad, iH = __newton_raphson(var2x, start, steps, accur, max, accur_grad, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # Newton-Raphson process
+        if max is None:
+            max = 10*np.ones(nvar)
+        elif len(max) != nvar:
+            print('the argument "max" should have ', nvar, ' components')
+            raise pyqcm.MissingArgError('max')
 
-        elif method == 'SYMR1' :
-            sol, grad, iH = __quasi_newton(var2x, start, steps, accur, max, accur_grad, False, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # quasi-Newton process
+        if start is None:
+            if var2sef != None:
+                raise ValueError('the start argument is missing in vca(). Should be specified if var2sef is not None')
+            start = [0.0]*nvar
+            P = model.parameters()
+            for i,v in enumerate(varia):
+                start[i] = P[v]
 
-        elif method == 'BFGS2' :
-            sol, grad, iH = __quasi_newton(var2x, start, steps, accur, max, accur_grad, True, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # quasi-Newton process
+        elif len(start) != nvar:
+            print('the argument "start" should have ', nvar, ' components')
+            raise pyqcm.MissingArgError('start')
 
-        elif method == 'Nelder-Mead':
+        if accur is None:
+            accur = 1e-4*np.ones(nvar)
+
+        if steps is None:
+            steps = 10*np.array(accur)
+        elif len(steps) != nvar:
+            print('the argument "steps" should have ', nvar, ' components')
+            raise pyqcm.MissingArgError('steps')
+
+        SEF_eval = 0
+        def var2x(x):
+            global current_instance
+            for i in range(len(x)):
+                if np.abs(x[i]) > max[i]:
+                    raise pyqcm.OutOfBoundsError(variable=varia[i])
+            global SEF_eval
+            if var2sef is None:
+                for i in range(len(varia)): 
+                    model.set_parameter(varia[i], x[i])
+                print('x = ', x) # new
+            else:
+                var2sef(x)    
+            SEF_eval += 1
+            self.I = pyqcm.model_instance(model)
+            current_instance = self.I
+            return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator)
+            
+        if hartree is None:
+            pyqcm.banner('VCA procedure, method {:s}'.format(method), '*')
+        else:
+            pyqcm.banner('VCA procedure, (combined with Hartree procedure) method {:s}'.format(method), '*')
+        var_val = pyqcm.varia_table(varia,start)
+        print(var_val)
+
+        scipy_minimization = False
+        if method == 'Nelder-Mead' or method == 'COBYLA' or method == 'Powell'  or method == 'CG'  or method == 'BFGS'  or method == 'minimax':
+            scipy_minimization = True
+
+        if scipy_minimization and hartree_self_consistent:
+            raise ValueError('Hartree self-consistency not allowed when using SciPy minimization methods in VCA')
+
+        ftol = 2*pyqcm.qcm.get_global_parameter('accur_SEF')
+        iH = None
+
+        #..................................... SWITCH ACCORDING TO METHOD .........................................
+        try:
+            if method == 'altNR':
+                if nvar != 1:
+                    raise ValueError('vca method altNR only works with one variable')
+                sol, grad, iH = _altNR(var2x, start, steps, accur, max, accur_grad, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # special Newton-Raphson process in 1 variable
+
+            elif method == 'NR' :
+                sol, grad, iH = _newton_raphson(var2x, start, steps, accur, max, accur_grad, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # Newton-Raphson process
+
+            elif method == 'SYMR1' :
+                sol, grad, iH = _quasi_newton(var2x, start, steps, accur, max, accur_grad, False, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # quasi-Newton process
+
+            elif method == 'BFGS2' :
+                sol, grad, iH = _quasi_newton(var2x, start, steps, accur, max, accur_grad, True, max_iteration=max_iter, max_iter_diff=max_iter_diff, hartree=hartree_self)  # quasi-Newton process
+
+            elif method == 'Nelder-Mead':
+                initial_simplex = np.zeros((nvar+1,nvar))
+                for i in range(nvar+1):
+                    initial_simplex[i, :] = start
+                for i in range(nvar):
+                    initial_simplex[i+1, i] += steps[i]
+                if type(accur) == list:
+                    accur = accur[0]
+                solution = minimize(var2x, start, method='Nelder-Mead', options={'maxfev':3*max_iter, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
+                iter_done = solution.nit
+                sol = solution.x
+
+            elif method == 'Powell':
+                accur = accur[0]
+                solution = minimize(var2x, start, method='Powell', tol = ftol, options={'xtol': accur, 'ftol': ftol, 'disp':True})
+                iter_done = solution.nit
+                sol = solution.x
+                if type(sol) != list:
+                    sol = [sol]
+
+            elif method == 'CG':
+                solution = minimize(var2x, start, method='CG', jac=False, tol = ftol, options={'eps':accur, 'maxiter':3*max_iter, 'disp':True})
+                iter_done = solution.nit
+                sol = solution.x
+
+            elif method == 'BFGS':
+                solution = minimize(var2x, start, method='BFGS', jac=False, tol = ftol, options={'eps':accur, 'disp':True})
+                iter_done = solution.nit
+                sol = solution.x
+                iH = solution.hess_inv
+
+            elif method == 'COBYLA':
+                solution = minimize(var2x, start, method='COBYLA', options={'rhobeg':steps[0], 'maxiter':3*max_iter, 'tol': ftol, 'disp':True})
+                iter_done = solution.nfev
+                sol = solution.x
+
+            elif method == 'minimax':
+                sol = self._minimax(varia, var_max_start, start, steps, accur, max, max_iteration=max_iter, hartree=hartree)
+            else:
+                raise ValueError('method {:s} unknown in VCA'.format(method))
+
+        #..........................................................................................................
+
+        except pyqcm.OutOfBoundsError as E:
+            print(E)
+            raise pyqcm.OutOfBoundsError(E.variable)
+
+        except pyqcm.TooManyIterationsError as E:
+            print('VCA method failed to converge after ', E.max_iteration, ' iterations')
+            raise pyqcm.TooManyIterationsError(E.max_iteration)
+
+        omega = var2x(sol)  # final, converged value
+        if root:
+            if iH is not None: 
+                H = np.linalg.inv(iH)  # Hessian at the solution (inverse of iH)
+            print('saddle point = ', sol)
+            if scipy_minimization is False: 
+                print('gradient = ', grad)
+                print('second derivatives :', np.diag(H))
+                print('eigenvalues of Hessian :', np.linalg.eigh(H)[0])
+            print('computing properties of converged solution...')
+            print('omega = ', omega)
+        ave = self.I.averages()
+
+
+        # writes the solution in the standard file
+        if root:
+            val = method + '\t{:d}\t'.format(SEF_eval)
+            des = 'method\tSEF_eval\t'
+            if iH is not None: 
+                for i in range(nvar):
+                    val += '{:.4g}\t'.format(H[i, i])
+                for i in range(nvar):
+                    des += '2der_' + varia[i] + '\t'
+            if hartree != None:
+                val += '{:.8g}\t'.format(omega)
+                des += 'omegaH\t'
+            self.I.write_summary(file, suppl_descr = des, suppl_values = val, first_of_series=VCA.first_time)
+            VCA.first_time = False
+
+        if root:
+            pyqcm.banner('VCA ended normally', '*')
+
+        self.hessian = None
+        if scipy_minimization is False:
+            self.hessian = 1.0/np.diag(iH)
+
+
+    #----------------------------------------------------------------------------------------------------------
+    # minimax method
+
+    def _minimax(self, names, var_max_start, start=None, step=None, accur=None, max=10,  max_iteration=30, hartree=None):
+        """Applies a minimization of a subset of variables and a maximization on the remainder
+        
+        :param ['str'] names : names of variational parameters (minimal ones first, then maximal ones)
+        :param int var_max_start : label of the first maximal variational parameter (= number of minimal variational parameters)
+        :param [float] start: the starting values
+        :param [float] step: the steps used to computed the numerical second derivatives
+        :param [float] accur: the required accuracy for each variable
+        :param [float] max: maximum absolute value of each parameter
+        :param int max_iterations:  maximum number of iterations, beyond which an exception is raised
+        :returns [float]: the value of the variables
+
+        """
+
+        global current_instance
+    
+        ftol = 10*pyqcm.qcm.get_global_parameter('accur_SEF')
+        nvar_max = len(names) - var_max_start
+        nvar_min = var_max_start
+        steps_min = step[0:nvar_min]
+        steps_max = step[nvar_min:nvar_min+nvar_max]
+        iter = 0
+        nvar_tot = nvar_min+nvar_max
+
+        def F_min(x):
+            global SEF_eval
+            for i in range(nvar_min): 
+                self.model.set_parameter(names[i], x[i])
+            print('(min) x = ', x) # new
+            SEF_eval += 1
+            self.I = pyqcm.model_instance(self.model)
+            return self.I.Potthoff_functional(hartree)
+        def F_max(x):
+            global SEF_eval
+            for i in range(nvar_max): 
+                self.model.set_parameter(names[i+nvar_min], x[i])
+            print('(max) x = ', x) # new
+            SEF_eval += 1
+            self.I = pyqcm.model_instance(self.model)
+            return -self.I.Potthoff_functional(hartree)
+
+
+        X0 = np.array(start)
+
+        while iter < max_iteration:
+            P = self.model.parameters()
+            x_min = [P[names[i]] for i in range(nvar_min)]
+            x_max = [P[names[i]] for i in range(nvar_min, nvar_tot)]
+
+            if iter > 0:
+                steps_min = np.abs(diff[0:nvar_min])
+                steps_max = np.abs(diff[nvar_min:nvar_min+nvar_max])
+
+            nvar = nvar_min
+            steps = steps_min
             initial_simplex = np.zeros((nvar+1,nvar))
             for i in range(nvar+1):
-                initial_simplex[i, :] = start
+                initial_simplex[i, :] = x_min
+            for i in range(nvar):
+                initial_simplex[i+1, i] += steps[i]
+            if pyqcm.is_sequence(accur) == True:
+                accur = accur[0]
+            solution = minimize(F_min, x_min, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
+            iter_done = solution.nit
+            sol_min = solution.x
+            for i in range(nvar_min):
+                self.model.set_parameter(names[i], sol_min[i])
+            
+            nvar = nvar_max
+            steps = steps_max
+            initial_simplex = np.zeros((nvar+1,nvar))
+            for i in range(nvar+1):
+                initial_simplex[i, :] = x_max
             for i in range(nvar):
                 initial_simplex[i+1, i] += steps[i]
             if type(accur) == list:
                 accur = accur[0]
-            solution = minimize(var2x, start, method='Nelder-Mead', options={'maxfev':3*max_iter, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
+            solution = minimize(F_max, x_max, method='Nelder-Mead', options={'maxfev':100, 'xatol': accur, 'fatol':ftol, 'initial_simplex': initial_simplex, 'adaptive': True, 'disp':True})
             iter_done = solution.nit
-            sol = solution.x
+            sol_max = solution.x
+            for i in range(nvar_max):
+                self.model.set_parameter(names[i+nvar_min], sol_max[i])
 
-        elif method == 'Powell':
-            accur = accur[0]
-            solution = minimize(var2x, start, method='Powell', tol = ftol, options={'xtol': accur, 'ftol': ftol, 'disp':True})
-            iter_done = solution.nit
-            sol = solution.x
-            if type(sol) != list:
-                sol = [sol]
+            sol = np.concatenate((sol_min, sol_max))
 
-        elif method == 'CG':
-            solution = minimize(var2x, start, method='CG', jac=False, tol = ftol, options={'eps':accur, 'maxiter':3*max_iter, 'disp':True})
-            iter_done = solution.nit
-            sol = solution.x
+            hartree_converged = True
+            if hartree != None:
+                hartree_converged = True
+                for C in hartree:
+                    C.update(current_instance, pr=True)
+                    hartree_converged  = hartree_converged and C.converged()
 
-        elif method == 'BFGS':
-            solution = minimize(var2x, start, method='BFGS', jac=False, tol = ftol, options={'eps':accur, 'disp':True})
-            iter_done = solution.nit
-            sol = solution.x
-            iH = solution.hess_inv
+            diff = sol - X0
+            X0 = sol
+            iter += 1
+            converged = True
+            for i in range(nvar_tot):
+                if np.abs(diff[i]) > accur: converged = False
 
-        elif method == 'COBYLA':
-            solution = minimize(var2x, start, method='COBYLA', options={'rhobeg':steps[0], 'maxiter':3*max_iter, 'tol': ftol, 'disp':True})
-            iter_done = solution.nfev
-            sol = solution.x
-
-        elif method == 'minimax':
-            sol = __minimax(varia, var_max_start, start, steps, accur, max, max_iteration=max_iter, hartree=hartree)
-        else:
-            raise ValueError('method {:s} unknown in VCA'.format(method))
-
-    #----------------------------------------------------------------------------------------------------------
-
-
-    except pyqcm.OutOfBoundsError as E:
-        print(E)
-        raise pyqcm.OutOfBoundsError(E.variable)
-
-    except pyqcm.TooManyIterationsError as E:
-        print('VCA method failed to converge after ', E.max_iteration, ' iterations')
-        raise pyqcm.TooManyIterationsError(E.max_iteration)
-
-    omega = var2x(sol)  # final, converged value
-    if root:
-        if iH is not None: 
-            H = np.linalg.inv(iH)  # Hessian at the solution (inverse of iH)
-        print('saddle point = ', sol)
-        if scipy_minimization is False: 
-            print('gradient = ', grad)
-            print('second derivatives :', np.diag(H))
-            print('eigenvalues of Hessian :', np.linalg.eigh(H)[0])
-        print('computing properties of converged solution...')
-        print('omega = ', omega)
-    ave = pyqcm.averages()
-
-
-    # writes the solution in the standard file
-    if root:
-        val = method + '\t{:d}\t'.format(SEF_eval)
-        des = 'method\tSEF_eval\t'
-        if iH is not None: 
-            for i in range(nvar):
-                val += '{:.4g}\t'.format(H[i, i])
-            for i in range(nvar):
-                des += '2der_' + varia[i] + '\t'
-        if hartree != None:
-            val += '{:.8g}\t'.format(omega)
-            des += 'omegaH\t'
-        # pyqcm.write_summary(file, first = first_time, suppl_descr = des, suppl_values = val)
-        pyqcm.write_summary(file, suppl_descr = des, suppl_values = val)
-        first_time = False
-
-    if root:
-        pyqcm.banner('VCA ended normally', '*')
-
-    if scipy_minimization is False:
-        return sol, 1.0/np.diag(iH)
-    else:
-        return sol, None
+            if converged and hartree_converged:
+                return sol
+        
+        raise(pyqcm.TooManyIterationsError(max_iteration))
+        return sol
 
 ################################################################################
-def plot_sef(param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True, symmetrized_operator=None):
+def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True, symmetrized_operator=None):
     """Draws a plot of the Potthoff functional as a function of a parameter param taken from the list prm. The results are going to be appended to 'sef.tsv'
     
+    :param lattice_model model: the lattice model
     :param str param: name of the parameter (independent variable)
     :param [float] prm: list of values of the parameter
     :param float accur_SEF: precision of the computation of the self-energy functional
@@ -830,28 +832,24 @@ def plot_sef(param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True
     :returns: None
 
     """
-    L = pyqcm.model_size()[0]
-    pyqcm.first_SEF = True
+    L = model.nsites
 
-    if type(file) != str:
+    if isinstance(file, str) == False:
 	    raise TypeError('the argument "file" of plot_sef() must be a string')
-    if type(accur_SEF) != float:
+    if isinstance(accur_SEF, float) == False:
 	    raise TypeError('the argument "accur_SEF" of plot_sef() must be a float')
-    if type(param) != str:
+    if isinstance(param, str) == False:
 	    raise TypeError('the argument "param" of plot_sef() must be a string, the name of a parameter')
 
-    if type(hartree) is not list and hartree is not None:
-        hartree = [hartree]
+    if pyqcm.is_sequence(hartree) == False and hartree is not None:
+        hartree = (hartree,)
 
     pyqcm.set_global_parameter('accur_SEF', accur_SEF)
     omega = np.empty(len(prm))
     for i in range(len(prm)):
-        pyqcm.set_parameter(param, prm[i])
-        pyqcm.new_model_instance()
-        # print(pyqcm.parameter_set(opt='report'))
-        # print('.'*80, '\n', pyqcm.cluster_parameters())
-        omega[i] = pyqcm.Potthoff_functional(hartree, file=file, symmetrized_operator=symmetrized_operator)
-
+        model.set_parameter(param, prm[i])
+        I = pyqcm.model_instance(model)
+        omega[i] = I.Potthoff_functional(hartree, file=file, symmetrized_operator=symmetrized_operator)
         print("omega(", prm[i], ") = ", omega[i])
     
     if show:
@@ -861,14 +859,14 @@ def plot_sef(param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True
         plt.xlabel(param)
         plt.ylabel(r'$\Omega$')
         plt.axhline(omega[0], c='r', ls='solid', lw=0.5)
-        plt.title(pyqcm.parameter_string())
+        plt.title(model.parameter_string())
         plt.show()
 
 
 
 
 ################################################################################
-def plot_GS_energy(param, prm, clus=0, file=None, plt_ax=None, **kwargs):
+def plot_GS_energy(model, param, prm, clus=0, file=None, plt_ax=None, **kwargs):
     """Draws a plot of the ground state energy as a function of a parameter param taken from the list `prm`. The results are going to be appended to 'GS.tsv'
     
     :param str param: name of the parameter (independent variable)
@@ -890,14 +888,14 @@ def plot_GS_energy(param, prm, clus=0, file=None, plt_ax=None, **kwargs):
 
     omega = np.empty(len(prm))
     for i in range(len(prm)):
-        pyqcm.set_parameter(param, prm[i])
-        pyqcm.new_model_instance()
-        omega[i] = pyqcm.ground_state()[clus][0]
+        model.set_parameter(param, prm[i])
+        I = pyqcm.model_instance(model)
+        omega[i] = I.ground_state()[clus][0]
         print("omega(", prm[i], ") = ", omega[i])
 
         # writing the parameters in a progress file
         f = open('GS.tsv', 'a')
-        des, val = pyqcm.properties()
+        des, val = I.properties()
         if i == 0:
             f.write('\n\n')
             f.write(des + '\n')
@@ -911,7 +909,7 @@ def plot_GS_energy(param, prm, clus=0, file=None, plt_ax=None, **kwargs):
     if plt_ax is None:
         ax.set_xlabel(param)
         ax.set_ylabel('GS energy')
-        ax.set_title(pyqcm.parameter_string())
+        ax.set_title(model.parameter_string())
 
     if file is not None:
         plt.savefig(file)
@@ -924,7 +922,7 @@ def plot_GS_energy(param, prm, clus=0, file=None, plt_ax=None, **kwargs):
 ################################################################################
 # detects a continuous phase transition
 
-def __transition(varia, P, bracket, step=0.001, verb=False, symmetrized_operator=None):
+def _transition(model, varia, P, bracket, step=0.001, verb=False, symmetrized_operator=None):
     """Detects a transition as a function of external parameter param by looking at the equality between 
     :math:`\Omega(h=s)` and :math:`\Omega(h=0)` where *h* is a single variational parameter (Weiss field)
     and *s* is a step. 
@@ -941,13 +939,13 @@ def __transition(varia, P, bracket, step=0.001, verb=False, symmetrized_operator
     from scipy.optimize import brentq
 
     def F(x):
-        pyqcm.set_parameter(P, x)
-        pyqcm.set_parameter(varia, step)
-        pyqcm.new_model_instance()
-        Om1 = pyqcm.Potthoff_functional(symmetrized_operator=symmetrized_operator)
-        pyqcm.set_parameter(varia, 1e-8)
-        pyqcm.new_model_instance()
-        Om0 = pyqcm.Potthoff_functional(symmetrized_operator=symmetrized_operator)
+        model.set_parameter(P, x)
+        model.set_parameter(varia, step)
+        I = pyqcm.model_instance(model)
+        Om1 = I.Potthoff_functional(symmetrized_operator=symmetrized_operator)
+        model.set_parameter(varia, 1e-8)
+        I = pyqcm.model_instance(model)
+        Om0 = I.Potthoff_functional(symmetrized_operator=symmetrized_operator)
         if verb:
             print(P, '= ', x, '\tdelta Omega = ', Om1-Om0)
         return Om1-Om0
@@ -964,9 +962,10 @@ def __transition(varia, P, bracket, step=0.001, verb=False, symmetrized_operator
 ################################################################################
 # detects a continuous phase transition (meta function with loop over control parameter)
 
-def transition_line(varia, P1, P1_range, P2, P2_range, delta, verb=False):
+def transition_line(model, varia, P1, P1_range, P2, P2_range, delta, verb=False):
     """Builds the second-order transition line as a function of a control parameter P1. The results are written in the file `transition.tsv`
 
+    :param lattice_model model: the lattice model
     :param str varia: variational parameter
     :param str P1: control parameter
     :param [float] P1_range: an array of values of P1
@@ -984,8 +983,8 @@ def transition_line(varia, P1, P1_range, P2, P2_range, delta, verb=False):
 
     trans = np.empty((len(P1_range), 2))
     for i, p1 in enumerate(P1_range):
-        pyqcm.set_parameter(P1, p1)
-        p2c = __transition(varia, P2, P2_range, step=0.001, verb=verb)
+        model.set_parameter(P1, p1)
+        p2c = _transition(model, varia, P2, P2_range, step=0.001, verb=verb)
         trans[i,0] = p1
         trans[i,1] = p2c
         P2_range[0] = p2c - delta

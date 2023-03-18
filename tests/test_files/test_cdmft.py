@@ -1,14 +1,13 @@
-from pyqcm import *
-from pyqcm.cdmft import cdmft
-from pyqcm.loop import controlled_loop
+import pyqcm
+from pyqcm.cdmft import CDMFT
 
-import model_graphene_bath
+import model_graphene_bath as M
 
 # Imposing half-filling at 6 particles in cluster + bath sites and setting total spin to 0
-set_target_sectors(['R0:N6:S0'])
+M.model.set_target_sectors(['R0:N6:S0'])
 
 # Simulation parameters
-set_parameters("""
+M.model.set_parameters("""
     U=4
     mu=0.5*U
     t=1
@@ -21,11 +20,12 @@ set_parameters("""
 
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():
-    cdmft(varia=["tb1_1", "eb1_1"], wc=10, grid_type='self') # setting the bath operators as the variationnal parameters
+    X = CDMFT(M.model, varia=["tb1_1", "eb1_1"], wc=10, grid_type='self') # setting the bath operators as the variationnal 
+    return X.I
 
 # Looping over values of U
-controlled_loop(
-    func=run_cdmft, 
+M.model.controlled_loop(
+    task=run_cdmft, 
     varia=["tb1_1", "eb1_1"], 
     loop_param="U", 
     loop_range=(2, 4.1, 0.5)

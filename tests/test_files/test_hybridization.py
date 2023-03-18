@@ -1,13 +1,9 @@
 import pyqcm
-import pyqcm.spectral as SP
-import model_1D_2_4b
-
-import pyqcm.qcm as qcm
-
+import model_1D_2_4b as M
 
 sec = 'R0:N4:S0'
-pyqcm.set_target_sectors([sec])
-pyqcm.set_parameters("""
+M.model.set_target_sectors([sec])
+M.model.set_parameters("""
 t=1
 U = 4
 mu = 0.5*U
@@ -17,10 +13,8 @@ tb1_1 = 0.5
 tb2_1 = 0.5
 """)
 
-pyqcm.new_model_instance()
-
-
-SP.cluster_spectral_function(wmax=6, opt='hyb', file="cluster_spectral_hybridization.pdf")
+I = pyqcm.model_instance(M.model)
+I.cluster_spectral_function(wmax=6, opt='hyb', file="cluster_spectral_hybridization.pdf")
 
 # print(pyqcm.hybridization_Lehmann())
 

@@ -1,7 +1,7 @@
 import pyqcm
 
 CM = pyqcm.cluster_model(4, generators=[[4, 3, 2, 1]])
-clus = pyqcm.cluster(CM, [0, 0, 0], [(0, 0, 0), ( 1, 0, 0), ( 0, 1, 0), ( 1, 1, 0)])
+clus = pyqcm.cluster(CM, ((0, 0, 0), ( 1, 0, 0), ( 0, 1, 0), ( 1, 1, 0)))
 model = pyqcm.lattice_model('2x2_C2', clus, [( 2, 0, 0), ( 0, 2, 0)])
 model.interaction_operator('U')
 model.interaction_operator('V', link=( 1, 0, 0), amplitude=1)

@@ -1,5 +1,5 @@
 from pyqcm import *
-from pyqcm.spectral import *
+from pyqcm._spectral import *
 import model_2x2x2
 
 set_global_parameter('verb_integrals')

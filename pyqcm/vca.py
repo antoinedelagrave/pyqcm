@@ -97,7 +97,7 @@ def _quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e-
     :param boolean bfgs: True if the BFGS method is used, otherwise the symmetric rank-1 formula is used (default)
     :param int max_iterations: maximum number of iterations, beyond which an exception is raised
     :param float max_iter_diff: maximum step to make
-    :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+    :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
     :return (float, [float], [[float]]): tuple of x (the solution), gradient (array, the value of the gradient), hessian (matrix, the Hessian matrix)
 
     """
@@ -308,7 +308,7 @@ def _newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=1
     :param float gtol: the gradient tolerance (gradient must be smaller than gtol for convergence)
     :param int max_iterations:  maximum number of iterations, beyond which an exception is raised
     :param float max_iter_diff: optional maximum value of the maximum step
-    :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+    :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
     :returns (float, [float], [[float]]): the value of the function, the gradient, and the Hessian
 
     """
@@ -430,7 +430,7 @@ def _altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_
     :param float gtol: the gradient tolerance (gradient must be smaller than gtol for convergence)
     :param int max_iterations:  maximum number of iterations, beyond which an exception is raised
     :param float max_iter_diff: optional maximum value of the maximum step
-    :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+    :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
     :returns (float, float, float): the value of the function, the gradient, and the 2nd derivative
 
     """
@@ -481,6 +481,31 @@ def _altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_
 SEF_eval = 0
 
 class VCA:
+    """
+    class containing the elements of a VCA computation. The constructor executes the computation.
+
+    :param lattice_model model: the (unique) model on which the computation is based
+    :param var2sef: function that converts variational parameters to model parameters
+    :param str or [str] varia: variational parameters (list or tuple)
+    :param float or [float] start: starting values
+    :param float or [float] steps: initial steps
+    :param float or [float] accur: accuracy of parameters (also step for 2nd derivatives)
+    :param float or [float] max: maximum values that are tolerated
+    :param float accur_grad: max value of gradient for convergence
+    :param int max_iter: maximum number of iterations in the procedure
+    :param float max_iter_diff: optional maximum value of the maximum step in the quasi-Newton method
+    :param str method: method used to optimize ('SYMR1', 'NR', 'BFGS', 'altNR', 'Nelder-Mead', 'COBYLA', 'Powell', 'CG', 'minimax')
+    :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+    :param boolean hartree_self_consistent: True if the Hartree approximation is treated in the self-consistent, rather than variational, way.
+    :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
+    :param int var_max_start: label of the first variable for which the function is a maximum (minimal vars first, maximal vars last)
+    :return: None
+
+    :ivar lattice_model model: (unique) model on which the computation is based
+    :ivar I: current model instance (changes in the course of the computation)
+    :ivar hessian: Hessian matrix of the Potthoff functional (matrix of second derivatives)
+    
+    """
     first_time = True
     def __init__(self, model,
         var2sef=None,
@@ -499,25 +524,6 @@ class VCA:
         symmetrized_operator=None,
         var_max_start = None
     ):
-        """Performs a VCA with the QN or NR method
-        
-        :param var2sef: function that converts variational parameters to model parameters
-        :param str or [str] varia: variational parameters (list or tuple)
-        :param float or [float] start: starting values
-        :param float or [float] steps: initial steps
-        :param float or [float] accur: accuracy of parameters (also step for 2nd derivatives)
-        :param float or [float] max: maximum values that are tolerated
-        :param float accur_grad: max value of gradient for convergence
-        :param int max_iter: maximum number of iterations in the procedure
-        :param float max_iter_diff: optional maximum value of the maximum step in the quasi-Newton method
-        :param str method: method used to optimize ('SYMR1', 'NR', 'BFGS', 'altNR', 'Nelder-Mead', 'COBYLA', 'Powell', 'CG', 'minimax')
-        :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
-        :param boolean hartree_self_consistent: True if the Hartree approximation is treated in the self-consistent, rather than variational, way.
-        :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
-        :param int var_max_start: label of the first variable for which the function is a maximum (minimal vars first, maximal vars last)
-        :return: None
-        
-        """
         self.model = model
         global SEF_eval
         # type and length checks
@@ -827,7 +833,7 @@ def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, sh
     :param str param: name of the parameter (independent variable)
     :param [float] prm: list of values of the parameter
     :param float accur_SEF: precision of the computation of the self-energy functional
-    :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+    :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
     :param boolean show: if True, the plot is shown on the screen.
     :returns: None
 

@@ -83,12 +83,28 @@ def script_file():
 
 ####################################################################################################
 class cluster_model:
+    """
+    Class that contains the impurity (or cluster) model
+
+    :param int n_sites: number of physical sites
+    :param int n_bath: number of bath orbitals
+    :param str name: name of the cluster model (important if there are more than one cluster models)
+    :param [[int]] generators: permutations that generate the point group
+    :param boolean bath_irrep: if True, the elements of 'generators' associated to bath orbitals are phases (integers, in multiple of 2*pi/G, where G is the number of group elements)
+
+    :ivar str name: name of the model
+    :ivar int n_sites: number of physical sites
+    :ivar int n_bath: number of bath orbitals
+    :ivar [[int]] generators: symmetry generators
+    :ivar boolean is_closed: True if the model can no longer be modified by adding operators
+
+    """
     def __init__(self, n_sites, n_bath=0, name='clus', generators=None, bath_irrep=False):
-        self.name = name
-        self.n_sites = n_sites
-        self.n_bath = n_bath
-        self.generators = generators
-        self.is_closed = False
+        self.name = name 
+        self.n_sites = n_sites 
+        self.n_bath = n_bath 
+        self.generators = generators 
+        self.is_closed = False 
         qcm.new_model(name, n_sites, n_bath, generators, bath_irrep)
 
     #-----------------------------------------------------------------------------------------------
@@ -164,6 +180,16 @@ class cluster_model:
 
 ####################################################################################################
 class cluster:
+    """
+    Class describing a geometric cluster, part of the repeated unit (or super unit cell)
+
+    :param cluster_model X: abstract cluster model the geometric cluster is hosting
+    :param [[int]] sites: sequence of 3-component integer vectors, the geometric sites of the cluster
+    :param [int] pos: base position of the cluster; all site vectors are added this position (for convenience)
+
+    :ivar int index: index of the cluster within the set of clusters forming the repeated unit (starts at 1)
+    """
+    
     def __init__(self, X, sites, pos=(0,0,0)):
         
         if isinstance(X, cluster_model):
@@ -191,7 +217,16 @@ class cluster:
 
 ####################################################################################################
 class lattice_model:
+    """
+    Class containing the unique model studied by this library
 
+    :param str name: a name given to the model, for reference in the output data
+    :param [cluster] clus: a single object or a sequence of objects of the class cluster, forming the repeated unit
+    :param [[int]] superlattice: the integer-component vectors defining the superlattice. Their number is the spatial dimension of the model.
+    :param [[int]] lattice: the the integer-component vectors defining the lattice. Used to define bands.
+    
+    """
+    
     defined = False
     is_closed = False
 
@@ -362,7 +397,7 @@ class lattice_model:
         """
         Defines a new set of parameters, including dependencies
 
-        :param tuple/str params: the values/dependence of the parameters (array of 2- or 3-tuples), or string containing syntax        
+        :param tuple/str params: the values/dependence of the parameters (array of 2- or 3-tuples), or string containing syntax (preferred method)  
         """
         if self.is_closed: raise ValueError('WARNING : The function set_parameters() can only be called once')
 
@@ -573,11 +608,22 @@ class lattice_model:
 
 
 
-    from ._loop import loop_from_file, linear_loop, controlled_loop, fixed_density_loop, fade, Hartree_procedure
+    from ._loop import loop_from_file, linear_loop, controlled_loop, fixed_density_loop, Hartree_procedure, fade
+
     from ._draw import draw_operator, draw_cluster_operator
 
 ####################################################################################################
 class model_instance:
+    """
+    Describes a particular instance of the lattice model, i.e., for a given set of parameters
+
+    :param lattice_model model: the (unique) lattice model
+    :param int label: a unique label for the model instance. Most of the time the default is fine. Exception: when two concurrent instances are needed.
+
+    :ivar boolean is_complex: True if the instance has a complex-valued state, as opposed to real
+
+    """
+    
     def __init__(self, model, label=0):
         self.label = label
         self.model = model
@@ -1010,7 +1056,7 @@ class model_instance:
 
         :param int label: label of the model instance
         :param str file: name of the file to append with the result
-        :param (class hartree) hartree: Hartree approximation couplings (see pyqcm/hartree.py)
+        :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
         :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
         :return: the value of the self-energy functional
 
@@ -1289,30 +1335,25 @@ class hartree:
     where *v* is the coefficient of the operator *V* and :math:`v_m` that of the operator :math:`V_m`, and *e* is an eigenvalue specific to the cluster shape and the interaction. :math:`\langle V_m\\rangle` is the average of the operator :math:`V_m`, taken
     as a lattice of as a cluster average.
 
-    attributes:
-        - Vm (str) : mean-field operator
-        - V (str) : extended interaction
-        - eig (float) : eigenvalue *e* of the mean-field operator in the self-consistency relation
-        - lattice (boolean) : True if lattice averages are used
-        - diff : difference between successive values of :math:`v_m``
-        - ave : averasge of the operator :math:`V_m`
-        - accur : desired accuracy
+    :param lattice_model model: the lattice model
+    :param str Vm: name of the mean-field operator
+    :param str V: name of the interaction operator
+    :param float eig: eigenvalue
+    :param float accur: required accuracy of the self-consistent procedure
+    :param boolean lattice: if True, the lattice average is used, otherwise the cluster average
+
+    :ivar str Vm: mean-field operator
+    :ivar str V: extended interaction
+    :ivar float eig: eigenvalue *e* of the mean-field operator in the self-consistency relation
+    :ivar boolean lattice: True if lattice averages are used
+    :ivar float diff: difference between successive values of :math:`v_m`
+    :ivar float ave: average of the operator :math:`V_m`
+    :ivar float accur: desired accuracy
 
     """
 
     #-----------------------------------------------------------------------------------------------
     def __init__(self, model, Vm, V, eig, accur=1e-4, lattice=False):
-        """
-
-        :param lattice_model model: the lattice model
-        :param str Vm: name of the mean-field operator
-        :param str V: name of the interaction operator
-        :param float eig: eigenvalue
-        :param float accur: required accuracy of the self-consistent procedure
-        :param boolean lattice: if True, the lattice average is used, otherwise the cluster average
-
-        """
-
         self.model = model
         self.Vm = Vm
         self.V = V
@@ -1418,18 +1459,9 @@ class hartree:
         self.epsilon = eps_length
         self.iter = 0
 
-####################################################################################################
-# OTHER FUNCTIONS
-
-#---------------------------------------------------------------------------------------------------
-def cluster_info():
-    """
-    :return:A list of 4-tuples: (str, int, int, int, int): name of the cluster model, number of physical sites, number of bath sites, dimension of the Green function, number of point-group symmetry operations
-    """
-    return qcm.cluster_info()
     
 ####################################################################################################
-# FUNCTIONS RELATION TO PARAMETERS
+# FUNCTIONS RELATION TO OPTIONS
 
 #---------------------------------------------------------------------------------------------------
 def set_global_parameter(name, value=None):

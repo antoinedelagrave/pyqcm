@@ -10,6 +10,43 @@ import timeit
 
 ####################################################################################################
 class CDMFT:
+    """
+    class containing the elements of a CDMFT computation. The constructor executes the computation.
+
+    :param [str] varia: list of variational parameters 
+        OR tuple of two lists : bath energies and bath hybridizations
+        OR function that returns dicts of bath energies and bath hybridizations given numeric arrays
+    :param float beta: inverse fictitious temperature (for the frequency grid)
+    :param float wc: cutoff frequency (for the frequency grid)
+    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
+    :param int maxiter: maximum number of CDMFT iterations
+    :param int miniter: minimum number of CDMFT iterations
+    :param float accur: the procedure converges if parameters do not change by more than accur
+    :param float accur_hybrid: the procedure converges on the hybridization function with this accuracy
+    :param float accur_dist: convergence criterion when minimizing the distance function.
+    :param float accur_E0: convergence criterion on the impurity ground state energy.
+    :param float alpha: damping parameter (fraction of the previous iteration in the new one) OR (float,int) with number of iterations where damping is used (at the beginning if positive, at the end if negative)
+    :param boolean displaymin: displays the minimum distance function when minimized
+    :param str method: method to use, as used in scipy.optimize.minimize()
+    :param str file: name of the file where the solution is written
+    :param boolean averages: if True, computes the lattice averages after each iteration. Computes them at the end anyway.
+    :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
+    :param float initial_step: initial step in the minimization routine
+    :param [hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
+    :param boolean SEF: if True, computes the Potthoff functional at the end
+    :param boolean check_ground_state: if True, checks the ground state consistency and raises exception if inconsistent
+    :param [observable]: list of observables used to assess convergence
+    :param boolean verb: If True, prints debugging information
+    :param int max_function_eval: maximum number of distance function evaluations when minimizing distance
+    :param boolean compute_potential_energy: If True, computes Tr(Sigma*G) along with the averages
+    :param [(str,str,str,float,float)] double_counting_correct: list of recipes for double counting corrections: (kinetic operator, interaction operator, density operator, coefficient, value of the kinetic operator without interaction)    :returns: None
+
+    :ivar lattice_model model: (unique) model on which the computation is based
+    :ivar ndarray Hyb: host function
+    :ivar ndarray Hyb_down: host function for the spin down component in the case of mixing=4
+    :ivar I: current model instance (changes in the course of the computation)
+    
+    """
     first_time = True
     first_time2 = True
 
@@ -38,35 +75,6 @@ class CDMFT:
         compute_potential_energy = False,
         double_counting_correct = None
     ):
-        """
-        :param [str] varia: list of variational parameters 
-            OR tuple of two lists : bath energies and bath hybridizations
-            OR function that returns dicts of bath energies and bath hybridizations given numeric arrays
-        :param float beta: inverse fictitious temperature (for the frequency grid)
-        :param float wc: cutoff frequency (for the frequency grid)
-        :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
-        :param int maxiter: maximum number of CDMFT iterations
-        :param int miniter: minimum number of CDMFT iterations
-        :param float accur: the procedure converges if parameters do not change by more than accur
-        :param float accur_hybrid: the procedure converges on the hybridization function with this accuracy
-        :param float accur_dist: convergence criterion when minimizing the distance function.
-        :param float accur_E0: convergence criterion on the impurity ground state energy.
-        :param float alpha: damping parameter (fraction of the previous iteration in the new one) OR (float,int) with number of iterations where damping is used (at the beginning if positive, at the end if negative)
-        :param boolean displaymin: displays the minimum distance function when minimized
-        :param str method: method to use, as used in scipy.optimize.minimize()
-        :param str file: name of the file where the solution is written
-        :param boolean averages: if True, computes the lattice averages after each iteration. Computes them at the end anyway.
-        :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
-        :param float initial_step: initial step in the minimization routine
-        :param [class hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
-        :param boolean SEF: if True, computes the Potthoff functional at the end
-        :param boolean check_ground_state: if True, checks the ground state consistency and raises exception if inconsistent
-        :param [class observable]: list of observables used to assess convergence
-        :param boolean verb: If True, prints debugging information
-        :param int max_function_eval: maximum number of distance function evaluations when minimizing distance
-        :param boolean compute_potential_energy: If True, computes Tr(Sigma*G) along with the averages
-        :param [(str,str,str,float,float)] double_counting_correct: list of recipes for double counting corrections: (kinetic operator, interaction operator, density operator, coefficient, value of the kinetic operator without interaction)    :returns: None
-        """
 
         self.model =model
         self.Hyb = None # internal : hybridization function
@@ -425,15 +433,20 @@ class frequency_grid:
     """
     This class contains the imaginary frequency grid data, including weights
 
+    :param model_instance I: current model instance 
+    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
+    :param float beta: inverse fictitious temperature (for the frequency grid)
+    :param float wc: cutoff frequency (for the frequency grid)
+
+    :ivar float beta: inverse fictitious temperature
+    :ivar float wc: cutoff frequency (for the frequency grid)
+    :ivar str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
+    :ivar wr: array of frequencies (real array, i.e., imaginary part of the frequencies)
+    :ivar [float] weight: array of weights for the different frequencies of the grid
+    :ivar int nw: number of frequencies in the grid
     """
 
     def __init__(self, I, grid_type='sharp', beta=50, wc=2):
-        """
-        :param model_instance I: current model instance 
-        :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
-        :param float beta: inverse fictitious temperature (for the frequency grid)
-        :param float wc: cutoff frequency (for the frequency grid)
-        """
         self.beta = beta
         self.wc = wc
         self.grid_type = grid_type
@@ -488,22 +501,35 @@ class observable:
         else:
             return False
 
-class general_bath:    
+####################################################################################################
+class general_bath:
+    """
+    Class that construct a cluster model with nb bath orbitals, in the most general way possible, with possible restrictions.
 
-    def  __init__(self, name, ns, nb, spin_dependent=False, spin_flip=False, singlet=False, triplet=False, complex=False, sites=None):
-        """Defines a general bath (constructor)
+    :param str name: name of the cluster-bath model to be defined
+    :param int ns: number of sites in the cluster
+    :param int nb: number of bath orbitals in the cluster
+    :param boolean spin_dependent: if True, the parameters are spin dependent
+    :param boolean spin_flip: if True, spin-flip hybridizations are present
+    :param boolean singlet: if True, defines anomalous singlet hybridizations
+    :param boolean triplet: if True, defines anomalous triplet hybridizations
+    :param boolean complex: if True, defines imaginary parts as well, when appropriate
+    :param [[int]] sites: 2-level list of sites to couple to the bath orbitals (labels from 1 to ns). Format resembles [[site labels to bind to orbital 1], ...] . 
 
-        :param str name: name of the cluster-bath model to be defined
-        :param int ns: number of sites in the cluster
-        :param int nb: number of bath orbitals in the cluster
-        :param boolean spin_dependent: if True, the parameters are spin dependent
-        :param boolean spin_flip: if True, spin-flip hybridizations are present
-        :param boolean singlet: if True, defines anomalous singlet hybridizations
-        :param boolean triplet: if True, defines anomalous triplet hybridizations
-        :param boolean complex: if True, defines imaginary parts as well, when appropriate
-        :param [[int]] sites: 2-level list of sites to couple to the bath orbitals (labels from 1 to ns). Format resembles [[site labels to bind to orbital 1], ...] . 
+    :ivar int ns: number of physical sites in the cluster
+    :ivar int nb: number of bath orbitals in the cluster
+    :ivar str name: name of the cluster model
+    :ivar [str] var_E: list of bath parameters of the type "energy level"
+    :ivar [str] var_H: list of bath parameters of the type "hybridization"
+    :ivar boolean spin_dependent: True if the bath parameter conserve spin, but are different for spins up and down
+    :ivar boolean spin_flip: True if we include spin-flip hybridizations terms
+    :ivar boolean singlet: True if we include anomalous hybridizations of the singlet type
+    :ivar boolean triplet: True if we include anomalous hybridizations of the triplet type
+    :ivar boolean complex: True if the model is complex-valued and thus hybridization operators have both real and imaginary components
 
-        """
+    """
+
+    def  __init__(self, ns, nb, name = 'clus', spin_dependent=False, spin_flip=False, singlet=False, triplet=False, complex=False, sites=None):
         from pyqcm import new_cluster_model, new_cluster_operator, new_cluster_operator_complex
         new_cluster_model(name, ns, nb)
         self.ns = ns
@@ -891,15 +917,16 @@ class general_bath:
 
 ######################################################################
 class hybridization:    
+    """
+    Defines hybridization data from a data file.
+    the frequency is purely imaginary; it is its imaginary part that appears in the file
+
+    :param str file: name of the file or string. Format : each line starts with a frequency and then has N*N columns for Delta_{ij}(w)
+    
+    """
+        
 
     def  __init__(self, file):
-        """Defines hybridization data from a data file
-
-        :param str file: name of the file or string. Format : each line starts with a frequency and then has N*N
-        columns for Delta_{ij}(w)
-        the frequency is purely imaginary; it is its imaginary part that appears in the file
-
-        """
         NN = [1,4,9,16,25,36,49,64,81,100,121,144]
         # data = np.genfromtxt(file, dtype=np.complex128)
         # data = np.genfromtxt(file, invalid_raise=True, loose=False, dtype=None)

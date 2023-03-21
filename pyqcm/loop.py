@@ -391,10 +391,11 @@ def fade(F, p1, p2, n):
 ################################################################################
 def Hartree(F, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False, double_counting_correct = None, pr = False
 ):
-	"""Performs the Hartree approximation
+	"""
+	Performs the Hartree approximation
 
 	:param F: task to perform wihtin the loop
-	:param [class hartree] couplings: list of Hartree couplings (or single coupling)
+	:param [hartree] couplings: list of Hartree couplings (or single coupling)
 	:param int maxiter: maximum number of Hartree iterations
 	:param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
     :param [(str,str,str,float,float)] double_counting_correct: list of recipes for double counting corrections: (kinetic operator, interaction operator, density operator, coefficient, value of the kinetic operator without interaction)    

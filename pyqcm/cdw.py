@@ -304,7 +304,7 @@ class superlattice:
         """
         Computes the potential energy per site associated with a given CDW pattern
 
-        :param (class cluster) C: periodic cluster
+        :param [cluster] C: periodic cluster
         :param U : on-site interaction
         :param [([int], float)] V: density-density interactions
         :param [float] n: density pattern
@@ -356,8 +356,7 @@ class superlattice:
         """
         draws the links associated with extended interactions
 
-        :param (class cluster) C: periodic cluster
-        :param [([int], float)] V: density-density interactions
+        :param [([int], float)] _V: density-density interactions
         :param plt_ax: matplotlib axis set; triggers plotting
         :param [[float]] basis: the real space, geometric basis
         :return: None
@@ -389,7 +388,6 @@ class superlattice:
         """
         draws the links associated with extended interactions
 
-        :param (class cluster) C: periodic cluster
         :param [([int], float)] _V: density-density interactions
         :param plt_ax: matplotlib axis set; triggers plotting
         :param [[float]] basis: the real space, geometric basis
@@ -424,7 +422,6 @@ class superlattice:
         """
         draws the links associated with extended interactions
 
-        :param (class cluster) C: periodic cluster
         :param [float] X: amplitude (one per site)
         :param plt_ax: matplotlib axis set; triggers plotting
         :param [[float]] basis: the real space, geometric basis
@@ -448,7 +445,6 @@ class superlattice:
         """
         Computes the energy per site associated with a given SDW pattern
 
-        :param (class cluster) C: periodic cluster
         :param [([int], [[float]])] J: spin interactions
         :param [[float]] sdw: spin pattern (3 x N) : for each site, 3 angles are specifies : chi,theta,phi. The amplitude of the spin is sin(chi), its polar angle is theta and phi is the azimutal angle
         :param boolean cluster: If True, limits the computation to the cluster (no inter-cluster interactions)

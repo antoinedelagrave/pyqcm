@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import re
-import pyqcm2 as pyqcm
+import pyqcm
 
 ####################################################################################################
-def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbors=False, values=False, offset = 0.05, orb_offset=0.05, z_offset=0.0, alpha_inter=0.2, plt_ax = None):
+def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbors=False, show_values=False, offset = 0.05, orb_offset=0.05, z_offset=0.0, alpha_inter=0.2, plt_ax = None):
 
     file = 'tmp_model.out'
-    pyqcm.print_model(file)
+    pyqcm.qcm.print_model(file)
     fin = open(file, 'r')
 
     if plt_ax is not None: plt.sca(plt_ax)
@@ -192,7 +192,7 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
             plt.plot([S[s1,0]], [S[s1,1]], 'o', ms = 18, c='w', mec='r', mew=2, alpha = alpha)
         else:
             plt.plot([S[s1,0], S[s2,0]], [S[s1,1], S[s2,1]], pf, mew=2, alpha = alpha)
-            if values:
+            if show_values:
                 plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='center', c='r')
 
     fac = 0.15
@@ -279,26 +279,22 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
 
 ####################################################################################################
 
-def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, plt_ax = None):
+def draw_cluster_operator(clus, op_name, show_labels=True, show_values=False, plt_ax = None):
+    """
+    Draws a representation of a cluster operator on the screen
+
+    :param cluster clus: the cluster
+    :param str op_name: name of the operator
+    :param boolean show_labels: if True, prints the labels of each orbital
+    :param boolean show_values: if True, prints the values of the different terms
+    :param plt_ax: matplotlib axis object for plotting outside of this function
+    """
 
     if plt_ax is not None: plt.sca(plt_ax)
 
+    nb = clus.cluster_model.n_bath
     file = 'tmp_model.out'
-    info = pyqcm.cluster_info()
-    nb = 0
-    found = False
-    clus_I = 0
-    for i,c in enumerate(info):
-        if clus_name == c[0]:
-            found = True
-            nb = c[2]
-            clus_I = i+1
-            break
-
-    if not found:
-        raise ValueError('The cluster model named {:s} does not exist!'.format(clus_name))
-
-    pyqcm.print_model(file)
+    pyqcm.qcm.print_model(file)
     fin = open(file, 'r')
 
     #...............................................................................................
@@ -317,7 +313,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
         L = fin.readline()
         if L == '\n': break
         X = re.split("[(,)\t ]+", L)
-        if int(X[1]) == clus_I:
+        if int(X[1]) == clus.index:
             sites.append((int(X[4]), int(X[5]), int(X[6])))
 
     ns = len(sites)
@@ -346,10 +342,10 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
     # find the cluster description
 
     L = ''
-    while clus_name+' ' not in L:
+    while clus.cluster_model.name+' ' not in L:
         L = fin.readline()
         if not L:
-            raise ValueError('file ended without finding cluster {:s}'.format(clus_name))
+            raise ValueError('file ended without finding cluster {:s}'.format(clus.cluster_model.name))
 
     #...............................................................................................
     # reading operator
@@ -358,7 +354,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
     while op_name+'\t' not in L:
         L = fin.readline()
         if not L or '----' in L:
-            raise ValueError('file ended without findind operator {:s}'.format(op_name))
+            raise ValueError('file ended without finding operator {:s}'.format(op_name))
 
     elements = []
     while True:
@@ -424,7 +420,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
             plt.plot([S[e[0],0]], [S[e[0],1]], 'o', ms = 24, c='w', mec='r', mew=2)
         else:
             plt.plot([S[e[0],0], S[e[1],0]], [S[e[0],1], S[e[1],1]], pf, mew=2)
-            if values:
+            if show_values:
                 plt.text(0.5*(S[e[0],0]+S[e[1],0]), 0.5*(S[e[0],1]+S[e[1],1]), f'${np.round(e[2],5)}$', va='bottom', ha='center', c='r')
     
     is_in_cluster = np.zeros(2*no,int)

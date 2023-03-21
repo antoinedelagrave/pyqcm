@@ -10,10 +10,10 @@ The large number of parameters and this inheritance of values needs to be manage
 
 On a cluster, the name of the operator will received a suffix ``_i``, i being the cluster label (from 1 to the number of clusters :math:`N_\mathrm{clus}`). Thus, from a lattice operator ``t``, an operator ``t_1`` will be constructed on cluster #1, and an operator ``t_2`` on cluster #2, and so on. The values of the coefficients of these operators will be designated by the same symbols. This suffix scheme will apply to all operators defined in the model and on the clusters.
 
-The qcm library contains a single instance of a structure called `parameter_set` that can define equivalences between parameters beyond those imposed by default, or release the default constraints. This structure is defined in pyqcm through the function ``set_parameters(str)``. 
+The `lattice_model` object contains a single instance of a structure called `parameter_set` that can define equivalences between parameters beyond those imposed by default, or release the default constraints. This structure is defined in pyqcm through the member function ``set_parameters(str)``. 
 This may be the most important function of the library. It takes a single, long string argument, for instance::
 
-    set_parameters("""
+    model.set_parameters("""
         t = 1
         U = 8
         mu = 0.5*U
@@ -36,7 +36,7 @@ Thus, the binary number 10 = 2 labels a representation that is odd in y and even
 
 Hilbert space sectors are a crucial element of the use of the library and may be the source of physical errors. Performance issues dictate that not all Hilbert space sectors should be checked for the true ground state for every calculation. Some judgement must be applied as to which sector or subset of sectors contains the true ground state. For a given cluster, a subset of sectors may be provided instead of a single one, by separating the sector keywords by slashes ( / ). For instance, the string indicating that the ground state should be search in the sectors of the trivial representation, with N=3 electrons and spin projection -1/2 or 1/2 is ``R0:N3:S-1/R0:N3:S1``. Such a set of possible sectors is then specified with this call::
 
-    set_target_sectors(['R0:N3:S-1/R0:N3:S1'])
+    model.set_target_sectors(['R0:N3:S-1/R0:N3:S1'])
 
 Note that the argument to that function is a list of strings, which in the above example contains a single element because the super unit cell contains a single cluster.    
 
@@ -53,7 +53,11 @@ The ED solver has a global real-valued parameter called ``temperature`` which al
 Model instances
 ===============
 
-Once a set of parameters has been recorded in the library's parameter set, one may define an instance of the lattice model by a call to ``new_model_instance(lab)`` , where ``lab`` is a non-negative integer that defines a label for that instance. All computations from the qcm library are performed on a given model instance, associated with particular values of the lattice and cluster parameters. In most cases a single model instance is needed at a given time, so that the label ``lab`` is 0 by default. A call to ``new_model_instance(lab)`` will erase any previous instance of the model with the same label. 
+Once a set of parameters has been recorded in the library's parameter set, one may define an instance of the lattice model by creating an object of type `model_instance` ::
+
+    I = pyqcm.model_instance(model, lab)
+
+Here `model` is the lattice model object and `lab` is a non-negative integer that defines a label for that instance. All computations from the qcm library are performed on a given model instance, associated with particular values of the lattice and cluster parameters. In most cases a single model instance is needed at a given time, so that the label `lab` is 0 by default. Another call to ``model_instance(lab)`` with the same label will erase any previous instance of the model with the same label. Alternately, the member function ``I.reset()`` can be called to reset the instance to a blank state with the current values of the parameters in the `parameter_set`` object.  
 
 Computations on a model instance are **lazy**. For instance, computing the ground state of the cluster is done only when needed, for instance when asking for the ground state averages or the Green function; computing the cluster Green function representation (either Lehmann or through continued fractions) is done only when a Green-function related quantity is needed, etc.
 

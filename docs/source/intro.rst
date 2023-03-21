@@ -26,15 +26,12 @@ and **PRIMME** eigensolver.
 Basic installation
 ------------------
 
-These instructions just install Pyqcm, its core library, and automatically
-download and compile numerical integration library CUBA.
+These instructions are for installing Pyqcm, its core library, and automatically
+downloading and compiling the numerical integration library CUBA.
 
 The source code can be cloned with the following command::
 
-    #from bitbucket:
     git clone https://dsenech@bitbucket.org/dsenechQCM/qcm_wed.git
-    #or, from github:
-    git clone https://github.com/dsenech/qcm_wed.git
 
 Compiling can be done with pip::
 

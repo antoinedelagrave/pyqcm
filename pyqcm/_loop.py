@@ -63,21 +63,15 @@ def loop_from_file(self, task, file):
 
 #---------------------------------------------------------------------------------------------------
 # performs a loop (a linear trajectory) between two subsets of parameters
-def linear_loop(self, 
-	N,
-	task,
-	varia=None,
-	params = None,
-	predict=True
-):
-	"""Performs a loop with a predictor. The definition of each
+def linear_loop(self, N, task, varia=None, params = None, predict=True):
+	"""
+	Performs a loop with a predictor. The definition of each
 	model instance must be done in 'task'; it is not done by this looping function.
-
 
 	:param N: number of intervals within the loop
 	:param task: function called at each step of the loop
 	:param [str] varia: names of the variational parameters
-	:param {str:(float,float)} P: dict of parameters to vary with initial and final values 
+	:param {str (float,float)} P: dict of parameters to vary with a tuple of initial and final values 
 	:param boolean predict: if True, uses a linear or quadratic predictor
 
 	"""
@@ -143,15 +137,9 @@ def linear_loop(self,
 #---------------------------------------------------------------------------------------------------
 # performs a loop for VCA or CDMFT with an external loop parameter and an optional control on an order parameter
 
-def controlled_loop(self, task,
-	varia=None, 
-	loop_param=None, 
-	loop_range=None, 
-	control_func=None,
-	adjust=False,
-	predict=True
-):
-	"""Performs a controlled loop for VCA or CDMFT with a predictor.  The definition of each
+def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, control_func=None,adjust=False,predict=True):
+	"""
+	Performs a controlled loop for VCA or CDMFT with a predictor.  The definition of each
 	model instance must be done and returned by 'task'; it is not done by this looping function.
 
 	:param task: a function called at each step of the loop. Must return a model_instance.
@@ -469,19 +457,19 @@ def fade(self, task, p1, p2, n):
 
 
 #---------------------------------------------------------------------------------------------------
-def Hartree_procedure(self, task, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False, double_counting_correct = None, pr = False
-):
-	"""Performs the Hartree approximation
-
-	:param task: task to perform wihtin the loop. Must return a model_instance
-	:param [class hartree] couplings: sequence of Hartree couplings (or single coupling)
-	:param int maxiter: maximum number of Hartree iterations
+def Hartree_procedure(self, task, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False,double_counting_correct = None, pr = False):
+	"""
+	Performs the Hartree approximation
+	
+	:param task: task to perform within the loop. Must return a model_instance
+	:param [hartree] couplings: sequence of couplings (or single coupling)
+	:param int maxiter: maximum number of iterations
 	:param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
-    :param [(str,str,str,float,float)] double_counting_correct: list of recipes for double counting corrections: (kinetic operator, interaction operator, density operator, coefficient, value of the kinetic operator without interaction)    
+	:param [(str,str,str,float,float)] double_counting_correct: double counting corrections (kinetic operator, interaction operator, density operator, coefficient, value of the kinetic operator without interaction)    
 	:returns: None
 
 	"""
-
+	
 	global first_time
 
 	if pyqcm.is_sequence(couplings) is False:

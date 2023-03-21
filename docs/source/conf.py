@@ -49,7 +49,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'pyqcm'
-copyright = '2018, David Sénéchal'
+copyright = '2023, David Sénéchal'
 author = 'David Sénéchal'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -66,7 +66,7 @@ release = pyqcm.version + '(git hash ' + pyqcm.git_hash + ')'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -85,13 +85,15 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'nature'
+html_theme = 'bizstyle'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'sidebarwidth' : '30%'
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

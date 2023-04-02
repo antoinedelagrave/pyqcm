@@ -101,6 +101,8 @@ def _quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e-
     :return (float, [float], [[float]]): tuple of x (the solution), gradient (array, the value of the gradient), hessian (matrix, the Hessian matrix)
 
     """
+    global root
+
     n = len(start)
     gradient = np.zeros(n)
     gradient0 = np.zeros(n)
@@ -115,14 +117,14 @@ def _quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e-
     while iteration < max_iteration:
         x0 = x
         x, dx, gradient, ihessian = _quasi_newton_step(iteration, func, x0, step, gradient, dx, bfgs)
-        _vca_accuracy_warning(accur, ihessian)
+        if root: _vca_accuracy_warning(accur, ihessian)
         iteration += 1
 
         if hartree != None:
             hartree_converged = True
             for C in hartree:
                 C.update(current_instance)
-                C.print()
+                if root : C.print()
                 hartree_converged = hartree_converged and C.converged()
 
         if (np.linalg.norm(gradient) < gtol) and hartree_converged :
@@ -212,8 +214,7 @@ def _quasi_newton_step(iteration = 0, func=None, x=None, step=None, gradient=Non
                 print(s1, '\n', s2)
 
     x += dx
-    if root:
-        print('QN iteration no ', iteration+1, '\t x = ', x)
+    if root: print('QN iteration no ', iteration+1)
 
     return x, dx, gradient, ihessian
 
@@ -580,7 +581,7 @@ class VCA:
 
         SEF_eval = 0
         def var2x(x):
-            global current_instance
+            global current_instance, root
             for i in range(len(x)):
                 if np.abs(x[i]) > max[i]:
                     raise pyqcm.OutOfBoundsError(variable=varia[i])
@@ -596,12 +597,13 @@ class VCA:
             current_instance = self.I
             return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator)
             
-        if hartree is None:
-            pyqcm.banner('VCA procedure, method {:s}'.format(method), '*')
-        else:
-            pyqcm.banner('VCA procedure, (combined with Hartree procedure) method {:s}'.format(method), '*')
-        var_val = pyqcm.varia_table(varia,start)
-        print(var_val)
+        if root:
+            if hartree is None:
+                pyqcm.banner('VCA procedure, method {:s}'.format(method), '*')
+            else:
+                pyqcm.banner('VCA procedure, (combined with Hartree procedure) method {:s}'.format(method), '*')
+            var_val = pyqcm.varia_table(varia,start)
+            print(var_val)
 
         scipy_minimization = False
         if method == 'Nelder-Mead' or method == 'COBYLA' or method == 'Powell'  or method == 'CG'  or method == 'BFGS'  or method == 'minimax':

@@ -9,8 +9,10 @@ import pyqcm
 import pyqcm.vca as vca
 import numpy as np
 
+pyqcm.set_global_parameter('accur_SEF', 1e-4)
+
 # declare a cluster model of 9 sites, named 'clus'
-CM = pyqcm.cluster_model( 9)  
+CM = pyqcm.cluster_model(9)  
 
 sites = []
 for j in range(3):
@@ -51,13 +53,13 @@ model.hopping_operator('t', (1,0,0), -1)
 model.hopping_operator('t', (0,1,0), -1)
 model.density_wave('M', 'Z', (1,1,0)) # Spin density wave at Q = (pi,pi)
 
-
+# model.draw_operator('U', values=True); exit()
 
 # model.draw_operator('t')
 # model.draw_cluster_operator(model.clus[0], 'tperim')
 
 # Setting target sectors with S=1 and S=-1 such that S_total = 0
-model.set_target_sectors(('R0:N9:S-1', 'R0:N9:S1')) # half filling for both clusters
+model.set_target_sectors(['R0:N9:S-1/R0:N9:S1','R0:N9:S-1/R0:N9:S1'])
 model.set_parameters("""
 t = 1
 U = 8
@@ -65,10 +67,10 @@ mu = 0.5*U
 M = 0
 M_1 = 0.1
 M_2 = 1*M_1
-t_1 = 1
-t_2 = 1*t_1
-tperim_1 = 1e-9
-tperim_2 = 1*tperim_1
+# t_1 = 1
+# t_2 = 1*t_1
+# tperim_1 = 1e-9
+# tperim_2 = 1*tperim_1
 """)
 
 
@@ -76,10 +78,10 @@ tperim_2 = 1*tperim_1
 # Estimating the starting value of `M_1` 
 # Here we make a rough plot of the self-energy functional as a function of `M_1` to find a good starting point for the VCA procedure.
 
-model.set_parameter("U", 10)
+# model.set_parameter("U", 8)
 I = pyqcm.model_instance(model)
-
-# vca.plot_sef(model, 'M_1', np.arange(0.05, 0.151, 0.01))
+print(I.ground_state())
+#vca.plot_sef(model, 'M_1', np.arange(0.05, 0.151, 0.01)); exit()
 
 
 #---------------------------------------------------------------------------------------------------

@@ -273,7 +273,7 @@ namespace ED {
     new_global_int(600,"max_iter_lanczos","Maximum number of iterations in the Lanczos procedure");
     new_global_int(0,"seed","seed of the random number generator");
 
-    new_global_char('S', "Hamiltonian_format", "Desired Hamiltonian format: S (CSR matrix), O (individual operators), F (factorized), N (none = on the fly)");
+    new_global_char('E', "Hamiltonian_format", "Desired Hamiltonian format: S (CSR matrix), O (individual operators), F (factorized), N (none = on the fly)");
   }
 }
 

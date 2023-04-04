@@ -651,7 +651,7 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
  
   // building the Q matrices
   int ns = 2*sym_orb.size();
-  // #pragma omp parallel for
+  #pragma omp parallel for schedule(dynamic,1) // TEMPO
   for(int s=0; s< ns; s++){
     int r = s/2;
     int pm = 2*(s%2)-1;

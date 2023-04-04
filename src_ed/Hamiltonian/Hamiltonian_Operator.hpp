@@ -71,12 +71,29 @@ void Hamiltonian_Operator<HilbertField>::HS_ops_map(const map<string, double> &v
 {
     bool is_complex = false;
     if(typeid(HilbertField) == typeid(Complex)) is_complex = true;
-    for(auto& x : value){
-        Hermitian_operator& op = *this->the_model->term.at(x.first);
+
+    vector<string> keys;
+    keys.reserve(value.size());
+    for (auto& x : value) {
+        keys.push_back(x.first);
+    }
+
+    //construct the Hamiltonian in parallel
+    cout << "building operators... " << std::flush;
+    #pragma omp parallel for schedule(dynamic,1)
+    for (auto& x : keys) {
+        Hermitian_operator& op = *this->the_model->term.at(x);
         if(op.HS_operator.find(this->sec) == op.HS_operator.end()){
+            cout << op.name+"  " << std::flush;
             op.HS_operator[this->sec] = op.build_HS_operator(this->sec, is_complex); // ***TEMPO***
         }
-        sparse_ops[op.HS_operator.at(this->sec)] = value.at(x.first);
+    }
+    cout << "...done" << endl;
+
+    keys.resize(0);
+    for(const auto& x : value){
+        Hermitian_operator& op = *this->the_model->term.at(x.first);
+        sparse_ops[op.HS_operator.at(this->sec)] = x.second; //value.at(x.first);
     }
 }
 

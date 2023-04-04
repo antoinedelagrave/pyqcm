@@ -3,7 +3,9 @@ import numpy as np
 
 def model1D(L, sym=True):
     if sym:
-        CM = pyqcm.cluster_model(L, 0, ((L-i for i in range(L)),))
+        g = [[L-i for i in range(L)]]
+        print('generators :', g)
+        CM = pyqcm.cluster_model(L, 0, generators=g)
     else:
         CM = pyqcm.cluster_model(L, 0)
     pos = [(i,0,0) for i in range(L)]

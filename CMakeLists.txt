@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.15)
 # set the project name and version
 project(qcm LANGUAGES CXX VERSION 1.0 DESCRIPTION "Quantum Cluster Methods shared library")
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -15,10 +19,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g -ftree-vectorize")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -ftree-vectorize")
     set(OpenMP_CXX_INCLUDE_DIR "/opt/homebrew/opt/libomp/include")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g -march=native -ftree-vectorize")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native -ftree-vectorize")
 endif()
 
 #------------------

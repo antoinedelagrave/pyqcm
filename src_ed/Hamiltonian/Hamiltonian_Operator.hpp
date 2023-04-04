@@ -79,16 +79,14 @@ void Hamiltonian_Operator<HilbertField>::HS_ops_map(const map<string, double> &v
     }
 
     //construct the Hamiltonian in parallel
-    cout << "building operators... " << std::flush;
     #pragma omp parallel for schedule(dynamic,1)
     for (auto& x : keys) {
         Hermitian_operator& op = *this->the_model->term.at(x);
         if(op.HS_operator.find(this->sec) == op.HS_operator.end()){
-            cout << op.name+"  " << std::flush;
+            cout << this->the_model->name+" : building "+op.name+" in "+to_string<sector>(this->sec)+'\n' << std::flush;
             op.HS_operator[this->sec] = op.build_HS_operator(this->sec, is_complex); // ***TEMPO***
         }
     }
-    cout << "...done" << endl;
 
     keys.resize(0);
     for(const auto& x : value){

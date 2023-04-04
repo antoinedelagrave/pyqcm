@@ -55,8 +55,8 @@ void model_instance<double>::build_cf(state<double> &Omega, bool spin_down)
           sorb_pair.push_back(pair<size_t,size_t>(o1,o2));
         }
       }
-      
-//#pragma omp parallel for
+
+      #pragma omp parallel for schedule(dynamic,1)
       for(size_t s=0; s< sorb_pair.size(); s++){ // double loop over symmetric operators
         size_t o1 = sorb_pair[s].first;
         size_t o2 = sorb_pair[s].second;
@@ -83,19 +83,19 @@ void model_instance<double>::build_cf(state<double> &Omega, bool spin_down)
           continued_fraction cont_fraction(V.first, V.second, Omega.energy, norm*Omega.weight, pm==1);
           if(pm == 1){
             cf->e[r](o1,o2) = cont_fraction;
-            if(global_bool("verb_ED")){
-              cout << "coefficients of the electron continued fraction:\n";
-              cout << "alphas\tbetas\n";
-              cout << cont_fraction; 
-            }
+            // if(global_bool("verb_ED")){
+            //   cout << "coefficients of the electron continued fraction:\n";
+            //   cout << "alphas\tbetas\n";
+            //   cout << cont_fraction; 
+            // }
           }
           else{
             cf->h[r](o1,o2) = cont_fraction;
-            if(global_bool("verb_ED")){
-              cout << "coefficients of the hole continued fraction:\n";
-              cout << "alphas\tbetas\n";
-              cout << cont_fraction; 
-            }
+            // if(global_bool("verb_ED")){
+            //   cout << "coefficients of the hole continued fraction:\n";
+            //   cout << "alphas\tbetas\n";
+            //   cout << cont_fraction; 
+            // }
           }
         }
       }
@@ -137,7 +137,7 @@ void model_instance<Complex>::build_cf(state<Complex> &Omega, bool spin_down)
         }
       }
 
-//#pragma omp parallel for
+      #pragma omp parallel for schedule(dynamic,1) // TEMPO
       for(size_t s=0; s< sorb_pair.size(); s++){ // double loop over symmetric operators
         size_t o1 = sorb_pair[s].first;
         size_t o2 = sorb_pair[s].second;
@@ -168,19 +168,19 @@ void model_instance<Complex>::build_cf(state<Complex> &Omega, bool spin_down)
           continued_fraction cont_fraction(V.first, V.second, Omega.energy,norm*Omega.weight,pm==1);
           if(pm == 1){
             cf->e[r](o1,o2) = cont_fraction;
-            if(global_bool("verb_ED")){
-              cout << "coefficients of the electron continued fraction:\n";
-              cout << "alphas\tbetas\n";
-              cout << cont_fraction; 
-            }
+            // if(global_bool("verb_ED")){
+            //   cout << "coefficients of the electron continued fraction:\n";
+            //   cout << "alphas\tbetas\n";
+            //   cout << cont_fraction; 
+            // }
           }
           else{
             cf->h[r](o1,o2) = cont_fraction;
-            if(global_bool("verb_ED")){
-              cout << "coefficients of the hole continued fraction:\n";
-              cout << "alphas\tbetas\n";
-              cout << cont_fraction; 
-            }
+            // if(global_bool("verb_ED")){
+            //   cout << "coefficients of the hole continued fraction:\n";
+            //   cout << "alphas\tbetas\n";
+            //   cout << cont_fraction; 
+            // }
           }
         }
       }

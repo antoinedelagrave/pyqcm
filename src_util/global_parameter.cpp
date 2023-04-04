@@ -50,6 +50,7 @@ namespace QCM {
     new_global_bool(false,"verb_Hilbert","prints progress information on bases and operators in the Hilbert space");
     new_global_bool(false,"verb_warning","prints warnings");
     new_global_bool(false,"print_variances","prints the variance of the operators in files");
+    new_global_bool(false,"parallel_sectors","uses openMP to parallelize the computation of the Green function structures across the different sectors (uses more memory)");
 
     new_global_double(1e-12,"accur_band_lanczos","energy difference tolerance for stopping the BL process");
     new_global_double(0.01,"accur_continued_fraction","value of beta below which the simple Lanczod process stops");

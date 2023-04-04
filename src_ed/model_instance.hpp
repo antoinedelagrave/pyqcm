@@ -651,43 +651,85 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
  
   // building the Q matrices
   int ns = 2*sym_orb.size();
-  #pragma omp parallel for schedule(dynamic,1) // TEMPO
-  for(int s=0; s< ns; s++){
-    int r = s/2;
-    int pm = 2*(s%2)-1;
+  if(global_bool("parallel_sectors")){
+    if(global_bool("verb_ED")) cout << "openMP parallelization of Green function computation..." << endl;
+    #pragma omp parallel for schedule(dynamic,1) // TEMPO
+    for(int s=0; s< ns; s++){
+      int r = s/2;
+      int pm = 2*(s%2)-1;
 
-    if(sym_orb[r].size() == 0) continue; // irrep not present
-    int spin = (spin_down)? 1:sym_orb[r][0].spin;
-    sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
-    if(!the_model->group->sector_is_valid(target_sec)) continue; // target sector is null
-    vector<vector<HilbertField>> phi(sym_orb[r].size());
-    bool skip_sector=false;
-    for(size_t i=0; i< sym_orb[r].size(); i++){
-      symmetric_orbital sorb = sym_orb[r][i];
-      if(spin_down) sorb.spin =1;
-      if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
+      if(sym_orb[r].size() == 0) continue; // irrep not present
+      int spin = (spin_down)? 1:sym_orb[r][0].spin;
+      sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
+      if(!the_model->group->sector_is_valid(target_sec)) continue; // target sector is null
+      vector<vector<HilbertField>> phi(sym_orb[r].size());
+      bool skip_sector=false;
+      for(size_t i=0; i< sym_orb[r].size(); i++){
+        symmetric_orbital sorb = sym_orb[r][i];
+        if(spin_down) sorb.spin =1;
+        if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
+      }
+      if(skip_sector) continue;
+      // Assembling the Hamiltonian and band Lanczos procedure
+      Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
+      if(H->dim==0) continue;
+      
+      Q_matrix<HilbertField> Qtmp;
+      Qtmp = H->build_Q_matrix(phi);
+      
+      delete H; //delete Hamiltonian to prevent memory leak
+      H = nullptr;
+      
+      Qtmp.e -= Omega.energy; // adjust the eigenvalues by adding/subtracting the GS energy
+      if(pm == -1){
+        Qtmp.e *= -1.0;
+      }
+      Qtmp.streamline();
+      if(pm==-1) 
+        Qm.q[r] = Qtmp;
+      else 
+        Qp.q[r] = Qtmp;
+        Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
     }
-    if(skip_sector) continue;
-    // Assembling the Hamiltonian and band Lanczos procedure
-    Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
-    if(H->dim==0) continue;
-    
-    Q_matrix<HilbertField> Qtmp;
-    Qtmp = H->build_Q_matrix(phi);
-    
-    delete H; //delete Hamiltonian to prevent memory leak
-    H = nullptr;
-    
-    Qtmp.e -= Omega.energy; // adjust the eigenvalues by adding/subtracting the GS energy
-    if(pm == -1){
-      Qtmp.e *= -1.0;
+  }
+  else{
+    for(int s=0; s< ns; s++){
+      int r = s/2;
+      int pm = 2*(s%2)-1;
+
+      if(sym_orb[r].size() == 0) continue; // irrep not present
+      int spin = (spin_down)? 1:sym_orb[r][0].spin;
+      sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
+      if(!the_model->group->sector_is_valid(target_sec)) continue; // target sector is null
+      vector<vector<HilbertField>> phi(sym_orb[r].size());
+      bool skip_sector=false;
+      for(size_t i=0; i< sym_orb[r].size(); i++){
+        symmetric_orbital sorb = sym_orb[r][i];
+        if(spin_down) sorb.spin =1;
+        if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
+      }
+      if(skip_sector) continue;
+      // Assembling the Hamiltonian and band Lanczos procedure
+      Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
+      if(H->dim==0) continue;
+      
+      Q_matrix<HilbertField> Qtmp;
+      Qtmp = H->build_Q_matrix(phi);
+      
+      delete H; //delete Hamiltonian to prevent memory leak
+      H = nullptr;
+      
+      Qtmp.e -= Omega.energy; // adjust the eigenvalues by adding/subtracting the GS energy
+      if(pm == -1){
+        Qtmp.e *= -1.0;
+      }
+      Qtmp.streamline();
+      if(pm==-1) 
+        Qm.q[r] = Qtmp;
+      else 
+        Qp.q[r] = Qtmp;
+        Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
     }
-    Qtmp.streamline();
-    if(pm==-1) 
-      Qm.q[r] = Qtmp;
-    else 
-      Qp.q[r] = Qtmp;
-      Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
   }
 
   auto Q = make_shared<Q_matrix_set<HilbertField>>(the_model->group, mixing);

@@ -138,6 +138,7 @@ class CDMFT:
         print('frequency grid type = ', grid_type)
         print('fictitious inverse temperature = ', beta)
         print('frequency cutoff = ', wc)
+        print('damping factor = ', alpha)
         print('-'*80)
 
         params_array = np.zeros(len(var))

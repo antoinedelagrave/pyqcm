@@ -54,15 +54,10 @@ Hamiltonian_CSR<HilbertField>::Hamiltonian_CSR(
     num = omp_get_max_threads()/omp_get_num_threads();
     #endif
     map<index_pair,HilbertField> E;
-    if(global_bool("CSR_sym_store") and num>1) H_csr.sym_store = true; // set up the CSR format for openMP parallelization
-    else H_csr.sym_store = false;
     H_csr.diag.assign(this->dim, 0.0);
-    if(global_bool("verb_Hilbert")) {
-        if(H_csr.sym_store) cout << "constructing the CSR Hamiltonian (stored symmetrically for openMP with " << num << " threads)..." << endl;
-        else cout << "constructing the CSR Hamiltonian..." << endl;
-    }
+    if(global_bool("verb_Hilbert"))cout << "constructing the CSR Hamiltonian..." << endl;
     for(auto& h : sparse_ops){
-        h.first->CSR_map(E, H_csr.diag, h.second, H_csr.sym_store);
+        h.first->CSR_map(E, H_csr.diag, h.second);
     }
     size_t row = 0;
     size_t count=0;

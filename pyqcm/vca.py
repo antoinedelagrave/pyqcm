@@ -533,6 +533,8 @@ class VCA:
                 raise ValueError('argument varia of vca() must be a string or a sequence of strings')
             varia = (varia,)
 
+        if isinstance(accur_grad, float) == False: raise ValueError("'accur_grad' in VCA() should be a single float")
+        
         nvar = len(varia)
         if type(steps) != list: 
             if type(steps) == float : steps = [steps]*nvar

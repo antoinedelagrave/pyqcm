@@ -54,9 +54,8 @@ Hamiltonian_Eigen<HilbertField>::Hamiltonian_Eigen(
     if(global_bool("verb_ED")) cout << "assembling the Hamiltonian sparse matrix" << endl;
 
     vector<matrix_element<HilbertField>> tripletList;
-    bool sym_store = true;
     for (auto& h : sparse_ops) {
-        h.first->Triplet_COO_map(tripletList, h.second, sym_store);
+        h.first->Triplet_COO_map(tripletList, h.second);
     }
     //create matrix
     H_eigen.resize(this->dim,this->dim);

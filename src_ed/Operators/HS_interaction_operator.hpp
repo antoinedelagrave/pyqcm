@@ -15,11 +15,11 @@ struct HS_interaction_operator : HS_Hermitian_operator
   void multiply_add(const vector<Complex> &x, vector<Complex> &y, double z);
   void dense_form(matrix<double> &h, double z);
   void dense_form(matrix<Complex> &h, double z);
-  void CSR_map(map<index_pair,double> &E, vector<double> &D, double z, bool sym_store);
-  void CSR_map(map<index_pair,Complex> &E, vector<double> &D, double z, bool sym_store);
+  void CSR_map(map<index_pair,double> &E, vector<double> &D, double z);
+  void CSR_map(map<index_pair,Complex> &E, vector<double> &D, double z);
   void diag(vector<double> &Y, double z);
-  void Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store);
-  void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store);
+  void Triplet_COO_map(vector<matrix_element<double>>& E, double z);
+  void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z);
 };
 
 
@@ -88,17 +88,14 @@ void HS_interaction_operator::dense_form(matrix<Complex> &h, double z)
 
 
 
-
-
-
 /**
  fills a map, in order to construct the CSR form of the Hamiltonian
  */
-void HS_interaction_operator::CSR_map(map<index_pair,double> &E, vector<double> &D, double z, bool sym_store)
+void HS_interaction_operator::CSR_map(map<index_pair,double> &E, vector<double> &D, double z)
 {
   mult_add(z, elem, D);
 }
-void HS_interaction_operator::CSR_map(map<index_pair,Complex> &E, vector<double> &D, double z, bool sym_store)
+void HS_interaction_operator::CSR_map(map<index_pair,Complex> &E, vector<double> &D, double z)
 {
   mult_add(z, elem, D);
 }
@@ -113,7 +110,7 @@ void HS_interaction_operator::diag(vector<double> &d, double z)
 /**
  populates a vector of matrix_element to build the Hamiltonian
  */
-void HS_interaction_operator::Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store)
+void HS_interaction_operator::Triplet_COO_map(vector<matrix_element<double>>& E, double z)
 {
     //diag element
     for(size_t i=0; i<elem.size(); i++) {
@@ -125,7 +122,7 @@ void HS_interaction_operator::Triplet_COO_map(vector<matrix_element<double>>& E,
 /**
  populates a vector of matrix_element to build the Hamiltonian
  */
-void HS_interaction_operator::Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store)
+void HS_interaction_operator::Triplet_COO_map(vector<matrix_element<Complex>>& E, double z)
 {
     //diag element
     for(size_t i=0; i<elem.size(); i++) {

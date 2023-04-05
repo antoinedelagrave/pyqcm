@@ -18,11 +18,11 @@ struct HS_nondiagonal_operator : HS_Hermitian_operator
   void multiply_add(const vector<Complex> &x, vector<Complex> &y, double z);
   void dense_form(matrix<Complex> &h, double z);
   void dense_form(matrix<double> &h, double z);
-  void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z, bool sym_store);
-  void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z, bool sym_store);
+  void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z);
+  void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z);
   void diag(vector<double> &Y, double z);
-  void Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store);
-  void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store);
+  void Triplet_COO_map(vector<matrix_element<double>>& E, double z);
+  void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z);
   void insert(uint32_t I, uint32_t J, HS_field z);
   void sort_elements();
 };
@@ -149,25 +149,20 @@ void HS_nondiagonal_operator<HS_field>::dense_form(matrix<Complex> &h, double z)
  fills a map, in order to construct the CSR form of the Hamiltonian
  */
 template<typename HS_field>
-void HS_nondiagonal_operator<HS_field>::CSR_map(map<index_pair,double> &E, vector<double> &D, double z, bool sym_store)
+void HS_nondiagonal_operator<HS_field>::CSR_map(map<index_pair,double> &E, vector<double> &D, double z)
 {
   for(auto& w : v){
     double z2=real(w.first*z);
     for(auto& e : w.second) E[{e.first, e.second}] += z2;
-    if(sym_store) for(auto& e : w.second) E[{e.second, e.first}] += z2;
   }
   for(auto& e : diag_elem) D[e.r] += z*e.v;
 }
 template<typename HS_field>
-void HS_nondiagonal_operator<HS_field>::CSR_map(map<index_pair,Complex> &E, vector<double> &D, double z, bool sym_store)
+void HS_nondiagonal_operator<HS_field>::CSR_map(map<index_pair,Complex> &E, vector<double> &D, double z)
 {
   for(auto& w : v){
     HS_field z2=w.first*z;
     for(auto& e : w.second) E[{e.first, e.second}] += z2;
-    if(sym_store){
-      z2 = conjugate(z2);
-      for(auto& e : w.second) E[{e.second, e.first}] += z2;
-    }
   }
   for(auto& e : diag_elem) D[e.r] += z*e.v;
 }
@@ -188,7 +183,7 @@ void HS_nondiagonal_operator<HS_field>::diag(vector<double> &Y, double z)
  populates a vector of matrix_element to build the Hamiltonian
  */
 template<typename HS_field>
-void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store)
+void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<double>>& E, double z)
 {
     //diag element
     for(auto& e : diag_elem) {
@@ -202,12 +197,6 @@ void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<do
             matrix_element<double> T(e.first,e.second,z2);
             E.push_back(T);
         }
-        if(sym_store){
-            for(auto& e : w.second) {
-                matrix_element<double> T(e.second,e.first,z2);
-                E.push_back(T);
-            }
-        }
     }
 }
 
@@ -215,7 +204,7 @@ void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<do
  populates a vector of matrix_element to build the Hamiltonian
  */
 template<typename HS_field>
-void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store)
+void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<Complex>>& E, double z)
 {
     //diag element
     for(auto& e : diag_elem) {
@@ -228,13 +217,6 @@ void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<Co
         for(auto& e : w.second) {
             matrix_element<Complex> T(e.first,e.second,z2);
             E.push_back(T);
-        }
-        if(sym_store){
-            z2 = conjugate(z2);
-            for(auto& e : w.second) {
-                matrix_element<Complex> T(e.second,e.first,z2);
-                E.push_back(T);
-            }
         }
     }
 }

@@ -26,8 +26,8 @@ struct HS_factorized_operator : HS_Hermitian_operator
   void multiply_add(const vector<Complex> &x, vector<Complex> &y, double z);
   void dense_form(matrix<Complex> &h, double z){}
   void dense_form(matrix<double> &h, double z){}
-  void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z, bool sym_store){}
-  void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z, bool sym_store){}
+  void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z){}
+  void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z){}
   void diag(vector<double> &Y, double z){}
 };
 

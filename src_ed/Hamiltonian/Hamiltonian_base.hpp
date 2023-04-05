@@ -1,7 +1,7 @@
 /*
 Base abstract class for a Hamiltonian of a given model_instance in a given
 Hilbert space sector that serve as a proxy for the multiple implementation of
-the Hamiltonian (Dense, legacy CSR, PETSc, Eigen, ...)
+the Hamiltonian (Dense, legacy CSR, Eigen, ...)
 Also provide default method that could be overwrite by implementation
 */
 
@@ -115,9 +115,6 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
     }
     else if (method == 'L') { //Default Lanczos method
         Lanczos(*this, dim, evalues[0], evectors[0],  global_bool("verb_ED"));
-    }
-    else if (method == 'M') { //modified Lanczos method
-        Modified_Lanczos(*this, dim, evalues[0], evectors[0],  global_bool("verb_ED"));
     }
 #ifdef WITH_PRIMME
     else if (method == 'P') { //call PRIMME eigensolver

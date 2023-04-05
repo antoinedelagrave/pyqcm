@@ -24,43 +24,6 @@ void Lanczos(T &hamil, size_t dim, double &val, vector<HilbertField> &x, bool ve
 }
 
 
-//! Implementation of the modified Lanczos method
-template<typename T, typename HilbertField>
-void Modified_Lanczos(T &hamil, size_t dim, double &val, vector<HilbertField> &x, bool verb=false)
-{
-	vector<HilbertField> psi1(dim);
-	vector<HilbertField> psi2(dim);
-	size_t max_iter_lanczos = global_int("max_iter_lanczos");
-	double accur_lanczos = global_double("accur_lanczos");
-
-	if(verb) cout << "\nModified Lanczos method; dim = " << dim << endl;
-
-	random(x, normal_dis);
-	int niter;
-	for(niter=0; niter<max_iter_lanczos; niter++){
-		to_zero(psi1);
-		hamil.mult_add(x, psi1); // psi1 = psi1 + H*x
-		double E0 = realpart(x*psi1);
-		double E1 = realpart(psi1*psi1);
-		double delta2 = E1-E0*E0;
-		double delta = sqrt(delta2);
-		if(niter%10==0) cout << "--> iteration " << niter << "\tdelta = " << delta2 << "\tE0 = " << E0 << endl; // tempo
-		if(delta2 < accur_lanczos*E0*E0) break;
-		if(verb && niter%10==0) cout << "--> iteration " << niter << "; delta = " << delta << ", E0 = " << E0 << endl;
-		to_zero(psi2);
-		hamil.mult_add(psi1,psi2);
-		double E2 = realpart(psi1*psi2);
-		mult_add(-E0, x, psi1);
-		psi1 *= 1.0/delta;
-		double w = (E2 - 3*E1*E0+2*E0*E0*E0)/(2*delta2*delta);
-		double v = sqrt(1+w*w)-w;
-		mult_add(-v, psi1, x); // x -= v*psi1
-		x *= 1.0/sqrt(1+v*v);
-		val = E0;
-	}
-	if(niter == max_iter_lanczos) qcm_ED_throw("The modified Lanczos method could not converge within "+to_string(max_iter_lanczos)+" iterations");
-}
-
 
 //! Implementation of the Lanczos method for the lowest eigenvalue
 /**

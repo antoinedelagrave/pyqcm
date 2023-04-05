@@ -246,9 +246,7 @@ namespace ED {
     new_global_bool(false,"nosym", "does not take cluster symmetries into account");
     new_global_bool(false,"one_body_solution","Only solves the one-body part of the problem, for the Green function");
     new_global_bool(false,"print_Hamiltonian","Prints the Hamiltonian on the screen, if small enough");
-    new_global_bool(false,"CSR_sym_store","stores CSR matrices fully for openMP application");
     new_global_bool(false,"strip_anomalous_self","sets to zero the anomalous part of the self-energy");
-    //new_global_bool(false,"modified_Lanczos","Uses the modified Lanczos method for the ground state instead of the usual Lanczos method");
     new_global_bool(false,"continued_fraction","Uses the continued fraction solver for the Green function instead of the band Lanczos method");
     new_global_bool(false,"verb_ED","prints ED information and progress");
     new_global_bool(false,"print_variances","prints the variance of the operators in files");

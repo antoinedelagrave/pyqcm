@@ -48,7 +48,13 @@ model.interaction_operator('U', orbitals=(1,1))
 model.interaction_operator('U', orbitals=(2,2))
 
 # Defining NN hopping terms
-model.hopping_operator('t', ( 1, 0, 0), -1, orbitals=(1,2)) # All hops here are from one band to another
-model.hopping_operator('t', ( 0, 1, 0), -1, orbitals=(1,2))
-model.hopping_operator('t', [-1,-1,0], -1, orbitals=(1,2))
+model.hopping_operator('t', (1,0,0), -1, orbitals=(1,2)) # All hops here are from one band to another
+model.hopping_operator('t', (0,1,0), -1, orbitals=(1,2))
+model.hopping_operator('t', (-1,-1,0), -1, orbitals=(1,2))
 
+model.hopping_operator('M', (0,0,0),  1, orbitals=(1,1), tau=0, sigma=3)
+model.hopping_operator('M', (0,0,0), -1, orbitals=(2,2), tau=0, sigma=3)
+model.hopping_operator('Mx', (0,0,0),  1, orbitals=(1,1), tau=0, sigma=1)
+model.hopping_operator('Mx', (0,0,0), -1, orbitals=(2,2), tau=0, sigma=1)
+model.hopping_operator('cdw', (0,0,0),  1, orbitals=(1,1))
+model.hopping_operator('cdw', (0,0,0), -1, orbitals=(2,2))

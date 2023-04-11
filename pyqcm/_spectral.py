@@ -508,7 +508,7 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     plt.xlim(w[0].real, w[-1].real)
     for i in range(nband):
         plt.plot(np.real(w), A[:, i], '-', label=labels[i], linewidth=1.6, **kwargs)
-    if mix == 1 or mix == 4:
+    if mix == 1:
         for i in range(nband):
             plt.plot(-np.real(w), A[:, i+nband], '-', label=labels[i], linewidth=0.8, **kwargs)
     elif mix>0:

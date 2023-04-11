@@ -31,7 +31,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
     while " sites " not in L:
         L = fin.readline()
         if not L:
-            print('file ended without sites')
+            raise ValueError('file ended without sites')
 
     L = fin.readline()
     sites = []
@@ -51,7 +51,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
     while "phys:" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without physical basis')
+            raise ValueError('file ended without physical basis')
 
     basis = []
     for i in range(3):
@@ -71,7 +71,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
     while "superlattice:" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without superlattice')
+            raise ValueError('file ended without superlattice')
 
     super = []
     L = fin.readline()
@@ -89,7 +89,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
     while "neighbors" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without neighbors')
+            raise ValueError('file ended without neighbors')
 
     neighbors = []
     while True:
@@ -147,12 +147,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
 
         K = '{:d},{:d};{:d}'.format(I,J,neighbor)
         Si[K] = (I-1,J-1,neighbor)
-        if 'Hubbard' in op_type or 'one-body' in op_type:
-            # if K in hop:
-            #     hop[K] += v
-            # else:
-            #     hop[K] = v
-
+        if 'one-body' in op_type:
             if X[0][-1] == '+' and X[1][-1] == '+':
                 sz = 1
                 if K in hop:
@@ -164,10 +159,6 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
                 else:
                     spin[K] = np.array([0,v])
             elif X[0][-1] == '-' and X[1][-1] == '-': 
-                # if K in hop:
-                #     hop[K] += v
-                # else:
-                #     hop[K] = v
                 if K in spin:
                     spin[K] += np.array([0,-v])
                 else:
@@ -178,6 +169,14 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
                 else:
                     spin[K] = np.array([v,0])
 
+        elif 'Hubbard' in op_type:
+            if X[0][-1] == '+' and X[1][-1] == '-':
+                sz = 1
+                if K in hop:
+                    hop[K] += v
+                else:
+                    hop[K] = v
+
         if 'singlet' in op_type or 'dz' in op_type:
             if (X[0][-1] == '+' and X[1][-1] == '-') or (X[0][-1] == '-' and X[1][-1] == '+'):
                 if K in anom:
@@ -185,6 +184,10 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
                 else:
                     anom[K] = v
 
+        tmp = {}
+        for s in spin:
+            if np.linalg.norm(spin[s]) > 1e-2 :tmp[s] = spin[s]
+        spin = tmp
     fin.close()
     #...............................................................................................
     # plotting the elements
@@ -209,7 +212,6 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
                 plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='center', c='r')
 
     fac = 0.15
-    # print(spin)
     for e in spin:
         if ';0' not in e: continue
         s1 = Si[e][0]
@@ -292,7 +294,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
 
 ####################################################################################################
 
-def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, plt_ax = None):
+def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, spin_offset = 0.15, plt_ax = None):
     """
     Draws an operator defined on a cluster model to the screen (for debugging purposes)
 
@@ -300,6 +302,7 @@ def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, p
     :param str op_name: name of the operator
     :param boolean show_labels: if True, shows the labels of the cluster 
     :param boolean values: if True, prints de values of the elements 
+    :param float spin_offset: graphical offset between up and down spins 
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     """
 
@@ -320,7 +323,7 @@ def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, p
     while " sites " not in L:
         L = fin.readline()
         if not L:
-            print('file ended without sites')
+            raise ValueError('draw: file ended without sites')
 
     L = fin.readline()
     sites = []
@@ -341,7 +344,7 @@ def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, p
     while "phys:" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without physical basis')
+            raise ValueError('file ended without physical basis')
 
     basis = []
     for i in range(3):
@@ -419,7 +422,7 @@ def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, p
 
     S = np.concatenate((S, np.array(bpos)))
 
-    spin_offset = 0.15
+    
     S = np.concatenate((S, S + np.array([spin_offset,spin_offset,0])))
     E = []
     for e in elements:

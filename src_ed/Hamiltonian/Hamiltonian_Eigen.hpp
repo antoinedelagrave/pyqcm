@@ -55,7 +55,7 @@ Hamiltonian_Eigen<HilbertField>::Hamiltonian_Eigen(
 
     vector<matrix_element<HilbertField>> tripletList;
     for (auto& h : sparse_ops) {
-        h.first->Triplet_COO_map(tripletList, h.second);
+        h.first->Triplet_COO_map(tripletList, h.second, true);
     }
     //create matrix
     H_eigen.resize(this->dim,this->dim);

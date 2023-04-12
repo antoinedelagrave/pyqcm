@@ -315,20 +315,7 @@ class CDMFT:
         if converged:
 
             # check consistency
-            GS_consistent = True
-            GS_cons = ''
-            for i in range(self.model.nclus):
-                if self.model.clus[i].ref != None: continue
-                ave = self.I.cluster_averages(i)
-                diffGS = np.abs(ave['mu'][0] - self.I.Green_function_density(i))
-                if np.abs(ave['mu'][0] - self.I.Green_function_density(i)) > 1e-6:
-                    GS_consistent = False
-                    GS_cons += 'N'
-                    pyqcm.banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}, DENSITY DIFFERENCE = {:1.5f}".format(i+1,diffGS), '+', skip=1)
-                    if check_ground_state:
-                        raise ValueError("failed GS consistency for cluster {:d} in CDMFT".format(i+1))
-                else: GS_cons += 'Y'
-            
+            GS_cons = self.I.GS_consistency(check_ground_state)
             var_val = pyqcm.varia_table(var,sol.x)
             print(var_val)
 

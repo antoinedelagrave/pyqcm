@@ -26,8 +26,8 @@ struct HS_Hermitian_operator
   virtual void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z) = 0;
   virtual void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z) = 0;
   //The two below functions can be parallelize but does it worth it ?
-  virtual void Triplet_COO_map(vector<matrix_element<double>>& E, double z) {};
-  virtual void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z) {};
+  virtual void Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store) {};
+  virtual void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store) {};
 
   template<typename HS_field>
   void expectation_value(const state<HS_field> &gs, double &average, double &average2);

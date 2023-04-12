@@ -1390,7 +1390,28 @@ class model_instance:
 
         for x in corr:
             self.model.set_parameter(x, corr[x], pr=True)
-    
+
+    #-----------------------------------------------------------------------------------------------
+    def GS_consistency(self, check_ground_state=False):
+        """
+        compares the density from the wavefunction and from the Green function
+
+        """
+
+        GS_cons = ''
+        for i in range(self.model.nclus):
+            if self.model.clus[i].ref != None: continue
+            ave = self.cluster_averages(i)
+            ng = self.Green_function_density(i)
+            diffGS = np.abs(ave['mu'][0] - ng)
+            if diffGS > 1e-6:
+                GS_cons += 'N'
+                banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}: {:1.5f} (WF) vs {:1.5f} (GF)".format(i+1,ave['mu'][0], ng), '+', skip=1)
+                if check_ground_state:
+                    raise ValueError("failed GS consistency for cluster {:d}".format(i+1))
+            else: GS_cons += 'Y'
+        return GS_cons
+
     #-----------------------------------------------------------------------------------------------
     # methods from _spectral.py
     

@@ -21,8 +21,8 @@ struct HS_nondiagonal_operator : HS_Hermitian_operator
   void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z);
   void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z);
   void diag(vector<double> &Y, double z);
-  void Triplet_COO_map(vector<matrix_element<double>>& E, double z);
-  void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z);
+  void Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store);
+  void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store);
   void insert(uint32_t I, uint32_t J, HS_field z);
   void sort_elements();
 };
@@ -183,7 +183,7 @@ void HS_nondiagonal_operator<HS_field>::diag(vector<double> &Y, double z)
  populates a vector of matrix_element to build the Hamiltonian
  */
 template<typename HS_field>
-void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<double>>& E, double z)
+void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store)
 {
     //diag element
     for(auto& e : diag_elem) {
@@ -197,6 +197,12 @@ void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<do
             matrix_element<double> T(e.first,e.second,z2);
             E.push_back(T);
         }
+        if(sym_store){
+            for(auto& e : w.second) {
+                matrix_element<double> T(e.second,e.first,z2);
+                E.push_back(T);
+            }
+        }
     }
 }
 
@@ -204,7 +210,7 @@ void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<do
  populates a vector of matrix_element to build the Hamiltonian
  */
 template<typename HS_field>
-void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<Complex>>& E, double z)
+void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store)
 {
     //diag element
     for(auto& e : diag_elem) {
@@ -217,6 +223,13 @@ void HS_nondiagonal_operator<HS_field>::Triplet_COO_map(vector<matrix_element<Co
         for(auto& e : w.second) {
             matrix_element<Complex> T(e.first,e.second,z2);
             E.push_back(T);
+        }
+        if(sym_store){
+            z2 = conjugate(z2);
+            for(auto& e : w.second) {
+                matrix_element<Complex> T(e.second,e.first,z2);
+                E.push_back(T);
+            }
         }
     }
 }

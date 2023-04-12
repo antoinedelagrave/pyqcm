@@ -677,7 +677,6 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
         Qp.q[r] = Qtmp;
         Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
     }
-    continue;
   }
   else{
     for(int s=0; s< ns; s++){

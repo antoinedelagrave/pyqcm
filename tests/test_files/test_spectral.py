@@ -1,3 +1,4 @@
+import numpy as np
 import pyqcm
 import matplotlib.pyplot as plt
 import model_2x2_C2 as M
@@ -51,7 +52,8 @@ def test_spectral():
     
     F = 'test_DoS.pdf'
     pyqcm.banner('testing DoS()', c='#', skip=1); I.plot_DoS(w=1, eta=0.2, file = F, plt_ax=ax)
-    
+    pyqcm.banner('testing DoS()', c='#', skip=1); I.plot_DoS(w=np.linspace(-1,1,40), eta=0.2, file = F, plt_ax=ax)
+
     F = 'test_G_dispersion.pdf'
     pyqcm.banner('testing G_dispersion()', c='#', skip=1); I.G_dispersion(max=20, file = F, plt_ax=ax)
     

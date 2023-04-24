@@ -42,6 +42,8 @@ def __frequency_array(wmax=6.0, eta=0.05, imaginary=False):
         w = np.arange(wmax[0], wmax[1] + 1e-6, eta/4.0)  # defines the array of frequencies
     elif type(wmax) is float or type(wmax) is int:
         w = np.arange(-wmax, wmax + 1e-6, eta/4.0)  # defines the array of frequencies
+    elif type(wmax) is np.ndarray and wmax.dtype == float:
+        return wmax + eta*1j
     elif type(wmax) is np.ndarray and wmax.dtype == complex:
         return wmax
     else:

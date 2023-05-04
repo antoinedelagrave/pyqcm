@@ -19,9 +19,6 @@
 #ifdef EIGEN_HAMILTONIAN
 #include "Hamiltonian/Hamiltonian_Eigen.hpp"
 #endif
-#ifdef PETSC_HAMILTONIAN
-#include "Hamiltonian/Hamiltonian_PETSc.hpp"
-#endif
 
 extern double max_gap;
 
@@ -69,22 +66,23 @@ struct model_instance : model_instance_base
   void set_hopping_matrix(bool spin_down);
   string GS_string() const;
   void build_bases_and_HS_operators(const sector& GS_sector, bool spin_down);
-  
+  double fidelity(model_instance<HilbertField>& label);
+
   // realization of virtual base class methods
   pair<double, string> low_energy_states();
   pair<double, double> cluster_averages(shared_ptr<Hermitian_operator> h);
   void Green_function_solve();
   pair<double, string> one_body_solve();
   matrix<Complex>  Green_function(const Complex &z, bool spin_down, bool blocks);
-  matrix<Complex>  Green_function_average(bool spin_down);
+  void Green_function_average();
   matrix<Complex>  self_energy(const Complex &z, bool spin_down);
   matrix<Complex>  hopping_matrix(bool spin_down);
-  matrix<Complex>  hopping_matrix_full(bool spin_down);
+  matrix<Complex>  hopping_matrix_full(bool spin_down, bool diag);
   vector<tuple<int,int,double>> interactions();
   matrix<Complex>  hybridization_function(Complex w, bool spin_down);
   vector<Complex>  susceptibility(shared_ptr<Hermitian_operator> h, const vector<Complex> &w);
   vector<pair<double,double>> susceptibility_poles(shared_ptr<Hermitian_operator> h);
-  double fidelity(model_instance<HilbertField>& inst);
+  void Green_function_density();
   void print(ostream& fout);
   void write(ostream& fout);
   void read(istream& fin);
@@ -211,6 +209,8 @@ Hamiltonian<HilbertField>* model_instance<HilbertField>::create_hamiltonian(
                 H = new Hamiltonian_Operator<HilbertField>(the_model, value, s);
                 //std::cout << "Hamiltonian OTF" << std::endl;
                 break;
+            case H_format_factorized:
+                break;
             //implementation with dependencies
             case H_format_eigen:
 #ifdef EIGEN_HAMILTONIAN
@@ -219,17 +219,6 @@ Hamiltonian<HilbertField>* model_instance<HilbertField>::create_hamiltonian(
                 break;
 #else
                 cout << "Warning! qcm_wed not configured with Eigen! Fallback to native CSR implementation" << endl;
-                Hamiltonian_format = H_format_csr;
-                H = new Hamiltonian_CSR<HilbertField>(the_model, value, s);
-                break;
-#endif
-            case H_format_petsc:
-#ifdef PETSC_HAMILTONIAN
-                H = new Hamiltonian_PETSc<HilbertField>(the_model, value, s);
-                //std::cout << "Hamiltonian CSR" << std::endl;
-                break;
-#else
-                cout << "Warning! qcm_wed not configured with PETSc! Fallback to native CSR implementation" << endl;
                 Hamiltonian_format = H_format_csr;
                 H = new Hamiltonian_CSR<HilbertField>(the_model, value, s);
                 break;
@@ -351,6 +340,17 @@ void model_instance<HilbertField>::compute_weights(){
     return;
   }
   
+
+  // removing states whose energies are too high
+  auto it = states.begin();
+  while(it != states.end()){
+    if((*it)->energy - GS_energy > max_gap){
+      ((shared_ptr<state<HilbertField>>)*it).reset();
+      states.erase(it++);
+    }
+    else ++it;
+  }
+
   // compute the partition function
   double Z = 0.0;
   for(auto &x : states){
@@ -363,10 +363,14 @@ void model_instance<HilbertField>::compute_weights(){
   for(auto &x : states){
     x->weight *= Z;
   }
-  
+
+  if(global_bool("verb_ED")){
+    cout << "list of states/sectors conserved (maximum gap = " << max_gap << "):\n";
+    for(auto &x : states){
+      cout << x->sec << "\tE-E0 = " << x->energy-GS_energy << "\tweight = " << x->weight << endl;
+    }
+  }
 }
-
-
 
 
 /**
@@ -490,6 +494,10 @@ void model_instance<HilbertField>::Green_function_solve()
     }
   }
   gf_solved = true;
+  M.set_size(dim_GF);
+  if(mixing&HS_mixing::up_down) M_down.set_size(dim_GF);
+  Green_function_average();
+  Green_function_density();
 }
 
 
@@ -550,24 +558,39 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
  Evaluates the Green function average G (column-order format)
  */
 template<typename HilbertField>
-matrix<Complex> model_instance<HilbertField>::Green_function_average(bool spin_down)
+void model_instance<HilbertField>::Green_function_average()
 {
-  if(spin_down and !(mixing&HS_mixing::up_down)) qcm_ED_throw("spin_down=True impossible with Hilbert space mixing "+to_string(mixing));
-  if(!gf_solved and !gf_read) Green_function_solve();
-
-  matrix<Complex> Gint(n_mixed*(the_model->n_sites));
+  // if(!gf_solved and !gf_read) Green_function_solve();
   block_matrix<Complex> G(the_model->group->site_irrep_dim*n_mixed);
-  if(spin_down and mixing&HS_mixing::up_down){
-    for(auto& x : states) x->gf_down->integrated_Green_function(G);
+  for(auto& x : states) x->gf->integrated_Green_function(G);
+  the_model->group->to_site_basis(G, M, n_mixed);
+  if(mixing&HS_mixing::up_down){
+    block_matrix<Complex> G_down(the_model->group->site_irrep_dim*n_mixed);
+    for(auto& x : states) x->gf_down->integrated_Green_function(G_down);
+    the_model->group->to_site_basis(G_down, M_down, n_mixed);
   }
-  else{
-    for(auto& x : states) x->gf->integrated_Green_function(G);
-  }
-  the_model->group->to_site_basis(G, Gint, n_mixed);
-  return Gint;
 }
 
 
+
+/**
+ Evaluates the density from the Green function average
+ */
+template<typename HilbertField>
+void model_instance<HilbertField>::Green_function_density()
+{
+  int I = the_model->n_sites;
+  double nG = 0.0;
+  for(int i=0; i<I; i++) nG += M(i,i).real();
+  if(mixing&HS_mixing::spin_flip) for(int i=0; i<I; i++) nG += M(i+I,i+I).real();
+  else if(mixing&HS_mixing::anomalous) for(int i=0; i<I; i++) nG += 1-M(i+I,i+I).real();
+
+  if(mixing&HS_mixing::up_down){
+    for(int i=0; i<I; i++) nG += M_down(i,i).real();
+  }
+  GF_density = nG/the_model->n_sites;
+  if(mixing == HS_mixing::normal) GF_density *= 2;
+}
 
 
 
@@ -616,43 +639,85 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
  
   // building the Q matrices
   int ns = 2*sym_orb.size();
-  // #pragma omp parallel for
-  for(int s=0; s< ns; s++){
-    int r = s/2;
-    int pm = 2*(s%2)-1;
+  if(global_bool("parallel_sectors")){
+    if(global_bool("verb_ED")) cout << "openMP parallelization of Green function computation..." << endl;
+    #pragma omp parallel for schedule(dynamic,1) // TEMPO
+    for(int s=0; s< ns; s++){
+      int r = s/2;
+      int pm = 2*(s%2)-1;
 
-    if(sym_orb[r].size() == 0) continue; // irrep not present
-    int spin = (spin_down)? 1:sym_orb[r][0].spin;
-    sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
-    if(!the_model->group->sector_is_valid(target_sec)) continue; // target sector is null
-    vector<vector<HilbertField>> phi(sym_orb[r].size());
-    bool skip_sector=false;
-    for(size_t i=0; i< sym_orb[r].size(); i++){
-      symmetric_orbital sorb = sym_orb[r][i];
-      if(spin_down) sorb.spin =1;
-      if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
+      if(sym_orb[r].size() == 0) continue; // irrep not present
+      int spin = (spin_down)? 1:sym_orb[r][0].spin;
+      sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
+      if(!the_model->group->sector_is_valid(target_sec)) continue; // target sector is null
+      vector<vector<HilbertField>> phi(sym_orb[r].size());
+      bool skip_sector=false;
+      for(size_t i=0; i< sym_orb[r].size(); i++){
+        symmetric_orbital sorb = sym_orb[r][i];
+        if(spin_down) sorb.spin =1;
+        if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
+      }
+      if(skip_sector) continue;
+      // Assembling the Hamiltonian and band Lanczos procedure
+      Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
+      if(H->dim==0) continue;
+      
+      Q_matrix<HilbertField> Qtmp;
+      Qtmp = H->build_Q_matrix(phi);
+      
+      delete H; //delete Hamiltonian to prevent memory leak
+      H = nullptr;
+      
+      Qtmp.e -= Omega.energy; // adjust the eigenvalues by adding/subtracting the GS energy
+      if(pm == -1){
+        Qtmp.e *= -1.0;
+      }
+      Qtmp.streamline();
+      if(pm==-1) 
+        Qm.q[r] = Qtmp;
+      else 
+        Qp.q[r] = Qtmp;
+        Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
     }
-    if(skip_sector) continue;
-    // Assembling the Hamiltonian and band Lanczos procedure
-    Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
-    if(H->dim==0) continue;
-    
-    Q_matrix<HilbertField> Qtmp;
-    Qtmp = H->build_Q_matrix(phi);
-    
-    delete H; //delete Hamiltonian to prevent memory leak
-    H = nullptr;
-    
-    Qtmp.e -= Omega.energy; // adjust the eigenvalues by adding/subtracting the GS energy
-    if(pm == -1){
-      Qtmp.e *= -1.0;
+  }
+  else{
+    for(int s=0; s< ns; s++){
+      int r = s/2;
+      int pm = 2*(s%2)-1;
+
+      if(sym_orb[r].size() == 0) continue; // irrep not present
+      int spin = (spin_down)? 1:sym_orb[r][0].spin;
+      sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
+      if(!the_model->group->sector_is_valid(target_sec)) continue; // target sector is null
+      vector<vector<HilbertField>> phi(sym_orb[r].size());
+      bool skip_sector=false;
+      for(size_t i=0; i< sym_orb[r].size(); i++){
+        symmetric_orbital sorb = sym_orb[r][i];
+        if(spin_down) sorb.spin =1;
+        if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0))) skip_sector = true;
+      }
+      if(skip_sector) continue;
+      // Assembling the Hamiltonian and band Lanczos procedure
+      Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
+      if(H->dim==0) continue;
+      
+      Q_matrix<HilbertField> Qtmp;
+      Qtmp = H->build_Q_matrix(phi);
+      
+      delete H; //delete Hamiltonian to prevent memory leak
+      H = nullptr;
+      
+      Qtmp.e -= Omega.energy; // adjust the eigenvalues by adding/subtracting the GS energy
+      if(pm == -1){
+        Qtmp.e *= -1.0;
+      }
+      Qtmp.streamline();
+      if(pm==-1) 
+        Qm.q[r] = Qtmp;
+      else 
+        Qp.q[r] = Qtmp;
+        Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
     }
-    Qtmp.streamline();
-    if(pm==-1) 
-      Qm.q[r] = Qtmp;
-    else 
-      Qp.q[r] = Qtmp;
-      Qp.q[r].v.cconjugate(); // IMPORTANT. Source of bug found 2021-08-14
   }
 
   auto Q = make_shared<Q_matrix_set<HilbertField>>(the_model->group, mixing);
@@ -894,8 +959,8 @@ pair<double, string> model_instance<HilbertField>::one_body_solve()
         } 
       }
     }
-
   }
+  Green_function_density();
 
 
   // Nambu correction to the ground state energy
@@ -920,7 +985,6 @@ pair<double, string> model_instance<HilbertField>::one_body_solve()
 
   return {GS_energy, "uncorrelated"};
 }
-
 
 
 
@@ -1029,8 +1093,8 @@ void model_instance<HilbertField>::read(istream& fin)
     vector<string> input = read_strings(fin);
     if(input.size()==0) break;
     if(input.size()!=2) qcm_ED_throw("failed to read a parameter in input. Need two columns per parameter");
-    // if(value.find(input[0])==value.end()) qcm_ED_throw("unkown parameter "+input[0]+" in solutions file");
-    // value[input[0]] = from_string<double>(input[1]);
+    if(value.find(input[0])==value.end()) qcm_ED_throw("unkown parameter "+input[0]+" in solutions file");
+    if(abs(value[input[0]] - from_string<double>(input[1])) > SMALL_VALUE) qcm_ED_throw("The value of "+input[0]+" from the solution read differs from the expected value");
   }
   
   string tmp;
@@ -1053,11 +1117,14 @@ void model_instance<HilbertField>::read(istream& fin)
     if(input.size()==0) break;
     states.insert(shared_ptr<state<HilbertField>>(new state<HilbertField>(fin, the_model->group, mixing, GF_solver)));
   }
-  gf_read = true;
   is_correlated = true; // added to remove confusion when dealing with read instances
-  M = Green_function_average(false);
-  if(mixing & HS_mixing::up_down) M_down = Green_function_average(true);
+  M.set_size(dim_GF);
+  if(mixing&HS_mixing::up_down) M_down.set_size(dim_GF);
+  Green_function_average();
+  Green_function_density();
+  gf_read = true;
 }
+
 
 
 
@@ -1067,14 +1134,27 @@ pair<vector<double>, vector<complex<double>>> model_instance<HilbertField>::qmat
   if(GF_solver != GF_format_BL) qcm_ED_throw("Green function format is not Lehmann! Cannot output the Q matrix.");
   if(!gf_solved) Green_function_solve();
   if(states.size() > 1){
+    cout << "Lehmann representation from a mixed state : ";
     for(auto& s : states) cout << s->sec << '\t' << s->weight << endl;
-    qcm_ED_throw("The ground state is not a pure state! ("+to_string(states.size())+" states). Cannot output the Q matrix.");
+    // qcm_ED_throw("The ground state is not a pure state! ("+to_string(states.size())+" states). Cannot output the Q matrix.");
+    Q_matrix<HilbertField> QQ;
+    for(auto& s : states){
+      shared_ptr<Green_function_set> gf;
+      if(spin_down) gf = s->gf_down;
+      else gf = s->gf;
+      auto Q = dynamic_pointer_cast<Q_matrix_set<HilbertField>>(gf)->consolidated_qmatrix();
+      Q.v.v *= sqrt(s->weight);
+      QQ.append(Q);
+    }
+    return {QQ.e, to_complex(QQ.v.v)};
   }
-  shared_ptr<Green_function_set> gf;
-  if(spin_down) gf = (*states.begin())->gf_down;
-  else gf = (*states.begin())->gf;
-  auto Q = dynamic_pointer_cast<Q_matrix_set<HilbertField>>(gf)->consolidated_qmatrix();
-  return {Q.e, to_complex(Q.v.v)};
+  else{
+    shared_ptr<Green_function_set> gf;
+    if(spin_down) gf = (*states.begin())->gf_down;
+    else gf = (*states.begin())->gf;
+    auto Q = dynamic_pointer_cast<Q_matrix_set<HilbertField>>(gf)->consolidated_qmatrix();
+    return {Q.e, to_complex(Q.v.v)};
+  }
 }
 
 
@@ -1115,20 +1195,36 @@ void model_instance<HilbertField>::print_wavefunction(ostream& fout)
 
 
 template<typename HilbertField>
-matrix<Complex> model_instance<HilbertField>::hopping_matrix_full(bool spin_down)
+matrix<Complex> model_instance<HilbertField>::hopping_matrix_full(bool spin_down, bool diag)
 {
   matrix<Complex> H(tc.r+tb.r);
-  if(spin_down){
-    tc_down.move_sub_matrix(tc.r, tc.c, 0, 0, 0, 0, H);
-    tb_down.move_sub_matrix(tb.r, tb.c, 0, 0, tc.r, tc.c, H);
-    tcb_down.move_sub_matrix(tcb.r, tcb.c, 0, 0, 0, tc.c, H);
-    tcb_down.move_sub_matrix_HC(tcb.r, tcb.c, 0, 0, tc.r, 0, H);
+  if(diag){
+    if(spin_down){
+      tc_down.move_sub_matrix(tc.r, tc.c, 0, 0, 0, 0, H);
+      tb_down.move_sub_matrix(tb.r, tb.c, 0, 0, tc.r, tc.c, H);
+      tcb_down.move_sub_matrix(tcb.r, tcb.c, 0, 0, 0, tc.c, H);
+      tcb_down.move_sub_matrix_HC(tcb.r, tcb.c, 0, 0, tc.r, 0, H);
+    }
+    else{
+      tc.move_sub_matrix(tc.r, tc.c, 0, 0, 0, 0, H);
+      tb.move_sub_matrix(tb.r, tb.c, 0, 0, tc.r, tc.c, H);
+      tcb.move_sub_matrix(tcb.r, tcb.c, 0, 0, 0, tc.c, H);
+      tcb.move_sub_matrix_HC(tcb.r, tcb.c, 0, 0, tc.r, 0, H);
+    }
   }
   else{
-    tc.move_sub_matrix(tc.r, tc.c, 0, 0, 0, 0, H);
-    tb.move_sub_matrix(tb.r, tb.c, 0, 0, tc.r, tc.c, H);
-    tcb.move_sub_matrix(tcb.r, tcb.c, 0, 0, 0, tc.c, H);
-    tcb.move_sub_matrix_HC(tcb.r, tcb.c, 0, 0, tc.r, 0, H);
+    if(spin_down){
+      tc_down.move_sub_matrix(tc.r, tc.c, 0, 0, 0, 0, H);
+      tb_nd_down.move_sub_matrix(tb.r, tb.c, 0, 0, tc.r, tc.c, H);
+      tcb_nd_down.move_sub_matrix(tcb.r, tcb.c, 0, 0, 0, tc.c, H);
+      tcb_nd_down.move_sub_matrix_HC(tcb.r, tcb.c, 0, 0, tc.r, 0, H);
+    }
+    else{
+      tc.move_sub_matrix(tc.r, tc.c, 0, 0, 0, 0, H);
+      tb_nd.move_sub_matrix(tb.r, tb.c, 0, 0, tc.r, tc.c, H);
+      tcb_nd.move_sub_matrix(tcb.r, tcb.c, 0, 0, 0, tc.c, H);
+      tcb_nd.move_sub_matrix_HC(tcb.r, tcb.c, 0, 0, tc.r, 0, H);
+    }
   }
   return H;
 }

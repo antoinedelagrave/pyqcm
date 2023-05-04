@@ -23,8 +23,8 @@ struct HS_Hermitian_operator
   virtual void diag(vector<double> &d, double z) = 0;
   virtual void dense_form(matrix<double> &h, double z) = 0;
   virtual void dense_form(matrix<Complex> &h, double z) = 0;
-  virtual void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z, bool sym_store) = 0;
-  virtual void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z, bool sym_store) = 0;
+  virtual void CSR_map(map<index_pair,double> &elem, vector<double> &diag, double z) = 0;
+  virtual void CSR_map(map<index_pair,Complex> &elem, vector<double> &diag, double z) = 0;
   //The two below functions can be parallelize but does it worth it ?
   virtual void Triplet_COO_map(vector<matrix_element<double>>& E, double z, bool sym_store) {};
   virtual void Triplet_COO_map(vector<matrix_element<Complex>>& E, double z, bool sym_store) {};

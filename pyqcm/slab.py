@@ -94,7 +94,7 @@ class slab:
         if 'link' in kwargs:
             link = kwargs['link']
         else:
-            link = [0,0,0]
+            link = ( 0, 0, 0)
         if 'amplitude' in kwargs:
             amplitude = kwargs['amplitude']
         else:

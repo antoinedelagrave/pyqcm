@@ -54,15 +54,10 @@ Hamiltonian_CSR<HilbertField>::Hamiltonian_CSR(
     num = omp_get_max_threads()/omp_get_num_threads();
     #endif
     map<index_pair,HilbertField> E;
-    if(global_bool("CSR_sym_store") and num>1) H_csr.sym_store = true; // set up the CSR format for openMP parallelization
-    else H_csr.sym_store = false;
     H_csr.diag.assign(this->dim, 0.0);
-    if(global_bool("verb_Hilbert")) {
-        if(H_csr.sym_store) cout << "constructing the CSR Hamiltonian (stored symmetrically for openMP with " << num << " threads)..." << endl;
-        else cout << "constructing the CSR Hamiltonian..." << endl;
-    }
+    if(global_bool("verb_Hilbert"))cout << "constructing the CSR Hamiltonian..." << endl;
     for(auto& h : sparse_ops){
-        h.first->CSR_map(E, H_csr.diag, h.second, H_csr.sym_store);
+        h.first->CSR_map(E, H_csr.diag, h.second);
     }
     size_t row = 0;
     size_t count=0;
@@ -122,15 +117,17 @@ void Hamiltonian_CSR<HilbertField>::HS_ops_map(const map<string, double> &value)
     for (auto& x : value) {
         keys.push_back(x.first);
     }
+
     //construct the Hamiltonian in parallel
     #pragma omp parallel for schedule(dynamic,1)
-    //for (auto& x : value){
     for (auto& x : keys) {
         Hermitian_operator& op = *this->the_model->term.at(x);
         if(op.HS_operator.find(this->sec) == op.HS_operator.end()){
+            cout << this->the_model->name+" : building "+op.name+" in "+to_string<sector>(this->sec)+'\n' << std::flush;
             op.HS_operator[this->sec] = op.build_HS_operator(this->sec, is_complex); // ***TEMPO***
         }
     }
+
     keys.resize(0);
     //then add it to sparse_ops
     for(const auto& x : value){

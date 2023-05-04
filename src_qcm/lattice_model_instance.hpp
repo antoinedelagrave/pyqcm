@@ -23,7 +23,6 @@ struct lattice_model_instance{
 	vector<pair<double,string>> gs; //!< ground state energies and sectors of the clusters
 	vector<vector<tuple<string,double,double>>> clus_ave; //!< cluster averages and variances of all operators
 	vector<pair<string,double>> ave; //!< lattice averages of all operators
-	vector<string> sectors; //!< Hilbert space sectors of the different clusters
 	vector<double> GS_energy; //!< ground state energies of the clusters + total (component 0)
 	size_t n_clus; //!< number of cluster instances in model (derived)
 	double omega; //!< value of the Potthoff functional
@@ -46,7 +45,7 @@ struct lattice_model_instance{
 	double Potthoff_functional();
 	double spectral_average(const string& name, const complex<double> w);
 	Green_function cluster_Green_function(Complex w, bool sig, bool spin_down);
-	lattice_model_instance(shared_ptr<lattice_model> _model, const map<string, double>& _params, const vector<string>& _sectors, int label);
+	lattice_model_instance(shared_ptr<lattice_model> _model, int label);
 	matrix<complex<double>> cluster_Green_function(size_t i, complex<double> w, bool spin_down, bool blocks);
 	matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down);
 	matrix<complex<double>> cluster_self_energy(size_t i, complex<double> w, bool spin_down);
@@ -57,7 +56,6 @@ struct lattice_model_instance{
 	matrix<Complex> upgrade_cluster_matrix_anomalous(int latt_mix, int clus_mix, matrix<Complex> &g, matrix<Complex> &gm);
 	matrix<Complex> upgrade_cluster_matrix(int latt_mix, int clus_mix, matrix<Complex> &g);
 	pair<vector<array<double,9>>, vector<array<complex<double>, 11>>> site_and_bond_profile();
-	vector<complex<double>> Green_function_average(int clus, bool spin_down);
 	vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool recursive=false, int dir=3);
 	vector<double> dispersion(Green_function_k &M);
 	vector<double> dos(const complex<double> w);
@@ -66,6 +64,7 @@ struct lattice_model_instance{
 	vector<pair<double,string>> ground_state();
 	vector<pair<string,double>> averages(const vector<string> &_ops);
 	vector<pair<vector<double>, vector<double>>> Lehmann_Green_function(vector<vector3D<double>> &k, int orb, bool spin_down);
+	vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down);
 	void average_integrand_per(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void average_integrand(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void build_cluster_H();

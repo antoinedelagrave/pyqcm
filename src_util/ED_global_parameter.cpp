@@ -246,11 +246,10 @@ namespace ED {
     new_global_bool(false,"nosym", "does not take cluster symmetries into account");
     new_global_bool(false,"one_body_solution","Only solves the one-body part of the problem, for the Green function");
     new_global_bool(false,"print_Hamiltonian","Prints the Hamiltonian on the screen, if small enough");
-    new_global_bool(false,"CSR_sym_store","stores CSR matrices fully for openMP application");
     new_global_bool(false,"strip_anomalous_self","sets to zero the anomalous part of the self-energy");
-    //new_global_bool(false,"modified_Lanczos","Uses the modified Lanczos method for the ground state instead of the usual Lanczos method");
     new_global_bool(false,"continued_fraction","Uses the continued fraction solver for the Green function instead of the band Lanczos method");
     new_global_bool(false,"verb_ED","prints ED information and progress");
+    new_global_bool(false,"print_variances","prints the variance of the operators in files");
 
 
     new_global_double(1e-12,"accur_band_lanczos","energy difference tolerance for stopping the BL process");
@@ -265,14 +264,14 @@ namespace ED {
     new_global_double(0.0,"temperature", "Temperature of the system.");
 
     new_global_int(2,"Davidson_states","Number of states requested in the Davidson-Liu algorithm");
-    new_global_int(64,"dim_max_print","Maximum dimension for printing vectors and matrices");
+    new_global_int(64,"max_dim_print","Maximum dimension for printing vectors and matrices");
     new_global_int(256,"max_dim_full","Maximum dimension for using full diagonalization");
     new_global_int(600,"max_iter_BL","Maximum number of iterations in the band Lanczos procedure");
     new_global_int(400,"max_iter_CF","Maximum number of iterations in the continuous fraction Lanczos procedure");
     new_global_int(600,"max_iter_lanczos","Maximum number of iterations in the Lanczos procedure");
     new_global_int(0,"seed","seed of the random number generator");
 
-    new_global_char('S', "Hamiltonian_format", "Desired Hamiltonian format: S (CSR matrix), O (individual operators), F (factorized), N (none = on the fly)");
+    new_global_char('E', "Hamiltonian_format", "Desired Hamiltonian format: S (CSR matrix), O (individual operators), F (factorized), N (none = on the fly)");
   }
 }
 

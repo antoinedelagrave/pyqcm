@@ -28,6 +28,7 @@ struct lattice_matrix_element;
  Interface per se
  */
 namespace QCM{
+  void great_reset();
   bool complex_HS(size_t label);
   double Berry_flux(vector<vector3D<double>>& k, int orb, int label);
   double monopole(vector3D<double>& k, double a, int nk, int orb, bool rec, int label);
@@ -36,7 +37,8 @@ namespace QCM{
   double spectral_average(const string& name, const complex<double> w, int label);
   int mixing();
   int spatial_dimension();
-  map<string,double> parameters(int label);
+  map<string,double> parameters();
+  map<string,double> instance_parameters(int label);
   matrix<complex<double>> cluster_Green_function(size_t i, complex<double> w, bool spin_down, int label, bool blocks);
   matrix<complex<double>> cluster_self_energy(size_t i, complex<double> w, bool spin_down, int label);
   matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down, int label);
@@ -87,7 +89,7 @@ namespace QCM{
   void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label);
   double CDMFT_distance(const vector<double>& p, int label);
   void switch_cluster_model(const string &name);
-
+  vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down, int label);
 };
 
 #endif /* QCM_hpp */

@@ -13,7 +13,7 @@ struct lattice_model_instance;
 
 using namespace std;
 
-enum class print_format {none, namesvalues, names, values, screen, definition, names_noave, values_noave};
+enum class print_format {names, values};
 
 //! parameter of the model (lattice or cluster) with its dependency
 struct parameter{
@@ -46,5 +46,7 @@ struct parameter_set{
   void print(ostream& out);
   bool is_dependent(const string &S);
   void CDMFT_variational_set(const vector<string>& vars);
+
+  static bool parameter_set_defined;
 };
 #endif /* parameter_h */

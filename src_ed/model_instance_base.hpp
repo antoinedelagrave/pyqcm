@@ -40,6 +40,7 @@ struct model_instance_base
   size_t n_mixed; //!< 1:normal, 2:anomalous or spin-flip, 4: anomalous and spin-flip
   size_t total_dim; //!> total HS dimension of all sectors
   vector<tuple<string,double,double>> averages; //!> averages and variances of operators
+  double GF_density; //!> density from the Green function
 
   model_instance_base(size_t _label, shared_ptr<model> _the_model, const map<string,double> _value, const string &_sectors);
   
@@ -51,11 +52,12 @@ struct model_instance_base
   virtual void Green_function_solve() = 0;
   virtual pair<double, string> one_body_solve() = 0;
   virtual matrix<Complex> Green_function(const Complex &z, bool spin_down, bool blocks) = 0;
-  virtual matrix<Complex> Green_function_average(bool spin_down) = 0;
+  virtual void Green_function_average() = 0;
+  virtual void Green_function_density() = 0;
   virtual matrix<Complex> self_energy(const Complex &z, bool spin_down) = 0;
   virtual matrix<Complex> hopping_matrix(bool spin_down) = 0;
   virtual vector<tuple<int,int,double>> interactions() = 0;
-  virtual matrix<Complex> hopping_matrix_full(bool spin_down) = 0;
+  virtual matrix<Complex> hopping_matrix_full(bool spin_down, bool diag) = 0;
   virtual vector<Complex> susceptibility(shared_ptr<Hermitian_operator> h, const vector<Complex> &w) = 0;
   virtual matrix<Complex> hybridization_function(Complex w, bool spin_down) = 0;
   virtual vector<pair<double,double>> susceptibility_poles(shared_ptr<Hermitian_operator> h) = 0;

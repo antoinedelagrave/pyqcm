@@ -16,6 +16,8 @@ model_instance_base::model_instance_base(size_t _label, shared_ptr<model> _the_m
 
   static bool first_instance = true;
 
+  GF_solver = global_bool("continued_fraction") ? GF_format_CF : GF_format_BL;
+  
   if(first_instance){
     first_instance = false;
     auto S = global_char("Hamiltonian_format");
@@ -24,8 +26,7 @@ model_instance_base::model_instance_base(size_t _label, shared_ptr<model> _the_m
     else if(S == 'N') Hamiltonian_format = H_FORMAT::H_format_onthefly;
     else if(S == 'F') Hamiltonian_format = H_FORMAT::H_format_factorized;
     else if(S == 'E') Hamiltonian_format = H_FORMAT::H_format_eigen;
-    else if(S == 'P') Hamiltonian_format = H_FORMAT::H_format_petsc;
-    else qcm_ED_throw("Hamiltonian_format is not one of : N, S, O, F, E or P");
+    else qcm_ED_throw("Hamiltonian_format is not one of : N, S, O, F, E");
   }
 
   for(auto& v : value){
@@ -100,7 +101,6 @@ model_instance_base::model_instance_base(size_t _label, shared_ptr<model> _the_m
     }
   }catch(const string& s) {qcm_ED_catch(s);}
   
-  GF_solver = global_bool("continued_fraction") ? GF_format_CF : GF_format_BL;
 
 }
 

@@ -1,8 +1,5 @@
-Hartree approximation and counterterms
-######################################
-
 The Hartree approximation
--------------------------
+#########################
 
 Extended interactions require an extension of quantum cluster methods: inter-cluster interactions have to be cut off and replaced by a mean field, in the Hartree approximation. 
 An extended interaction on the cluster is then reduced to
@@ -38,38 +35,6 @@ The variation of parameter :math:`h_a` the yields
 
 The Hartree procedure consists in starting with trial values of :math:`_a` and iteratively performing the above assignation until convergence.
 
-List of functions
------------------
 
-.. autoclass:: pyqcm.hartree.hartree
-    :members:
-    :special-members: __init__
-
-Counterterms
-------------
-
-.. autoclass:: pyqcm.hartree.counterterm
-    :members:
-    :special-members: __init__
-
-Looping utilities
-#################
-
-.. automodule:: pyqcm.loop
-    :members:    
-
-Other utilities
-###############
-
-Profile of expectation values
------------------------------
-
-.. automodule:: pyqcm.profile
-    :members:
-    
-Defining models for slabs
--------------------------
-
-.. autoclass:: pyqcm.slab.slab
-    :members:
-    :special-members: __init__
+.. autoclass:: pyqcm.hartree
+    :members: 

@@ -86,48 +86,6 @@ static PyObject* density_matrix_python(PyObject *self, PyObject *args)
   return out3;
 }
 //==============================================================================
-const char* fidelity_help =
-R"(
-computes the fidelity of one state compared to another one
-arguments:
-1. name of model
-2. dict of parameter values for state 1
-3. dict of parameter values for state 2
-4. Hilbert space sector(s) (string)
-returns:
-the fidelity (double)
-)";
-//------------------------------------------------------------------------------
-static PyObject* fidelity_python(PyObject *self, PyObject *args)
-{
-  char* name = nullptr;
-  char* sec = nullptr;
-  PyObject *val1;
-  PyObject *val2;
-  map<string, double> param;
-  
-  try{
-    if(!PyArg_ParseTuple(args, "sOOs", &name, &val1, &val2, &sec))
-      qcm_ED_throw("failed to read parameters in call to fidelity (python)");
-  } catch(const string& s) {qcm_ED_catch(s);}
-
-  map<string, double> param1;
-  map<string, double> param2;
-  try{
-    param1 = py_dict_to_map(val1);
-    param2 = py_dict_to_map(val2);
-  }
-  catch(const string &s){ cerr << s << "(in fidelity)" << endl; exit(1);}
-  
-  double f;
-  try{
-    f = ED::fidelity(string(name), param1, param2, string(sec));
-  }
-  catch(const string &s) {qcm_ED_catch(s);}
-
-  return Py_BuildValue("d", f);
-}
-//==============================================================================
 const char* Green_function_average_help =
 R"(
 arguments:
@@ -156,6 +114,29 @@ static PyObject* Green_function_average_python(PyObject *self, PyObject *args)
   memcpy(PyArray_DATA((PyArrayObject*) out), g.data(), g.size()*sizeof(complex<double>));
   PyArray_ENABLEFLAGS((PyArrayObject*) out, NPY_ARRAY_OWNDATA);
   return out;
+}
+//==============================================================================
+const char* Green_function_density_help =
+R"(
+arguments:
+1. label of model_instance (optional, default=0)
+returns:
+the density of the cluster, computed from the trace of the Green function average
+)";
+//------------------------------------------------------------------------------
+static PyObject* Green_function_density_python(PyObject *self, PyObject *args)
+{
+  int label=0;
+  double dens = 0.0;
+  try{
+    if(!PyArg_ParseTuple(args, "|i", &label))
+      qcm_ED_throw("failed to read parameters in call to Green_function_average (python)");
+  } catch(const string& s) {qcm_ED_catch(s);}
+  try{
+    dens = ED::Green_function_density((size_t)label);
+  } catch(const string& s) {qcm_ED_catch(s);}
+
+  return Py_BuildValue("d", dens);
 }
 //==============================================================================
 const char* Green_function_dimensionC_help =
@@ -313,16 +294,17 @@ static PyObject* hopping_matrix_python(PyObject *self, PyObject *args)
   int label=0;
   int spin_down=0;
   int full=0;
+  int diag=0;
   
   try{
-    if(!PyArg_ParseTuple(args, "|iii", &spin_down, &label, &full))
+    if(!PyArg_ParseTuple(args, "|iiii", &spin_down, &diag, &label, &full))
       qcm_ED_throw("failed to read parameters in call to hopping_matrix (python)");
   } catch(const string& s) {qcm_ED_catch(s);}
   
   size_t d;
   vector<complex<double>> g;
   if(full){
-    g = ED::hopping_matrix_full((bool)spin_down, (size_t)label).v;
+    g = ED::hopping_matrix_full((bool)spin_down, (bool)diag, (size_t)label).v;
     d = (size_t)sqrt(g.size());
   }
   else{
@@ -584,22 +566,24 @@ static PyObject* new_operator_python(PyObject *self, PyObject *args)
       qcm_ED_throw("failed to read parameters in call to new_operator (python)");
   
     double fac = 1.0;
+    bool check_upper = true;
     if(strcmp(type, "anomalous") == 0) fac = 0.5; // correction for anomalous operators
+    if(strcmp(type, "general_interaction") == 0) check_upper = false; // correction for anomalous operators
 
     if(PyArray_Check(elem_pyobj)){
       size_t nelem = PyArray_DIMS((PyArrayObject*)elem_pyobj)[0];
       elem.resize(nelem);
       memcpy(elem.data(), PyArray_DATA((PyArrayObject*)elem_pyobj), nelem*PyArray_STRIDES((PyArrayObject*)elem_pyobj)[0]);
     }
-    else if(PyList_Check(elem_pyobj)){
-      size_t n = PyList_Size(elem_pyobj);
+    else if(PySequence_Check(elem_pyobj)){
+      size_t n = PySequence_Size(elem_pyobj);
       elem.assign(n, matrix_element<double>());
       for(int i=0; i<n; i++){
-        PyObject* pkey = PyList_GetItem(elem_pyobj,i);
+        PyObject* pkey = PySequence_GetItem(elem_pyobj,i);
         if(PyTuple_Size(pkey) == 3){
           elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
           elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
-          if(elem[i].r > elem[i].c) qcm_ED_throw("the first index of element "+to_string<size_t>(i)+" of argument 4 of 'new_operator' cannot be bigger than the second index");
+          if((elem[i].r > elem[i].c) and check_upper) qcm_ED_throw("the first index of element "+to_string<size_t>(i)+" of argument 4 of 'new_operator' cannot be bigger than the second index");
           if(elem[i].r == 0 or elem[i].c == 0) qcm_ED_throw("indices in matrix elements of operators are labelled starting at 1, not at 0.");
           elem[i].r--;
           elem[i].c--;
@@ -649,11 +633,11 @@ static PyObject* new_operator_complex_python(PyObject *self, PyObject *args)
       elem.resize(nelem);
       memcpy(elem.data(), PyArray_DATA((PyArrayObject*)elem_pyobj), nelem*PyArray_STRIDES((PyArrayObject*)elem_pyobj)[0]);
     }
-    else if(PyList_Check(elem_pyobj)){
-      size_t n = PyList_Size(elem_pyobj);
+    else if(PySequence_Check(elem_pyobj)){
+      size_t n = PySequence_Size(elem_pyobj);
       elem.assign(n, matrix_element<complex<double>>());
       for(int i=0; i<n; i++){
-        PyObject* pkey = PyList_GetItem(elem_pyobj,i);
+        PyObject* pkey = PySequence_GetItem(elem_pyobj,i);
         if(PyTuple_Size(pkey) == 3){
           elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
           elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
@@ -1016,7 +1000,7 @@ static PyObject* write_instance_to_file_python(PyObject *self, PyObject *args)
   int label = 0;
   try{
     if(!PyArg_ParseTuple(args, "s|i", &op, &label))
-      qcm_ED_throw("failed to read parameters in call to qcm_ED.write_instance()");
+      qcm_ED_throw("failed to read parameters in call to qcm_ED.write_instance_to_file()");
     ofstream fout(string(op).c_str());
     if(!fout.good()) qcm_ED_throw("failed to open file "+string(op));
     ED::write_instance(fout, label);
@@ -1060,7 +1044,7 @@ static PyObject* read_instance_python(PyObject *self, PyObject *args)
   int label = 0;
   try{
     if(!PyArg_ParseTuple(args, "s|i", &op, &label))
-      qcm_ED_throw("failed to read parameters in call to susceptibility (python)");
+      qcm_ED_throw("failed to read parameters in call to read_instance (python)");
     string S(op);
     if(S.length() < 65){
       ifstream fin(string(op).c_str());
@@ -1073,6 +1057,31 @@ static PyObject* read_instance_python(PyObject *self, PyObject *args)
     }
   } catch(const string& s) {qcm_ED_catch(s);}
   return Py_BuildValue("");
+}
+
+
+
+//==============================================================================
+const char* fidelity_help =
+R"{(
+Reads the solved model instance from a text file
+argument:
+    1. name of the file
+    2. The instance label (default=0)
+returns None
+){";
+//------------------------------------------------------------------------------
+static PyObject* fidelity_python(PyObject *self, PyObject *args)
+{
+  int label1 = 0;
+  int label2 = 0;
+  double fid;
+  try{
+    if(!PyArg_ParseTuple(args, "ii", &label1, &label2))
+      qcm_ED_throw("failed to read parameters in call to fidelity (*python*)");
+      fid = ED::fidelity(label1, label2);
+  } catch(const string& s) {qcm_ED_catch(s);}
+  return Py_BuildValue("d", fid);
 }
 
 #endif

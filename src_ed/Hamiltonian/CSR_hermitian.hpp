@@ -11,13 +11,10 @@
 //! sparse matrix in compressed-sparse-row (CSR) format
 /**
  template (type is expected to be double or complex<double>)
- if sym_store is false, only the lower triangle and the diagonal are stored
- otherwise the full matrix is stored, which takes almost twice as much memory
- but allows for faster application on a vector via openMP
+ Only the lower triangle and the diagonal are stored
  */
 template <typename T>
 struct CSR_hermitian {
-	bool sym_store;  //!< True if the matrix is stored symmetrically, instead of only the upper diagonal
 	vector<int32_t> J; //!< array of column indices
 	vector<int32_t> Iptr; //!< array of indices of J where the row index changes
 	vector<T> v; //!< array of values of the matrix elements
@@ -32,33 +29,17 @@ struct CSR_hermitian {
 		for(uint32_t i=0; i<diag.size(); i++) y[i] += diag[i]*x[i];
 		
 		uint32_t imax = Iptr.size()-1;
-    // parallelize the action on a vector via openMP (sym_store = true)
-		if(sym_store){
-#ifdef _OPENMP
-			int level = omp_get_level();
-			int num=1;
-			for(int i=0; i<level; i++) num *= omp_get_team_size(i+1);
-			num = omp_get_max_threads()/num;
-#endif
-#pragma omp parallel for schedule(guided) num_threads(num)
-			for(uint32_t i=0; i<imax; i++){
-				uint32_t jmax = Iptr[i+1];
-				for(uint32_t j=Iptr[i]; j<jmax; j++) y[i] += x[J[j]]*v[j];
-			}
+		
+		// then multiply by the upper triangle
+		for(uint32_t i=0; i<imax; i++){
+			uint32_t jmax = Iptr[i+1];
+			for(uint32_t j=Iptr[i]; j<jmax; j++) y[i] += x[J[j]]*v[j];
 		}
 		
-		else{
-			// then multiply by the upper triangle
-			for(uint32_t i=0; i<imax; i++){
-				uint32_t jmax = Iptr[i+1];
-				for(uint32_t j=Iptr[i]; j<jmax; j++) y[i] += x[J[j]]*v[j];
-			}
-			
-			// then by the lower triangle
-			for(uint32_t i=0; i<imax; i++){
-				uint32_t jmax = Iptr[i+1];
-				for(uint32_t j=Iptr[i]; j<jmax; j++) y[J[j]] += x[i]*conjugate(v[j]);
-			}
+		// then by the lower triangle
+		for(uint32_t i=0; i<imax; i++){
+			uint32_t jmax = Iptr[i+1];
+			for(uint32_t j=Iptr[i]; j<jmax; j++) y[J[j]] += x[i]*conjugate(v[j]);
 		}
 	}
 	
@@ -70,32 +51,16 @@ struct CSR_hermitian {
 		for(uint32_t i=0; i<diag.size(); i++) y[i] += z*diag[i]*x[i];
 		
 		uint32_t imax = Iptr.size()-1;
-		if(sym_store){
-#ifdef _OPENMP
-			int level = omp_get_level();
-			int num=1;
-			for(int i=0; i<level; i++) num *= omp_get_team_size(i+1);
-			num = omp_get_max_threads()/num;
-#endif
-#pragma omp parallel for schedule(guided) num_threads(num) // copyin(console::tab_prefix,console::level)
-			for(uint32_t i=0; i<imax; i++){
-				uint32_t jmax = Iptr[i+1];
-				for(uint32_t j=Iptr[i]; j<jmax; j++) y[i] += z*x[J[j]]*v[j];
-			}
+		// then multiply by the upper triangle
+		for(uint32_t i=0; i<imax; i++){
+			uint32_t jmax = Iptr[i+1];
+			for(uint32_t j=Iptr[i]; j<jmax; j++) y[i] += z*x[J[j]]*v[j];
 		}
 		
-		else{
-			// then multiply by the upper triangle
-			for(uint32_t i=0; i<imax; i++){
-				uint32_t jmax = Iptr[i+1];
-				for(uint32_t j=Iptr[i]; j<jmax; j++) y[i] += z*x[J[j]]*v[j];
-			}
-			
-			// then by the lower triangle
-			for(uint32_t i=0; i<imax; i++){
-				uint32_t jmax = Iptr[i+1];
-				for(uint32_t j=Iptr[i]; j<jmax; j++) y[J[j]] += z*x[i]*conjugate(v[j]);
-			}
+		// then by the lower triangle
+		for(uint32_t i=0; i<imax; i++){
+			uint32_t jmax = Iptr[i+1];
+			for(uint32_t j=Iptr[i]; j<jmax; j++) y[J[j]] += z*x[i]*conjugate(v[j]);
 		}
 	}
 	

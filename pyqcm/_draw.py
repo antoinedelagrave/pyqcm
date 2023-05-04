@@ -3,21 +3,35 @@ import matplotlib.pyplot as plt
 import re
 import pyqcm
 
-def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbors=False, values=False, offset = 0.05, orb_offset=0.05, z_offset=0.0, alpha_inter=0.2, plt_ax = None):
+####################################################################################################
+def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_neighbors=False, values=False, offset = 0.05, orb_offset=0.05, z_offset=0.0, alpha_inter=0.2, plt_ax = None):
+    """
+    Draws an operator defined on a lattice model to the screen (for debugging purposes)
+
+    :param str op_name: name of the operator
+    :param boolean show_labels: if True, shows the labels of the cluster 
+    :param boolean show_neighbors: if True, shows the neighbors of the central cluster 
+    :param boolean values: if True, prints de values of the elements 
+    :param float offset: offset between sites and labels
+    :param float orb_offset: offset between sites and orbital labels
+    :param float z_offset: offset between sites and labels for sites along the z axis 
+    :param float alpha_inter: alpha value of the inter-cluster links
+    :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
+    """
 
     file = 'tmp_model.out'
-    pyqcm.print_model(file)
+    self.print_model(file)
     fin = open(file, 'r')
 
     if plt_ax is not None: plt.sca(plt_ax)
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading positions of sites
     L = ''
     while " sites " not in L:
         L = fin.readline()
         if not L:
-            print('file ended without sites')
+            raise ValueError('file ended without sites')
 
     L = fin.readline()
     sites = []
@@ -27,23 +41,23 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
         L = fin.readline()
         if L == '\n': break
         X = re.split("[(,)\t ]+", L)
-        sites += [(int(X[4]), int(X[5]), int(X[6]))]
-        orb += [int(X[3])-1]
-        cluster += [int(X[1])-1]
+        sites.append((int(X[4]), int(X[5]), int(X[6])))
+        orb.append(int(X[3])-1)
+        cluster.append(int(X[1])-1)
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading basis
     L = ''
     while "phys:" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without physical basis')
+            raise ValueError('file ended without physical basis')
 
     basis = []
     for i in range(3):
         L = fin.readline()
         X = re.split("[(,) ]+", L)
-        basis += [(float(X[1]), float(X[2]), float(X[3]))]
+        basis.append((float(X[1]), float(X[2]), float(X[3])))
     B = np.array(basis)
     B = np.linalg.inv(B)
 
@@ -51,13 +65,13 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
     for i,s in enumerate(sites):
         S[i,:] = (np.array(s)@B).T
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading superlattice
     L = ''
     while "superlattice:" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without superlattice')
+            raise ValueError('file ended without superlattice')
 
     super = []
     L = fin.readline()
@@ -67,27 +81,27 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
     for i in range(dimension):
         L = fin.readline()
         X = re.split("[(,) ]+", L)
-        super += [(float(X[1]), float(X[2]), float(X[3]))]
+        super.append((float(X[1]), float(X[2]), float(X[3])))
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading neighbors
     L = ''
     while "neighbors" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without neighbors')
+            raise ValueError('file ended without neighbors')
 
     neighbors = []
     while True:
         L = fin.readline()
         if L == '\n': break
         X = re.split("[(,): ]+", L)
-        neighbors += [(float(X[1]), float(X[2]), float(X[3]))]
+        neighbors.append((float(X[1]), float(X[2]), float(X[3])))
     Neigh = np.zeros((len(neighbors), 3))
     for i,s in enumerate(neighbors):
         Neigh[i,:] = (np.array(s)@B).T
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading operator
 
     L = ''
@@ -133,12 +147,7 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
 
         K = '{:d},{:d};{:d}'.format(I,J,neighbor)
         Si[K] = (I-1,J-1,neighbor)
-        if 'Hubbard' in op_type or 'one-body' in op_type:
-            # if K in hop:
-            #     hop[K] += v
-            # else:
-            #     hop[K] = v
-
+        if 'one-body' in op_type:
             if X[0][-1] == '+' and X[1][-1] == '+':
                 sz = 1
                 if K in hop:
@@ -150,10 +159,6 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
                 else:
                     spin[K] = np.array([0,v])
             elif X[0][-1] == '-' and X[1][-1] == '-': 
-                # if K in hop:
-                #     hop[K] += v
-                # else:
-                #     hop[K] = v
                 if K in spin:
                     spin[K] += np.array([0,-v])
                 else:
@@ -164,6 +169,14 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
                 else:
                     spin[K] = np.array([v,0])
 
+        elif 'Hubbard' in op_type:
+            if X[0][-1] == '+' and X[1][-1] == '-':
+                sz = 1
+                if K in hop:
+                    hop[K] += v
+                else:
+                    hop[K] = v
+
         if 'singlet' in op_type or 'dz' in op_type:
             if (X[0][-1] == '+' and X[1][-1] == '-') or (X[0][-1] == '-' and X[1][-1] == '+'):
                 if K in anom:
@@ -171,8 +184,12 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
                 else:
                     anom[K] = v
 
+        tmp = {}
+        for s in spin:
+            if np.linalg.norm(spin[s]) > 1e-2 :tmp[s] = spin[s]
+        spin = tmp
     fin.close()
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # plotting the elements
     for e in hop:
         if ';0' not in e: continue
@@ -195,7 +212,6 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
                 plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='center', c='r')
 
     fac = 0.15
-    print(spin)
     for e in spin:
         if ';0' not in e: continue
         s1 = Si[e][0]
@@ -223,7 +239,7 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
             plt.plot([S[s1,0], S[s2,0]], [S[s1,1], S[s2,1]], pf, mew=2, alpha = alpha)
 
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # plotting the sites
     bcol = ['k', 'r', 'b', 'g', 'c', 'm', 'y']
     ncol = len(bcol)
@@ -249,7 +265,7 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
             if show_orb_labels: 
                 plt.text(S[i,0]+orb_offset, S[i,1]+ z_offset*(S[i,2]-zmin), f'${orb[i]+1}$', va='center', ha='left', color='g', fontsize=8)
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # plotting the neighbors
 
     if show_neighbors:
@@ -270,43 +286,44 @@ def draw_operator(op_name, show_labels=False, show_orb_labels=True, show_neighbo
             neighbor = Si[e][2]-1
             plt.plot([S[s1,0], S[s2,0] + Neigh[neighbor][0]], [S[s1,1], S[s2,1] + Neigh[neighbor][1]], 'r:', lw=1)
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     plt.title(f'${op_name}$', pad=18)
     if plt_ax is None: plt.show()
 
 
 
-#=============================================================================
+####################################################################################################
 
-def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, plt_ax = None):
+def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, spin_offset = 0.15, plt_ax = None):
+    """
+    Draws an operator defined on a cluster model to the screen (for debugging purposes)
+
+    :param cluster clus: instance of a cluster
+    :param str op_name: name of the operator
+    :param boolean show_labels: if True, shows the labels of the cluster 
+    :param boolean values: if True, prints de values of the elements 
+    :param float spin_offset: graphical offset between up and down spins 
+    :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
+    """
 
     if plt_ax is not None: plt.sca(plt_ax)
 
     file = 'tmp_model.out'
-    info = pyqcm.cluster_info()
-    nb = 0
-    found = False
-    clus_I = 0
-    for i,c in enumerate(info):
-        if clus_name == c[0]:
-            found = True
-            nb = c[2]
-            clus_I = i+1
-            break
 
-    if not found:
-        raise ValueError('The cluster model named {:s} does not exist!'.format(clus_name))
+    clus_name = clus.cluster_model.name
+    nb = clus.cluster_model.n_bath
+    clus_I = clus.index
 
-    pyqcm.print_model(file)
+    self.print_model(file)
     fin = open(file, 'r')
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading positions of sites
     L = ''
     while " sites " not in L:
         L = fin.readline()
         if not L:
-            print('file ended without sites')
+            raise ValueError('draw: file ended without sites')
 
     L = fin.readline()
     sites = []
@@ -317,23 +334,23 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
         if L == '\n': break
         X = re.split("[(,)\t ]+", L)
         if int(X[1]) == clus_I:
-            sites += [(int(X[4]), int(X[5]), int(X[6]))]
+            sites.append((int(X[4]), int(X[5]), int(X[6])))
 
     ns = len(sites)
     no = nb + ns
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading basis
     L = ''
     while "phys:" not in L:
         L = fin.readline()
         if not L:
-            print('file ended without physical basis')
+            raise ValueError('file ended without physical basis')
 
     basis = []
     for i in range(3):
         L = fin.readline()
         X = re.split("[(,) ]+", L)
-        basis += [(float(X[1]), float(X[2]), float(X[3]))]
+        basis.append((float(X[1]), float(X[2]), float(X[3])))
     B = np.array(basis)
     B = np.linalg.inv(B)
 
@@ -341,7 +358,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
     for i,s in enumerate(sites):
         S[i,:] = (np.array(s)@B).T
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # find the cluster description
 
     L = ''
@@ -350,7 +367,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
         if not L:
             raise ValueError('file ended without finding cluster {:s}'.format(clus_name))
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # reading operator
 
     L = ''
@@ -383,8 +400,8 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
         if J > no : 
             s2 = 1
             J -= no
-        if I > ns: elements += [(J-1,I-1,v,s2,s1)]
-        else: elements += [(I-1,J-1,v, s1, s2)]
+        if I > ns: elements.append((J-1,I-1,v,s2,s1))
+        else: elements.append((I-1,J-1,v, s1, s2))
 
     fin.close()
 
@@ -405,14 +422,14 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
 
     S = np.concatenate((S, np.array(bpos)))
 
-    spin_offset = 0.15
+    
     S = np.concatenate((S, S + np.array([spin_offset,spin_offset,0])))
     E = []
     for e in elements:
-        E += [(e[0]+no*e[3], e[1]+no*e[4], e[2])]
+        E.append((e[0]+no*e[3], e[1]+no*e[4], e[2]))
     elements = E
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # plotting the elements
     for e in elements:
         if np.abs(S[e[0],2]-S[e[1],2]) > 0.001:
@@ -429,7 +446,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
     is_in_cluster = np.zeros(2*no,int)
     is_in_cluster[0:ns] = 1
     is_in_cluster[no:no+ns] = 1
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     # plotting the sites
 
     bcol = ['k', 'r', 'b', 'g', 'c', 'm', 'y']
@@ -457,7 +474,7 @@ def draw_cluster_operator(clus_name, op_name, show_labels=True, values=False, pl
                 plt.plot(S[i,0], S[i,1], 's', ms = 14, mfc='w', c='r')
             if show_labels: plt.text(S[i,0], S[i,1], f'${i+1}$', va='center', ha='center', color='b', fontsize=8)
 
-    #-------------------------------------------------------------------------
+    #...............................................................................................
     plt.title(f'${op_name}$', pad=18)
     if plt_ax is None: plt.show()
 

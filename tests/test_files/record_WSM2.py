@@ -1,12 +1,12 @@
 from pyqcm import *
 set_global_parameter("nosym")
 new_cluster_model('tet', 8, 0, generators=None, bath_irrep=False)
-add_cluster('tet', [0, 0, 0], [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 1]], ref = 0)
-lattice_model('lattice_tet', [[2, 0, 0], [0, 2, 0], [0, 0, 2]], None)
+add_cluster('tet', [0, 0, 0], [[0, 0, 0], ( 1, 0, 0), ( 0, 1, 0), ( 1, 1, 0), [0, 0, 1], [0, 1, 1], [1, 0, 1], [1, 1, 1]], ref = 0)
+lattice_model('lattice_tet', [( 2, 0, 0), ( 0, 2, 0), [0, 0, 2]], None)
 interaction_operator('U')
 hopping_operator('wz', [0, 0, 1], 0.5, tau=2)
-hopping_operator('a', [1, 0, 0], 1, tau=2, sigma=1)
-hopping_operator('a', [0, 1, 0], 1, tau=2, sigma=2)
+hopping_operator('a', ( 1, 0, 0), 1, tau=2, sigma=1)
+hopping_operator('a', ( 0, 1, 0), 1, tau=2, sigma=2)
 hopping_operator('vz', [0, 0, 1], 0.5, tau=2, sigma=3)
 density_wave('AF1', 'Z', [0, 0, 1])
 

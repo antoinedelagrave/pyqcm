@@ -148,9 +148,23 @@ namespace ED{
     // decides whether the sector set requires a complex Hilbert space
     if(mod.group->has_complex_irrep) need_complex = true;
     
-    if(model_instances.find(label) != model_instances.end()) model_instances[label].reset();
-    if(need_complex) model_instances[label] = make_shared<model_instance<Complex>>(label, models.at(model_name), param, sec);
-    else model_instances[label] = make_shared<model_instance<double>>(label, models.at(model_name), param, sec);
+    bool identical = false;
+    if(model_instances.find(label) != model_instances.end()){
+      auto I = model_instances.at(label);
+      if(I->gf_solved){
+        bool identical = true;
+        // comparing parameters with previous instance of the same label
+        for(auto &x : param){
+          if(abs(I->value[x.first] - param[x.first]) > SMALL_VALUE) {identical = false; break;}
+        }
+        if(identical) cout << "No new instance needed for cluster " << I->the_model->name << ". Same instance re-used" << endl;
+      }
+      if(!identical) model_instances[label].reset();
+    }
+    if(!identical){
+      if(need_complex) model_instances[label] = make_shared<model_instance<Complex>>(label, models.at(model_name), param, sec);
+      else model_instances[label] = make_shared<model_instance<double>>(label, models.at(model_name), param, sec);
+    }
   }
   
   
@@ -222,11 +236,17 @@ namespace ED{
 
   matrix<complex<double>> Green_function_average(bool spin_down, const size_t label)
   {
-    return model_instances.at(label)->Green_function_average(spin_down);
+    Green_function_solve(label);
+    if(spin_down) return model_instances.at(label)->M_down;
+    else return model_instances.at(label)->M;
   }
 
   
-  
+  double Green_function_density(const size_t label)
+  {
+    return model_instances.at(label)->GF_density;
+  }
+
 
   matrix<complex<double>> self_energy(const Complex &z, bool spin_down, const size_t label)
   {
@@ -238,9 +258,9 @@ namespace ED{
   {
     return model_instances.at(label)->hopping_matrix(spin_down);
   }
-  matrix<complex<double>> hopping_matrix_full(bool spin_down, const size_t label)
+  matrix<complex<double>> hopping_matrix_full(bool spin_down, bool diag, const size_t label)
   {
-    return model_instances.at(label)->hopping_matrix_full(spin_down);
+    return model_instances.at(label)->hopping_matrix_full(spin_down, diag);
   }
   vector<tuple<int,int,double>> interactions(const size_t label)
   {
@@ -309,49 +329,16 @@ namespace ED{
   
   
   
-  double fidelity(const string& model_name, map<string, double> &param1, map<string, double> &param2, const string &sec)
+  double fidelity(int label1, int label2)
   {
-    bool need_complex = false;
-    if(models.find(model_name) == models.end()) qcm_ED_throw("The model "+model_name+" is not defined and so no model instance based on it is allowed.");
-    model& mod = *models.at(model_name);
-    if(mod.is_closed == false) mod.is_closed = true;
-    
-    // first, remove values associated with non existent operators
-    auto it = param1.begin();
-    while(it != param1.end()){
-      if(mod.term.find(it->first) == mod.term.end()){
-        if(global_bool("verb_warning")) cout << "ED WARNING : operator " << it->first << " does not exist in cluster model " << mod.name << endl;
-        param1.erase(it++);
-      }
-      else ++it;
-    }
-    it = param2.begin();
-    while(it != param2.end()){
-      if(mod.term.find(it->first) == mod.term.end()){
-        if(global_bool("verb_warning")) cout << "ED WARNING : operator " << it->first << " does not exist in cluster model " << mod.name << endl;
-        param2.erase(it++);
-      }
-      else ++it;
-    }
-    
-    // need to know whether the instance is complex or real
-    for(auto& v : param1){
-      if(v.second != 0 and mod.term.at(v.first)->is_complex){
-        need_complex = true;
-        break;
-      }
-    }
-    if(need_complex){
-      auto I1 = model_instance<Complex>(0, models.at(model_name), param1, sec);
-      auto I2 = model_instance<Complex>(1, models.at(model_name), param2, sec);
-      return I1.fidelity(I2);
-    }
-    else{
-      auto I1 = model_instance<double>(0, models.at(model_name), param1, sec);
-      auto I2 = model_instance<double>(1, models.at(model_name), param2, sec);
-      return I1.fidelity(I2);
-    }
+    if(model_instances.find(label1) == model_instances.end()) qcm_ED_throw("The model instance labeled "+to_string(label1)+" is out of range.");
+    if(model_instances.find(label2) == model_instances.end()) qcm_ED_throw("The model isntance labeled "+to_string(label2)+" is out of range.");
+    auto I1 = model_instances.at(label1);
+    auto I2 = model_instances.at(label2);
+    if(!I1->complex_Hilbert) return dynamic_pointer_cast<model_instance<double>>(I1)->fidelity(*dynamic_pointer_cast<model_instance<double>>(I2));
+    else return dynamic_pointer_cast<model_instance<Complex>>(I1)->fidelity(*dynamic_pointer_cast<model_instance<Complex>>(I2));
   }
+  
   
   
   

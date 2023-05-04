@@ -143,7 +143,16 @@ namespace ED{
   
   
   
-  
+    /**
+   function that evaluates the cluster density from the integrated Green function
+   label : label of the model instance (in case there are many)
+   output : the density
+   */
+  double Green_function_density(const size_t label);
+
+
+
+
   /**
    function that evaluates the self-energy at a given complex frequency
    z : complex frequency
@@ -162,7 +171,7 @@ namespace ED{
    output : the hopping matrix
    */
   matrix<complex<double>> hopping_matrix(bool spin_down, const size_t label);
-  matrix<complex<double>> hopping_matrix_full(bool spin_down, const size_t label);
+  matrix<complex<double>> hopping_matrix_full(bool spin_down, bool diag, const size_t label);
   
   /**
    function that evaluates the matrix of density-density interactions
@@ -231,7 +240,7 @@ namespace ED{
    param2 : second set of parameters
    sec : Hilbert space sector
    */
-  double fidelity(const string& model_name, map<string, double> &param1, map<string, double> &param2, const string &sec);
+  double fidelity(const int label1, const int label2);
   
   
   

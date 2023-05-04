@@ -163,7 +163,7 @@ void erase(vector<T> &x){
  */
 template <typename T>
 ostream& operator << (ostream& flux, const vector<T>& x){
-  if(x.size() > (size_t)global_int("dim_max_print")) return flux;
+  if(x.size() > (size_t)global_int("max_dim_print")) return flux;
 	flux << "(" << x[0];
 	for(size_t i=1; i<x.size(); ++i){
 		flux << ", " <<x[i];

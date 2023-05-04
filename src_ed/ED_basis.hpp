@@ -36,7 +36,7 @@ struct ED_basis
 	void print_state(std::ostream &flux, const vector<T>& psi) const
 	{
 		if(psi.size() != dim) qcm_ED_throw("dimensions of vector psi and basis do not match!");
-		if(psi.size() > global_int("dim_max_print")) return;
+		if(psi.size() > global_int("max_dim_print")) return;
 		for(int i=0; i<psi.size(); i++){
 			flux << psi[i] << "\t: ";
 			print_state(flux, i);

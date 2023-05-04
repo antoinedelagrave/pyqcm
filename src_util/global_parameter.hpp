@@ -14,7 +14,7 @@
 
 using namespace std;
 
-enum H_FORMAT {H_format_csr, H_format_ops, H_format_onthefly, H_format_factorized, H_format_dense, H_format_eigen, H_format_petsc};
+enum H_FORMAT {H_format_csr, H_format_ops, H_format_onthefly, H_format_factorized, H_format_dense, H_format_eigen};
 extern H_FORMAT Hamiltonian_format;
 
 //! scheme for handling global parameters and options

@@ -9,8 +9,6 @@
   #include <omp.h>
 #endif
 
-extern shared_ptr<parameter_set> param_set;
-
 string strip_at(const string& s)
 {
   string name = s;
@@ -30,13 +28,11 @@ string strip_at(const string& s)
 /** 
  default constructor
  @param _model [in] : lattice model
- @param _params [in] : values of the model parameters, as a map
- @param _sectors [in] : sectors to look for the ground state 
  @param _label [in] : label given to the instance 
  */
 
-lattice_model_instance::lattice_model_instance(shared_ptr<lattice_model> _model, const map<string, double>& _params, const vector<string>& _sectors, int _label)
-: label(_label), model(_model), params(_params), sectors(_sectors), complex_HS(false)
+lattice_model_instance::lattice_model_instance(shared_ptr<lattice_model> _model, int _label)
+: label(_label), model(_model), complex_HS(false)
 {
   n_clus = model->clusters.size();
   vector<map<string,double>> cluster_values(n_clus);
@@ -47,7 +43,8 @@ lattice_model_instance::lattice_model_instance(shared_ptr<lattice_model> _model,
   PE_solved = false;
   E_pot = 0.0;
   E_kin = 0.0;
-  if(sectors.size() == 0) qcm_throw("target sectors were not specified!");
+  if(model->sector_strings.size() == 0) qcm_throw("target sectors were not specified!");
+  params = model->param_set->value_map();
   
   model->close_model();
   
@@ -64,7 +61,7 @@ lattice_model_instance::lattice_model_instance(shared_ptr<lattice_model> _model,
 
   for(size_t i=0; i<n_clus; i++){
     if(cluster_values[i].size() == 0) qcm_throw("cluster "+to_string(i)+" has no nonzero operators");
-    ED::new_model_instance(model->clusters[i].name, cluster_values[i], sectors[i], label*n_clus+i);
+    ED::new_model_instance(model->clusters[i].name, cluster_values[i], model->sector_strings[i], label*n_clus+i);
     model->clusters[i].mixing = ED::mixing(label*n_clus+i);
   }
 	if(model->GF_offset.size() == 0) model->post_parameter_consolidate(label);
@@ -503,94 +500,37 @@ void lattice_model_instance::SEF_integrand(Complex w, vector3D<double> &k, const
 void lattice_model_instance::print_parameters(ostream& out, print_format format)
 {
   bool print_all = global_bool("print_all");
+  bool print_variances = global_bool("print_variances");
 
   out << setprecision((int)global_int("print_precision"));
-  if(param_set == nullptr){
-    switch(format){
-      case print_format::names_noave :
-        for(auto& x : params) out << x.first << '\t';
-        break;
-      case print_format::names :
-        for(auto& x : params) out << x.first << '\t' << "ave_" << x.first << '\t';
-        for(size_t i = 0; i<n_clus; i++){
-          // if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out  << "ave_" << strip_at(get<0>(x)) << '\t';
-        }
-        for(size_t i = 0; i<n_clus; i++){
-          // if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out  << "var_" << strip_at(get<0>(x)) << '\t';
-        }
-        break;
-      case print_format::values_noave :
-        for(auto& x : params) out << chop(x.second, 1e-10) << '\t';
-        break;
-      case print_format::values :
-        for(auto& x : params) out << chop(x.second, 1e-10) << '\t';
-        for(auto& x : ave) out << chop(x.second, 1e-10) << '\t';
-        for(size_t i = 0; i<n_clus; i++){
-          // if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out << chop(get<1>(x), 1e-10) << '\t';
-        }
-        for(size_t i = 0; i<n_clus; i++){
-          // if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out << chop(get<2>(x), 1e-10) << '\t';
-        }
-        break;
-      case print_format::namesvalues :
-        for(auto& x : params) out << strip_at(x.first) << " = " << chop(x.second, 1e-10) << ", ";
-        for(size_t i = 0; i<n_clus; i++){
-          // if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out << "ave_" << strip_at(get<0>(x)) << " = " << chop(get<1>(x), 1e-10) << ", ";
-        }
-        out << endl;
-        break;
-      default:
-        break;
-    }
-  }
-  else{
-    switch(format){
-      case print_format::names_noave :
-        for(auto& x : params) if(param_set->is_dependent(x.first) ==  false or print_all==true) out << x.first << '\t';
-        break;
-      case print_format::names :
-        for(auto& x : params) if(param_set->is_dependent(x.first) ==  false or print_all==true) out << x.first << '\t';
-        for(auto& x : ave) out << "ave_" << x.first << '\t';
-        for(size_t i = 0; i<n_clus; i++){
-          if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out  << "ave_" << strip_at(get<0>(x)) << '\t';
-        }
-        for(size_t i = 0; i<n_clus; i++){
-          if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out  << "var_" << strip_at(get<0>(x)) << '\t';
-        }
-        break;
-      case print_format::values_noave :
-        for(auto& x : params) if(param_set->is_dependent(x.first) ==  false or print_all==true) out << chop(x.second, 1e-10) << '\t';
-        break;
-      case print_format::values :
-        for(auto& x : params) if(param_set->is_dependent(x.first) ==  false or print_all==true) out << chop(x.second, 1e-10) << '\t';
-        for(auto& x : ave) out << chop(x.second, 1e-10) << '\t';
-        for(size_t i = 0; i<n_clus; i++){
-          if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out << chop(get<1>(x), 1e-10) << '\t';
-        }
-        for(size_t i = 0; i<n_clus; i++){
-          if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out << chop(get<2>(x), 1e-10) << '\t';
-        }
-        break;
-      case print_format::namesvalues :
-        for(auto& x : params) if(param_set->is_dependent(x.first) ==  false or print_all==true)  out << strip_at(x.first) << " = " << chop(x.second, 1e-10) << ", ";
-        for(size_t i = 0; i<n_clus; i++){
-          if(model->clusters[i].ref != i) continue;
-          for(auto& x : clus_ave[i]) out << "ave_" << strip_at(get<0>(x)) << " = " << chop(get<1>(x), 1e-10) << ", ";
-        }
-        out << endl;
-        break;
-      default:
-        break;
-    }
+  if(model->param_set == nullptr) return;
+  switch(format){
+    case print_format::names :
+      for(auto& x : params) if(model->param_set->is_dependent(x.first) ==  false or print_all==true) out << x.first << '\t';
+      for(auto& x : ave) out << "ave_" << x.first << '\t';
+      for(size_t i = 0; i<n_clus; i++){
+        if(model->clusters[i].ref != i) continue;
+        for(auto& x : clus_ave[i]) out  << "ave_" << strip_at(get<0>(x)) << '\t';
+      }
+      for(size_t i = 0; i<n_clus; i++){
+        if(model->clusters[i].ref != i) continue;
+        if(print_variances) for(auto& x : clus_ave[i]) out  << "var_" << strip_at(get<0>(x)) << '\t';
+      }
+      break;
+    case print_format::values :
+      for(auto& x : params) if(model->param_set->is_dependent(x.first) ==  false or print_all==true) out << chop(x.second, 1e-10) << '\t';
+      for(auto& x : ave) out << chop(x.second, 1e-10) << '\t';
+      for(size_t i = 0; i<n_clus; i++){
+        if(model->clusters[i].ref != i) continue;
+        for(auto& x : clus_ave[i]) out << chop(get<1>(x), 1e-10) << '\t';
+      }
+      if(print_variances) for(size_t i = 0; i<n_clus; i++){
+        if(model->clusters[i].ref != i) continue;
+        for(auto& x : clus_ave[i]) out << chop(get<2>(x), 1e-10) << '\t';
+      }
+      break;
+    default:
+      break;
   }
 }
 
@@ -626,6 +566,10 @@ void lattice_model_instance::print_info()
     if(model->clusters[i].ref != i) continue;
     ostr1 << "E0_" << i+1 << "\tsector_"  << i+1 << '\t';
     ostr2 << setprecision(print_precision) << gs[i].first << '\t' << gs[i].second << '\t';
+    if(gf_solved){
+      ostr1 << "n_" << i+1 << '\t';
+      ostr2 << setprecision(print_precision) << ED::Green_function_density(i) << '\t';
+    }
   }
   line_info_names = ostr1.str();
   line_info_values = ostr2.str();

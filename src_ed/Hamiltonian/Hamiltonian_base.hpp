@@ -123,6 +123,14 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
     }
 
     char method = global_char("Ground_state_method");
+    // Force PRIMME when ground_state_init_last is True
+    // Lanczos does not converge and Davidson method ignores the initial guess
+    if (method != 'P' and global_bool("Ground_state_init_last")) {
+        cout << "ED WARNING! : Ground_state_init_last can only be used with the PRIMME solver!" << endl;
+        cout << "Switch automatically to PRIMME solver." << endl;
+        method = 'P';
+    }
+
     if (method == 'D' or global_int("Davidson_states") > 1) { //Davidson method
         size_t Davidson_states = global_int("Davidson_states");
         Davidson(*this, dim, Davidson_states, evalues, evectors, global_double("accur_Davidson"),  global_bool("verb_ED"));

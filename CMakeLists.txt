@@ -136,12 +136,13 @@ if (WITH_PRIMME)
         find_library(
             PRIMME_LIBRARY REQUIRED
             NAMES libprimme.a
-            HINTS "/usr/local/lib" ${PRIMME_DIR}/lib
+            HINTS "/usr/local/lib" ${PRIMME_DIR}/lib "${CMAKE_SOURCE_DIR}/external/primme/lib"
         )
     endif()
     get_filename_component(PRIMME_DIR ${PRIMME_LIBRARY} DIRECTORY)
     set(PRIMME_DIR "${PRIMME_DIR}/..")
     add_compile_definitions(WITH_PRIMME)
+    message(STATUS "PRIMME_DIR: ${PRIMME_DIR}")
     message(STATUS "PRIMME lib: ${PRIMME_LIBRARY}")
 endif()
 
@@ -174,12 +175,13 @@ if (DOWNLOAD_CUBA)
 else()
     find_library(CUBA_LIBRARY
         NAMES libcuba.a
-        HINTS "${CUBA_DIR}" "/usr/local/lib" "$ENV{HOME}/lib" "${CMAKE_SOURCE_DIR}/external/cuba/"
+        HINTS "/usr/local/lib" "$ENV{HOME}/lib" "${CMAKE_SOURCE_DIR}/external/cuba/"
     )
 endif()
 
 get_filename_component(CUBA_DIR ${CUBA_LIBRARY} DIRECTORY)
 message(STATUS "CUBA lib: ${CUBA_LIBRARY}")
+message(STATUS "CUBA dir: ${CUBA_DIR}")
 
 
 #------------------

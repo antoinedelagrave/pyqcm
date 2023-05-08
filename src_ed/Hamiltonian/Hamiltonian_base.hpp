@@ -101,8 +101,10 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
     vector<double> evalues;
     evalues.resize(1);
     vector<vector<HilbertField> > evectors;
-    //use the previous eigenvectors
+
     int ndouble = sizeof(HilbertField) / sizeof(double);
+#ifdef WITH_PRIMME
+    //use the previous eigenvectors
     if (global_bool("Ground_state_init_last")) {
         if (the_model->last_eigenvectors[sec].size() == 0) { //initialise random
             the_model->last_eigenvectors[sec].resize(ndouble*dim);
@@ -121,15 +123,21 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
         evectors[0].resize(dim);
         random(evectors[0], normal_dis);
     }
+#else
+    evectors.resize(1);
+    evectors[0].resize(dim);
+    random(evectors[0], normal_dis);
+#endif
 
     char method = global_char("Ground_state_method");
-    // Force PRIMME when ground_state_init_last is True
-    // Lanczos does not converge and Davidson method ignores the initial guess
+#ifdef WITH_PRIMME
     if (method != 'P' and global_bool("Ground_state_init_last")) {
         cout << "ED WARNING! : Ground_state_init_last can only be used with the PRIMME solver!" << endl;
         cout << "Switch automatically to PRIMME solver." << endl;
+        set_global_char("Ground_state_method", 'P');
         method = 'P';
     }
+#endif
 
     if (method == 'D' or global_int("Davidson_states") > 1) { //Davidson method
         size_t Davidson_states = global_int("Davidson_states");
@@ -162,6 +170,7 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
     }
     
     //write the new previous eigenvector
+#ifdef WITH_PRIMME
     if (global_bool("Ground_state_init_last")) {
         the_model->last_eigenvectors[sec] = vector<double> (
             (double*) evectors[0].data(),
@@ -169,6 +178,7 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
         );
         the_model->last_eigenvalues[sec] = evalues[0];
     }
+#endif
     return low_energy_states;
 }
 

@@ -5,9 +5,9 @@ import timeit
 
 # pyqcm.set_global_parameter('verb_ED')
 # pyqcm.set_global_parameter('verb_Hilbert')
-pyqcm.set_global_parameter('max_dim_full', 6)
+# pyqcm.set_global_parameter('max_dim_full', 6)
 pyqcm.set_global_parameter('Ground_state_init_last')
-pyqcm.set_global_parameter('Ground_state_method', 'P')
+# pyqcm.set_global_parameter('Ground_state_method', 'P')
 
 # pyqcm.set_global_parameter('CSR_sym_store')
 F = 'E'

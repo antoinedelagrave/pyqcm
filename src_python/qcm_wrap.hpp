@@ -2190,6 +2190,26 @@ static PyObject* great_reset_python(PyObject *self, PyObject *args)
   return Py_BuildValue("");
 }
 
+//==============================================================================
+const char* erase_model_instance_help =
+R"{(
+Erases a model instance from the list
+arguments:
+1. label : int, label of the model instance
+returns None
+){";
+//------------------------------------------------------------------------------
+static PyObject* erase_model_instance_python(PyObject *self, PyObject *args)
+{
+  int label=0;
+
+  try{
+    if(!PyArg_ParseTuple(args, "|i", &label))
+      qcm_throw("failed to read parameters in call to complex_HS (python)");
+      QCM::erase_lattice_model_instance(label);
+  } catch(const string& s) {qcm_catch(s);}
+  return Py_BuildValue("");
+}
 
 
 

@@ -617,6 +617,10 @@ class model_instance:
         if self.model.is_closed == False: self.model.finalize()
         self.is_complex = qcm.complex_HS(label)
 
+    #-----------------------------------------------------------------------------------------------
+    def __del__(self):
+        print('Erasing model instance with label ', self.label)
+        qcm.erase_model_instance(self.label)
 
     #-----------------------------------------------------------------------------------------------
     def reset(self):

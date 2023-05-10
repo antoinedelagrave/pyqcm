@@ -48,6 +48,13 @@ void great_reset(){
 }
 
 
+void erase_lattice_model_instance(size_t label){
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
+    lattice_model_instances.at(label).reset();
+}
+
+
+
 
 /**
  * prints the definition of the model in a file

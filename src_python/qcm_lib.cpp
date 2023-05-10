@@ -71,6 +71,7 @@ static PyMethodDef methods[] = {
   { "density_wave", (PyCFunction)density_wave_python, METH_VARARGS | METH_KEYWORDS, density_wave_help },
   { "dispersion", dispersion_python, METH_VARARGS, dispersion_help },
   { "dos", dos_python, METH_VARARGS, dos_help },
+  { "erase_model_instance", erase_model_instance_python, METH_VARARGS, erase_model_instance_help },
   { "explicit_operator", (PyCFunction)explicit_operator_python, METH_VARARGS | METH_KEYWORDS, explicit_operator_help },
   { "get_global_parameter", get_global_parameter_python, METH_VARARGS, get_global_parameter_help },
   { "get_CDMFT_host", get_CDMFT_host_python, METH_VARARGS, get_CDMFT_host_help },

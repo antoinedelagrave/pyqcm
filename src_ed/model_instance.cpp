@@ -155,8 +155,8 @@ void model_instance<Complex>::build_cf(state<Complex> &Omega, bool spin_down)
           the_model->create_or_destroy(pm, sorb2, Omega, psi, Complex(1.0,0.0));
         }
         else if(o1 < o2){
-          if(pm==1) the_model->create_or_destroy(pm, sorb2, Omega, psi, Complex(0.0,1.0));
-          else the_model->create_or_destroy(pm, sorb2, Omega, psi, Complex(0.0,-1.0));
+          if(pm==1) the_model->create_or_destroy(pm, sorb2, Omega, psi, Complex(0.0,-1.0));
+          else the_model->create_or_destroy(pm, sorb2, Omega, psi, Complex(0.0,1.0));
         }
         
         // normalisation of |x> and storing its norm in "norm"

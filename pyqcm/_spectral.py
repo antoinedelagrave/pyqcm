@@ -295,10 +295,11 @@ def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0,
     w = __frequency_array(wmax, eta, imaginary)  # defines the array of frequencies
     d = self.model.dimGFC[clus]
     if full:
-        dd = (d*(d+1))//2
+        dd = d*d
+        # dd = (d*(d+1))//2
         T = []
         for j in range(d):
-            for k in range(j+1):
+            for k in range(d):
                 T.append('({0:d},{1:d})'.format(j+1,k+1))
         plt.yticks(offset*np.arange(0, dd), T)
     else:
@@ -318,7 +319,7 @@ def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0,
         if full:
             l = 0
             for j in range(d):
-                for k in range(j+1):
+                for k in range(d):
                     A[i, l] += -g[j, k].imag
                     l += 1
         else:        

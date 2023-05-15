@@ -720,7 +720,7 @@ class model_instance:
 
         """
 
-        return qcm.cluster_Green_function(clus, z, spin_down, self.label*self.model.nclus + clus, blocks)
+        return qcm.cluster_Green_function(clus, z, spin_down, self.label, blocks)
 
 
     #-----------------------------------------------------------------------------------------------

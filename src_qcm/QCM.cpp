@@ -48,6 +48,13 @@ void great_reset(){
 }
 
 
+void erase_lattice_model_instance(size_t label){
+    // if(lattice_model_instances.find(label) != lattice_model_instances.end()) lattice_model_instances.erase(label);
+    lattice_model_instances.erase(label);
+}
+
+
+
 
 /**
  * prints the definition of the model in a file
@@ -155,7 +162,7 @@ void great_reset(){
    */
   matrix<complex<double>> cluster_Green_function(size_t i, complex<double> w, bool spin_down, int label, bool blocks)
   {
-    // if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->cluster_Green_function(i, w, spin_down, blocks);
   }
   
@@ -166,7 +173,7 @@ void great_reset(){
    */
   matrix<complex<double>> cluster_self_energy(size_t i, complex<double> w, bool spin_down, int label)
   {
-    // if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->cluster_self_energy(i, w, spin_down);
   }
   
@@ -178,7 +185,7 @@ void great_reset(){
    */
   matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down, int label)
   {
-    // if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->cluster_hopping_matrix(i, spin_down);
   }
   
@@ -192,7 +199,7 @@ void great_reset(){
    */
   matrix<complex<double>> hybridization_function(complex<double> w, bool spin_down, size_t i, int label)
   {
-    // if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->hybridization_function(i, w, spin_down);
   }
   
@@ -857,12 +864,14 @@ vector<complex<double>> periodized_Green_function_element(int r, int c, const co
 
   double CDMFT_distance(const vector<double>& p, int label)
   {
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->CDMFT_distance(p); 
   }
 
 
   double monopole(vector3D<double>& k, double a, int nk, int orb, bool rec, int label)
   {
+    if(lattice_model_instances.find(label) == lattice_model_instances.end()) qcm_throw("The instance # "+to_string(label)+" does not exist.");
     return lattice_model_instances.at(label)->monopole(k, a, nk, orb, rec); 
   }
 

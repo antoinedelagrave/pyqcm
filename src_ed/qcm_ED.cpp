@@ -55,7 +55,10 @@ namespace ED{
     if(max_gap < MIN_GAP) max_gap = MIN_GAP;
   }
   
-  
+  void check_instance(int label){
+    if(model_instances.find(label) == model_instances.end()) 
+    qcm_ED_throw("The cluster instance label "+to_string(label)+" is out of range.");
+  }
   
   
   
@@ -84,8 +87,7 @@ namespace ED{
   void new_operator(const string &model_name, const string &_name, const string &_type, const vector<matrix_element<Complex>> &elements)
   {
     if(!elements.size()) return;
-    if(models.find(model_name) == models.end())
-      qcm_ED_throw("The model "+model_name+" is not defined. Check spelling.");
+    if(models.find(model_name) == models.end()) qcm_ED_throw("The model "+model_name+" is not defined. Check spelling.");
     shared_ptr<model> M = models.at(model_name);
     if(M->is_closed){
       qcm_warning("model " + model_name + " has already been instantiated and is closed for modifications. Ignoring.");
@@ -106,19 +108,14 @@ namespace ED{
     else return false;
   }
   
-  
-  
-  
+
   tuple<size_t,size_t,size_t>  model_size(const string &name)
   {
     if(models.find(name) == models.end()) qcm_ED_throw("model "+name+" does not exist!");
     return {models.at(name)->n_sites, models.at(name)->n_bath, models.at(name)->group->e.size()};
   }
   
-  
-  
-  
-  
+
   void new_model_instance(const string &model_name, map<string, double> &param, const string &sec, size_t label)
   {
     bool need_complex = false;
@@ -178,7 +175,7 @@ namespace ED{
     
   bool complex_HS(size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The cluster instance label "+to_string(label)+" is out of range.");
+    check_instance(label);
     return model_instances.at(label)->complex_Hilbert;
   }
   
@@ -186,7 +183,7 @@ namespace ED{
 
   pair<double, string> ground_state_solve(size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The cluster instance label "+to_string(label)+" is out of range.");
+    check_instance(label);
     
     pair<double, string> gs;
     gs = model_instances.at(label)->low_energy_states();
@@ -197,7 +194,7 @@ namespace ED{
   
   vector<tuple<string,double,double>>  cluster_averages(size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The cluster instance label "+to_string(label)+" is out of range.");
+    check_instance(label);
     
     auto& M = model_instances.at(label);
     if(!M->gs_solved) M->low_energy_states();
@@ -208,7 +205,7 @@ namespace ED{
   
   pair<matrix<Complex>, vector<uint64_t>>  density_matrix(const vector<int> &sites, size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The cluster instance label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
 
     assert(M->complex_Hilbert == false);
@@ -221,7 +218,7 @@ namespace ED{
 
   void Green_function_solve(size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     model_instances.at(label)->Green_function_solve();
   }
   
@@ -229,6 +226,7 @@ namespace ED{
   
   matrix<complex<double>> Green_function(const Complex &z, bool spin_down, const size_t label, bool blocks)
   {
+    check_instance(label);
     return model_instances.at(label)->Green_function(z, spin_down, blocks);
   }
 
@@ -236,6 +234,7 @@ namespace ED{
 
   matrix<complex<double>> Green_function_average(bool spin_down, const size_t label)
   {
+    check_instance(label);
     Green_function_solve(label);
     if(spin_down) return model_instances.at(label)->M_down;
     else return model_instances.at(label)->M;
@@ -258,17 +257,21 @@ namespace ED{
   {
     return model_instances.at(label)->hopping_matrix(spin_down);
   }
+  
+  
   matrix<complex<double>> hopping_matrix_full(bool spin_down, bool diag, const size_t label)
   {
     return model_instances.at(label)->hopping_matrix_full(spin_down, diag);
   }
+  
+  
   vector<tuple<int,int,double>> interactions(const size_t label)
   {
     return model_instances.at(label)->interactions();
   }
 
   
-  
+
   matrix<complex<double>> hybridization_function(const Complex w, bool spin_down, const size_t label)
   {
     return model_instances.at(label)->hybridization_function(w, spin_down);
@@ -278,7 +281,7 @@ namespace ED{
   
   vector<complex<double>> susceptibility(const string &op, const vector<Complex> &w, const size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
     if(M->the_model->term.find(op) == M->the_model->term.end()) qcm_ED_throw("Operator "+op+" is not defined in the model.");
     return model_instances.at(label)->susceptibility(M->the_model->term.at(op), w);
@@ -287,7 +290,7 @@ namespace ED{
   
   
   vector<pair<double,double>> susceptibility_poles(const string &op, const size_t label){
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
     if(M->the_model->term.find(op) == M->the_model->term.end()) qcm_ED_throw("Operator "+op+" is not defined in the model.");
     return model_instances.at(label)->susceptibility_poles(M->the_model->term.at(op));
@@ -328,11 +331,10 @@ namespace ED{
   
   
   
-  
   double fidelity(int label1, int label2)
   {
-    if(model_instances.find(label1) == model_instances.end()) qcm_ED_throw("The model instance labeled "+to_string(label1)+" is out of range.");
-    if(model_instances.find(label2) == model_instances.end()) qcm_ED_throw("The model isntance labeled "+to_string(label2)+" is out of range.");
+    check_instance(label1);
+    check_instance(label2);
     auto I1 = model_instances.at(label1);
     auto I2 = model_instances.at(label2);
     if(!I1->complex_Hilbert) return dynamic_pointer_cast<model_instance<double>>(I1)->fidelity(*dynamic_pointer_cast<model_instance<double>>(I2));
@@ -353,7 +355,7 @@ namespace ED{
   
   void read_instance(istream& fin, int label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
     M->read(fin);
   }
@@ -361,7 +363,7 @@ namespace ED{
   
   pair<vector<double>, vector<complex<double>>> qmatrix(bool spin_down, const size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
     if(!M->complex_Hilbert){
       return dynamic_pointer_cast<model_instance<double>>(M)->qmatrix(spin_down);
@@ -372,7 +374,7 @@ namespace ED{
   
   pair<vector<double>, vector<complex<double>>> hybridization(bool spin_down, const size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
     if(!M->complex_Hilbert){
       dynamic_pointer_cast<model_instance<double>>(M)->hybridization(spin_down);
@@ -382,7 +384,7 @@ namespace ED{
 
   string print_wavefunction(const size_t label)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
+    check_instance(label);
     auto& M = model_instances.at(label);
     ostringstream sout;
     M->print_wavefunction(sout);

@@ -28,8 +28,8 @@ Vm_H = pyqcm.hartree(model, 'Vm', 'V', 1, lattice=True) # lattice=True ---> use 
 
 # Range for sweep over V 
 V_start = 4
-V_stop = 0
-V_step = -0.2
+V_stop = 2
+V_step = -0.5
 
 def F():
     return pyqcm.model_instance(model)

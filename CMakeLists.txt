@@ -19,10 +19,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -ftree-vectorize")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -ftree-vectorize -funroll-loops")
     set(OpenMP_CXX_INCLUDE_DIR "/opt/homebrew/opt/libomp/include")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native -ftree-vectorize")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 --march=native -ftree-vectorize -funroll-loops")
 endif()
 
 #------------------
@@ -62,6 +62,7 @@ add_library(qcm SHARED
     src_util/integrate.cpp
     src_util/matrix.cpp
     src_util/parser.cpp
+    src_util/VDVH_kernel.cpp
     src_util/vector_num.cpp
 )
 

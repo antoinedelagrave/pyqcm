@@ -5,14 +5,6 @@
 #include "types.hpp"
 
 
-/*
-How I designed this kernel ?
-I used AVX2 processor which contained 16 vector registers (256 bits)
-I would like to maximize their use.
-https://en.algorithmica.org/hpc/algorithms/matmul/
-TODO: I did not use the fact that G is symetric
-*/
-
 
 // 
 // NAIVE, ORIGINAL VERSION
@@ -43,7 +35,7 @@ void VDVH_naive(std::vector<Complex> &G, const std::vector<Complex> &V, const st
 
 
 
-
+#ifdef HAVE_AVX2
 
 //
 // KERNEL AVX2 version
@@ -181,9 +173,10 @@ void VDVH_kernel_avx2(std::vector<Complex> &G, const std::vector<Complex> &V, co
 }
 void kernel_avx2(void* G, Complex* V, Complex* D, int x, int y, int l, int r, int M, int L) {};
 
+#endif
 
 
-
+#if 0
 
 //
 // KERNEL AVX512 version
@@ -308,4 +301,7 @@ void VDVH_kernel_avx512(std::vector<Complex> &G, const std::vector<Complex> &V, 
   VDVH_naive(G,V,D,L,M);
 }
 void kernel_avx512(void* G, Complex* V, Complex* D, int x, int y, int l, int r, int M, int L) {};
+
+#endif
+
 

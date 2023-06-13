@@ -149,10 +149,11 @@ void Q_matrix<HilbertField>::Green_function(const Complex &z, matrix<Complex> &G
     u[i] = conjugate(temp) / (temp.real()*temp.real() + temp.imag()*temp.imag());
   }
   
-  char kernel = global_char("Green_function_kernel");
-  if (kernel == 'K') VDVH_kernel_avx2(G.v, v.v, u, L, M);
-  else if (kernel == 'N') VDVH_naive(G.v, v.v, u, L, M);
-  else qcm_ED_throw("Unknown Green function kernel, must be K (Kernelised) or N (Naive)");
+#ifdef HAVE_AVX2
+  VDVH_kernel_avx2(G.v, v.v, u, L, M);
+#else
+  VDVH_naive(G.v, v.v, u, L, M);
+#endif
 }
 
 

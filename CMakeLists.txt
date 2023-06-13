@@ -22,7 +22,7 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -ftree-vectorize -funroll-loops")
     set(OpenMP_CXX_INCLUDE_DIR "/opt/homebrew/opt/libomp/include")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 --march=native -ftree-vectorize -funroll-loops")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g -march=native -ftree-vectorize -funroll-loops")
 endif()
 
 #------------------
@@ -182,6 +182,20 @@ endif()
 get_filename_component(CUBA_DIR ${CUBA_LIBRARY} DIRECTORY)
 message(STATUS "CUBA lib: ${CUBA_LIBRARY}")
 
+
+#-----------------------------------------------
+# Optimized kernel for Green function evaluation
+#-----------------------------------------------
+if (WITH_GF_OPT_KERNEL)
+  SET( CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/external" ${CMAKE_MODULE_PATH} )
+  include(FindAVX2)
+  if (AVX2_FOUND)
+    add_compile_definitions(HAVE_AVX2)
+  else()
+    message(WARNING "WITH_GF_KERNEL specified but the host processor does not have AVX2 capability: optimized kernel will not be used.")
+  endif()
+  message(STATUS "Using AVX2 optimized kernel for Green function evaluation: ${AVX2_FOUND}")
+endif()
 
 #------------------
 # Link dependencies

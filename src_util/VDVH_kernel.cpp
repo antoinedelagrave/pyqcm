@@ -50,9 +50,9 @@ void VDVH_naive(std::vector<Complex> &G, const std::vector<Complex> &V, const st
 //
 
 // Double
-#define KERNEL_HEIGH_D 3
-#define KERNEL_WIDTH_D 3
-void kernel_avx2(__restrict__ Complex* G, const double* V, const Complex* D, const int x, const int y, const int l, const int r, const int M, const int L)
+#define KERNEL_HEIGH_D 4
+#define KERNEL_WIDTH_D 2
+void kernel_avx2(Complex* G, const double* V, const Complex* D, const int x, const int y, const int l, const int r, const int M, const int L)
 {
   __m256d res[KERNEL_HEIGH_D][KERNEL_WIDTH_D]{}; //hold two complex type
   __m256d reg_temp, reg_temp2;
@@ -76,14 +76,72 @@ void kernel_avx2(__restrict__ Complex* G, const double* V, const Complex* D, con
     }
   }
   
-  // write the results back to G
+  // write the results back to G considering symmetry
   double* _G = (double*) G;
   for (int j = 0; j < KERNEL_WIDTH_D; j++) {
-    for (int i = 0; i < KERNEL_HEIGH_D; i++) { //heigh inner loop becase G is column oriented
-      _G[2*(x+i + (y+2*j)*L)] += res[i][j][0];
-      _G[2*(x+i + (y+2*j)*L)+1] += res[i][j][1];
-      _G[2*(x+i + (y+2*j+1)*L)] += res[i][j][2];
-      _G[2*(x+i + (y+2*j+1)*L)+1] += res[i][j][3];
+    for (int i = 0; i < KERNEL_HEIGH_D; i++) {
+      if (x+i > y+2*j) {
+        _G[2*(x+i + (y+2*j)*L)] += res[i][j][0]; //lower triangle
+        _G[2*(x+i + (y+2*j)*L)+1] += res[i][j][1];
+        _G[2*(y+2*j + (x+i)*L)] += res[i][j][0]; //upper triangle
+        _G[2*(y+2*j + (x+i)*L)+1] += res[i][j][1];
+      }
+      else if (x+i == y+2*j) {
+        _G[2*(x+i + (y+2*j)*L)] += res[i][j][0]; //diagonal
+        _G[2*(x+i + (y+2*j)*L)+1] += res[i][j][1];
+      }
+      if (x+i > y+2*j+1) {
+        _G[2*(x+i + (y+2*j+1)*L)] += res[i][j][2]; //lower triangle
+        _G[2*(x+i + (y+2*j+1)*L)+1] += res[i][j][3];
+        _G[2*(y+2*j+1 + (x+i)*L)] += res[i][j][2]; //upper triangle
+        _G[2*(y+2*j+1 + (x+i)*L)+1] += res[i][j][3];
+      }
+      else if (x+i == y+2*j+1) {
+        _G[2*(x+i + (y+2*j+1)*L)] += res[i][j][2]; //diagonal
+        _G[2*(x+i + (y+2*j+1)*L)+1] += res[i][j][3];
+      }
+    }
+  }
+}
+
+void kernel_avx2_hor(Complex* G, const double* V, const Complex* D, const int x, const int y, const int l, const int r, const int M, const int L)
+{
+  __m256d res[KERNEL_WIDTH_D]{}; //hold two complex type
+  __m256d reg_temp, reg_temp2;
+  Complex temp;
+  
+  for(int k=l; k<r; k++) {
+    temp = V[x + k*L] * D[k];
+    reg_temp = _mm256_set_pd(temp.imag(),temp.real(),temp.imag(),temp.real());
+    for (int j = 0; j < KERNEL_WIDTH_D; j++) {
+      int index = y+2*j + k*L;
+      reg_temp2 = _mm256_set_pd(V[index+1],V[index+1],V[index],V[index]);
+      res[j] = _mm256_fmadd_pd(reg_temp2, reg_temp, res[j]);
+    }
+  }
+  
+  // write the results back to G considering symmetry
+  double* _G = (double*) G;
+  for (int j = 0; j < KERNEL_WIDTH_D; j++) {
+    if (x > y+2*j) {
+      _G[2*(x + (y+2*j)*L)] += res[j][0]; //lower triangle
+      _G[2*(x + (y+2*j)*L)+1] += res[j][1];
+      _G[2*(y+2*j + x*L)] += res[j][0]; //upper triangle
+      _G[2*(y+2*j + x*L)+1] += res[j][1];
+    }
+    else if (x == y+2*j) {
+      _G[2*(x + (y+2*j)*L)] += res[j][0]; //diagonal
+      _G[2*(x + (y+2*j)*L)+1] += res[j][1];
+    }
+    if (x > y+2*j+1) {
+      _G[2*(x + (y+2*j+1)*L)] += res[j][2]; //lower triangle
+      _G[2*(x + (y+2*j+1)*L)+1] += res[j][3];
+      _G[2*(y+2*j+1 + x*L)] += res[j][2]; //upper triangle
+      _G[2*(y+2*j+1 + x*L)+1] += res[j][3];
+    }
+    else if (x == y+2*j+1) {
+      _G[2*(x + (y+2*j+1)*L)] += res[j][2]; //diagonal
+      _G[2*(x + (y+2*j+1)*L)+1] += res[j][3];
     }
   }
 }
@@ -169,29 +227,25 @@ void kernel_avx2(Complex* G, const double* V, const Complex* D, const int x, con
 */
 
 void VDVH_kernel_avx2(std::vector<Complex> &G, const std::vector<double> &V, const std::vector<Complex> &D, const int L, const int M) {
-  //note Mpad is the size of the inner padded matrix
-  //G is LpadH * LpadV
+  //G is LpadH * L
   const int LpadH = (L + 2*KERNEL_WIDTH_D-1) / (2*KERNEL_WIDTH_D) * (2*KERNEL_WIDTH_D);
-  const int LpadV = (L + KERNEL_HEIGH_D-1) / KERNEL_HEIGH_D * KERNEL_HEIGH_D;
-  const int Mpad = (M + KERNEL_HEIGH_D-1) / KERNEL_HEIGH_D * KERNEL_HEIGH_D;
   
   //padding the input matrix to fit the kernel (to remove later)
-  std::vector<Complex> _G; _G.resize(LpadV * LpadH);
-  std::vector<double> _V; _V.resize(LpadV * Mpad);
-  std::vector<Complex> _D; _D.resize(Mpad);
+  std::vector<Complex> _G; _G.resize(L * LpadH);
   
-  std::copy(D.begin(), D.end(), _D.begin());
-  for (int i = 0; i < M; i++) {
-    std::copy(V.begin() + i*L, V.begin() + (i+1)*L, _V.begin() + i * LpadV);
-  }
+  //using the main kernel
+  for (int x = 0; x <= L-KERNEL_HEIGH_D; x += KERNEL_HEIGH_D)
+    for (int y = 0; y <= x; y += 2*KERNEL_WIDTH_D)
+      kernel_avx2(_G.data(), V.data(), D.data(), x, y, 0, M, M, L);
   
-  for (int x = 0; x < LpadV; x += KERNEL_HEIGH_D)
-    for (int y = 0; y < LpadH; y += 2*KERNEL_WIDTH_D)
-      kernel_avx2(_G.data(), _V.data(), _D.data(), x, y, 0, M, Mpad, LpadV);
- 
-  for (int i = 0; i < L; i++) std::copy(_G.begin()+ i*LpadV, _G.begin()+i*LpadV+L, G.begin()+i*L);
+  //using the 1xKERNEL_WIDTH_D kernel to finish
+  for (int x = L/KERNEL_HEIGH_D*KERNEL_HEIGH_D; x < L; x += 1)
+    for (int y = 0; y <= x; y += 2*KERNEL_WIDTH_D)
+      kernel_avx2_hor(_G.data(), V.data(), D.data(), x, y, 0, M, M, L);
   
-  _G.resize(0); _V.resize(0); _D.resize(0);
+  for (int i = 0; i < L; i++) std::copy(_G.begin()+ i*L, _G.begin()+i*L+L, G.begin()+i*L);
+  
+  _G.resize(0);
 }
 
 // Complex

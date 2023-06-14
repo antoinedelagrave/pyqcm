@@ -157,6 +157,10 @@ endif()
 include(FindLAPACK)
 message(STATUS "LAPACK lib: ${LAPACK_LIBRARIES}")
 
+if(NOT LAPACK_FOUND)
+    message(FATAL_ERROR "Blas/Lapack or equivalent not found. Please install the required libraries." )
+endif()
+
 #------------------
 # Cuba library
 #------------------

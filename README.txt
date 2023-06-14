@@ -9,7 +9,7 @@ https://arxiv.org/abs/2305.18643
 
 EXAMPLES can be found in the notebooks/ folder, either in plain python files (*.py) or in the form of Jupyter notebooks (*.ipynb)
 
-Please see the INSTALL file for installation instructions.
+Please see the INSTALL.md file for installation instructions.
 
 Dependencies:
 - LAPACK-BLAS or the equivalent

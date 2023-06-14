@@ -923,6 +923,8 @@ class model_instance:
         """
         Computes the ground state of the cluster(s).
 
+        :param str file: name of the file in which the cluster averages are printed (if not None)
+        :param boolean pr: if True, prints the result on the screen
         :return: a list of pairs (float, str) of the ground state energy and sector string, for each cluster of the system
 
         """

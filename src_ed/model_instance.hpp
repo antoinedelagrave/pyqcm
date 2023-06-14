@@ -1,8 +1,14 @@
 #ifndef model_instance_h
 #define model_instance_h
 
+#define LOOK_UP
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <fstream>
 #include <memory>
+#include <deque>
 #include "model_instance_base.hpp"
 #include "Q_matrix_set.hpp"
 #include "continued_fraction_set.hpp"
@@ -45,11 +51,14 @@ template<typename HilbertField>
 struct model_instance : model_instance_base
 {
   // members
+  const size_t look_up_size = 64;
   matrix<HilbertField> tc, tcb, tb; //! one-body matrices for cluster, cluster-bath and bath
   matrix<HilbertField> tc_down, tcb_down, tb_down; //! one-body matrices for cluster, cluster-bath and bath (spin down)
   matrix<HilbertField> tcb_nd, tb_nd; //! non diagonalized versions of these matrices (for debugging/printing)
   matrix<HilbertField> tcb_nd_down, tb_nd_down; //! same, for the spin-down version when mixing = 4
   set<shared_ptr<state<HilbertField>>> states; //!< set of states forming the density matrix
+  deque<pair<Complex, matrix<Complex>>> look_up_table; 
+  deque<pair<Complex, matrix<Complex>>> look_up_table_down; 
 
   model_instance(size_t _label, shared_ptr<model> _the_model, const map<string,double> _value, const string &_sectors);
   Hamiltonian<HilbertField>* create_hamiltonian(
@@ -511,6 +520,19 @@ void model_instance<HilbertField>::Green_function_solve()
 template<typename HilbertField>
 matrix<complex<double>> model_instance<HilbertField>::Green_function(const Complex &z, bool spin_down, bool blocks)
 {
+#ifdef LOOK_UP
+  // first search the look_up table
+  auto LKUP = &look_up_table;
+  if(spin_down) LKUP = &look_up_table_down;
+  #pragma omp critical
+  for(auto &x: *LKUP){
+    if(abs(z - x.first) < SMALL_VALUE){
+      // cout << "recycling G for z = " << z << " and x.first = " << x.first << "  G(0,0) = " << x.second(0,0) << endl;
+      return x.second;
+    }
+  }
+#endif 
+
   #pragma omp master
   {
     if(spin_down and !(mixing&HS_mixing::up_down or mixing==0))
@@ -548,7 +570,16 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
   else{
     the_model->group->to_site_basis(gf_block_matrix, G, n_mixed);
   }
-
+  
+#ifdef LOOK_UP
+  #pragma omp critical
+  {
+    pair<Complex, matrix<Complex>> P(z,G);
+    LKUP->push_front(P);
+    // cout << "storing GF for z = " << z << "  G(0,0) = " << G(0,0)<< endl; // TEMPO
+    if(LKUP->size() > look_up_size) LKUP->pop_back();
+  }
+#endif
   return G;
 }
 
@@ -1345,3 +1376,6 @@ pair<matrix<Complex>, vector<uint64_t>> model_instance<HilbertField>::density_ma
     // loop over states
     return {matrix<Complex>(0), vector<uint64_t>(0)};
 }
+
+
+

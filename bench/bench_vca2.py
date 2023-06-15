@@ -5,6 +5,7 @@ import numpy as np
 
 pyqcm.set_global_parameter('Hamiltonian_format', 'E')
 pyqcm.set_global_parameter('parallel_sectors')
+pyqcm.set_global_parameter('GF_lookup_depth', 256)
 
 # declare a cluster model of 9 sites, named 'clus'
 CM = pyqcm.cluster_model(9)  

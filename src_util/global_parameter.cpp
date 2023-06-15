@@ -69,6 +69,7 @@ namespace QCM {
     new_global_int(400,"max_iter_CF","Maximum number of iterations in the continuous fraction Lanczos procedure");
     new_global_int(600,"max_iter_lanczos","Maximum number of iterations in the Lanczos procedure");
     new_global_int(0,"seed","seed of the random number generator");
+    new_global_int(64,"GF_lookup_depth","depth of the look-up table for the cluster Green function");
 
     new_global_char('E', "Hamiltonian_format", "Desired Hamiltonian format: S (CSR matrix), O (individual operators), F (factorized), N (none = on the fly), E (Eigen CSR matrix))");
 #ifdef WITH_PRIMME

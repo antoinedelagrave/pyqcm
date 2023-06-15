@@ -51,7 +51,7 @@ template<typename HilbertField>
 struct model_instance : model_instance_base
 {
   // members
-  const size_t look_up_size = 64;
+  size_t look_up_size;
   matrix<HilbertField> tc, tcb, tb; //! one-body matrices for cluster, cluster-bath and bath
   matrix<HilbertField> tc_down, tcb_down, tb_down; //! one-body matrices for cluster, cluster-bath and bath (spin down)
   matrix<HilbertField> tcb_nd, tb_nd; //! non diagonalized versions of these matrices (for debugging/printing)
@@ -133,6 +133,7 @@ model_instance<HilbertField>::model_instance(size_t _label, shared_ptr<model> _t
   try{
     set_hopping_matrix(false);
   } catch(const string& s) {qcm_ED_catch(s);}
+  look_up_size = global_int("GF_lookup_depth");
 }
 
 

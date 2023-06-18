@@ -23,6 +23,9 @@ def test_vca():
     pyqcm.banner('testing vca()', c='#', skip=1)
     vca = V.VCA(M.model, varia=['M_1', 't_1'], accur=[5e-4, 5e-4], steps=[5e-5, 5e-5], max=[10,10], method='NR')
 
+    pyqcm.banner('testing vca() with Nelder-Mead', c='#', skip=1)
+    vca = V.VCA(M.model, varia=['M_1', 't_1'], accur=(5e-4, 5e-4), steps=(5e-5, 5e-5), max=(10,10), method='Nelder-Mead')
+
     pyqcm.banner('testing vca() with Newton-Raphson', c='#', skip=1)
     vca = V.VCA(M.model, varia=['M_1', 't_1'], accur=[5e-4, 5e-4], steps=[5e-5, 5e-5], max=[10,10], method='NR')
 

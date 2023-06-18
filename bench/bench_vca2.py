@@ -66,3 +66,5 @@ t_2 = 1*t_1
 # V = vca.VCA(model, varia=('M_1', 't_1', 'tperim_1'), start=(0.17, 1.15, 0.04), steps=(0.005, 0.005, 0.005), accur=(2e-3, 2e-3, 2e-3), max=(10, 10, 10), method='NR')
 V = vca.VCA(model, varia=('M_1', 't_1'), start=(0.17, 1.15), steps=(0.005, 0.005), accur=(2e-3, 2e-3), max=(10, 10), method='NR')
 
+pyqcm.print_statistics()
+

@@ -539,7 +539,8 @@ class VCA:
         if type(steps) != list: 
             if type(steps) == float : steps = [steps]*nvar
             else : steps = list(steps)
-        if pyqcm.is_sequence(accur) == False: accur = (accur,)*nvar
+        if pyqcm.is_sequence(accur) == False: accur = [accur]*nvar
+        if type(accur) == tuple: accur = list(accur)
         if pyqcm.is_sequence(max) == False: max = (max,)*nvar
         if pyqcm.is_sequence(hartree) == False and hartree is not None: hartree = (hartree,)
 

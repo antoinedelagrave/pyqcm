@@ -7,6 +7,7 @@ import numpy as np
 import pyqcm
 from pyqcm import qcm
 import timeit
+import matplotlib.pyplot as plt
 
 ####################################################################################################
 class CDMFT:
@@ -40,6 +41,7 @@ class CDMFT:
     :param int max_function_eval: maximum number of distance function evaluations when minimizing distance
     :param boolean compute_potential_energy: If True, computes Tr(Sigma*G) along with the averages
     :param function pre_host: function to be executed before computing the host. Takes a model instance as argument
+    :param float max_value: maximum absolute value of variational parameters
     :ivar lattice_model model: (unique) model on which the computation is based
     :ivar ndarray Hyb: host function
     :ivar ndarray Hyb_down: host function for the spin down component in the case of mixing=4
@@ -72,7 +74,8 @@ class CDMFT:
         verb=False,
         max_function_eval = 5000000,
         compute_potential_energy = False,
-        pre_host = None
+        pre_host = None,
+        max_value = 100
     ):
 
         self.model =model
@@ -85,12 +88,13 @@ class CDMFT:
         else: hartree = hartree
 
         # variational parameters
-        var = varia
-        nvar = len(var)
+        self.var = list(set(varia)) # makes sure there are no duplicates
+        self.var.sort()
+        nvar = len(self.var)
         if nvar == 0:
             raise ValueError('CDMFT requires at least one variational parameter...Aborting.')
-        qcm.CDMFT_variational_set(var)
-        var_data = np.empty((nvar, maxiter+1))
+        qcm.CDMFT_variational_set(self.var)
+        self.var_data = np.empty((nvar, maxiter+1))
             
         # damping
         begin_with_damping = False
@@ -123,7 +127,7 @@ class CDMFT:
 
 
         # convergence criterion in the bath parameters
-        superiter = 0
+        self.iter = 0
         diff_hartree = 0.0
         hartree_converged = True
 
@@ -140,7 +144,7 @@ class CDMFT:
         print('damping factor = ', alpha)
         print('-'*100)
 
-        params_array = np.zeros(len(var))
+        params_array = np.zeros(nvar)
         
         # CDMFT loop
         converged = False
@@ -154,35 +158,35 @@ class CDMFT:
 
             # puts the values only of the parameters into array params_array
             for i in range(nvar):
-                params_array[i] = params[var[i]]
-            var_data[:, superiter] = params_array
-            check_bounds(params_array, 1000.0, v=var)
+                params_array[i] = params[self.var[i]]
+            self.var_data[:, self.iter] = params_array
+            check_bounds(params_array, max_value, v=self.var)
 
 
             # check convergence in the DVMC case
             # if pyqcm.solver == 'dvmc':
             #     print('E0_VMC = ', E0_VMC, '\tE0_err_VMC = ', E0_err_VMC)
-            #     E0[superiter] = E0_VMC
-            #     E0_err[superiter] = E0_err_VMC
+            #     E0[self.iter] = E0_VMC
+            #     E0_err[self.iter] = E0_err_VMC
             # else:
             #     gs = self.I.ground_state()
             #     for x in gs:
-            #         E0[superiter] += x[0]
+            #         E0[self.iter] += x[0]
             gs = self.I.ground_state()
             for x in gs:
-                E0[superiter] += x[0]
-            if superiter >= min_iter_E0-1:
-                moving_ave[superiter] = 0.0
+                E0[self.iter] += x[0]
+            if self.iter >= min_iter_E0-1:
+                moving_ave[self.iter] = 0.0
                 tmp_norm = 0.0
                 for i in range(min_iter_E0):
-                    tmp_norm += 1.0/E0_err[superiter-i]
-                    moving_ave[superiter] += E0[superiter-i]/E0_err[superiter-i]
-                moving_ave[superiter] /= tmp_norm
-            if superiter >= min_iter_E0 and superiter >= miniter:
-                diff_E0 = np.abs(moving_ave[superiter]-moving_ave[superiter-1])
+                    tmp_norm += 1.0/E0_err[self.iter-i]
+                    moving_ave[self.iter] += E0[self.iter-i]/E0_err[self.iter-i]
+                moving_ave[self.iter] /= tmp_norm
+            if self.iter >= min_iter_E0 and self.iter >= miniter:
+                diff_E0 = np.abs(moving_ave[self.iter]-moving_ave[self.iter-1])
                 if diff_E0 < accur_E0:
                     converged = True
-                    # print('moving averages of E0 : ', moving_ave[0:superiter+1])
+                    # print('moving averages of E0 : ', moving_ave[0:self.iter+1])
                     pyqcm.banner('CDMFT converged on the ground state energy', '=')
                     break
 
@@ -213,24 +217,24 @@ class CDMFT:
             dist_value = sol.fun
             # updating the bath parameters (replace old by new)
 
-            if alpha > 0.0 and ((superiter < n_damping and begin_with_damping is True) or (superiter > n_damping and begin_with_damping is False)):
+            if alpha > 0.0 and ((self.iter < n_damping and begin_with_damping is True) or (self.iter > n_damping and begin_with_damping is False)):
                 print('applying damping with alpha = ', alpha)
                 for i in range(nvar):
-                    self.model.set_parameter(var[i], (1-alpha)*sol.x[i]+alpha*params_array[i])
+                    self.model.set_parameter(self.var[i], (1-alpha)*sol.x[i]+alpha*params_array[i])
             else:
                 for i in range(nvar):
-                    self.model.set_parameter(var[i], sol.x[i])
+                    self.model.set_parameter(self.var[i], sol.x[i])
 
 
             diff_param = np.linalg.norm(params_array - sol.x)/np.sqrt(nvar)
             initial_step = diff_param
             gs = self.I.ground_state()
             print('\nGS sector : ', [x[1] for x in gs])
-            if superiter > 0:
+            if self.iter > 0:
                 diffH = self.diff_hybrid()
-                print('CDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}, diff hybrid = {: #.2e}, diff E0 = {: #.2g}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(superiter+1, dist_value, diff_param, diffH, diff_E0, iter_done, time_MIN/time_ED), flush=True)
+                print('CDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}, diff hybrid = {: #.2e}, diff E0 = {: #.2g}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(self.iter+1, dist_value, diff_param, diffH, diff_E0, iter_done, time_MIN/time_ED), flush=True)
             else:
-                print('CDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(superiter+1, dist_value, diff_param, iter_done, time_MIN/time_ED), flush=True)
+                print('CDMFT iteration {:d}, distance = {: #.2e}, diff param = {: #.2e}\n{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(self.iter+1, dist_value, diff_param, iter_done, time_MIN/time_ED), flush=True)
 
             #--------------------------------- Hartree step ---------------------------------
             if hartree != None:
@@ -260,15 +264,15 @@ class CDMFT:
             #______________________________________________________________________
                     
             # checking convergence on the parameters (note the sqrt(nvar) factor in order not to punish large parameter sets)
-            if (diff_param < accur) and hartree_converged and superiter > miniter:
+            if (diff_param < accur) and hartree_converged and self.iter > miniter:
                 converged = True
                 pyqcm.banner('CDMFT converged on the parameters', '=')
                 break
 
             # checking convergence on the hybridization matrix
-            if superiter > 0:
+            if self.iter > 0:
                 diffH = self.diff_hybrid()
-                if (diffH < accur_hybrid) and hartree_converged and superiter > miniter:
+                if (diffH < accur_hybrid) and hartree_converged and self.iter > miniter:
                     pyqcm.banner('CDMFT converged on the hybridization function', '=')
                     converged = True
                     break
@@ -281,41 +285,41 @@ class CDMFT:
                 observable_series_length = 0
                 for x in observables:
                     val = ave[x.name[0:-2]][0]
-                    Conv = x.test_convergence(superiter, val)
+                    Conv = x.test_convergence(self.iter, val)
                     if x.length > observable_series_length:
                         observable_series_length = x.length
                     obs_converged = obs_converged and Conv
                     print('observable <{:s}> = {:.6g}'.format(x.name, x.ave))
-                if obs_converged and superiter > miniter:
+                if obs_converged and self.iter > miniter:
                     converged = True
                     pyqcm.banner('CDMFT converged on the observables (length of series : {:d})'.format(observable_series_length), '=')
                     break
 
-            superiter += 1
-            var_val = pyqcm.varia_table(var,sol.x)
+            self.iter += 1
+            var_val = pyqcm.varia_table(self.var,sol.x)
             print(var_val)
-            if superiter > maxiter:
+            if self.iter > maxiter:
+                self.plot_iterations()
                 raise pyqcm.TooManyIterationsError(maxiter)
 
             #--------------------------- convergence acceleration ---------------------------
             eps_length = 2*eps_algo + 1
-            if eps_algo and superiter>=2*eps_length and superiter%(2*eps_length) == 0:
+            if eps_algo and self.iter>=2*eps_length and self.iter%(2*eps_length) == 0:
                 pyqcm.banner('applying the epsilon algorithm')
                 for i in range(nvar):
-                    z = pyqcm.epsilon(var_data[i,superiter-eps_length:superiter])
-                    var_data[i,superiter] = z
-                    self.model.set_parameter(var[i], z)
-                var_val = pyqcm.varia_table(var,var_data[:,superiter])
+                    z = pyqcm.epsilon(self.var_data[i,self.iter-eps_length:self.iter])
+                    self.var_data[i,self.iter] = z
+                    self.model.set_parameter(self.var[i], z)
+                var_val = pyqcm.varia_table(self.var,self.var_data[:,self.iter])
                 print(var_val)
             #-------------------------------------------------------------------------------
 
 
         # here we have converged
         if converged:
-
             # check consistency
             GS_cons = self.I.GS_consistency(check_ground_state)
-            var_val = pyqcm.varia_table(var,sol.x)
+            var_val = pyqcm.varia_table(self.var,sol.x)
             print(var_val)
 
             ave = self.I.averages(pr=True)
@@ -326,7 +330,7 @@ class CDMFT:
 
             if file != None:
                 des = 'GS_consistency\titerations\tdist_function\tdistance\tdiff_hybrid\t'
-                val = '{:s}\t{:d}\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(GS_cons, superiter, self.grid.dist_function, dist_value, diffH)
+                val = '{:s}\t{:d}\t{:s}\t{: #.2e}\t{: #.2e}\t'.format(GS_cons, self.iter, self.grid.dist_function, dist_value, diffH)
                 if SEF : 
                     des += 'omegaH\t'
                     val += '{: #.8g}\t'.format(omegaH)
@@ -414,6 +418,23 @@ class CDMFT:
         diff /= g.nw  
         return np.sqrt(diff)
 
+    #-----------------------------------------------------------------------------------------------
+    def plot_iterations(self):
+        """
+        Plots the variational parameters as a function of iteration, for diagnostics purposes
+        """
+
+        nvar = len(self.var)
+        ncols = 3
+        nrows = 1+(nvar-1)//ncols
+        fig, ax = plt.subplots(nrows, ncols, sharex=True)
+        fig.set_size_inches(24/2.54, nrows*6/2.54)
+        niter = self.var_data.shape[0]
+        for i,x in enumerate(self.var):
+            plt.sca(ax[i//ncols,i%ncols])
+            plt.plot(range(self.iter), self.var_data[i,0:self.iter], 'o-', ms=3, lw=0.5)
+            plt.title(self.var[i])
+        plt.savefig('iterations.pdf')
 
 ####################################################################################################
 class frequency_grid:

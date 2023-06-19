@@ -540,7 +540,7 @@ class lattice_model:
         try:
             D = np.genfromtxt(out_file, names=True, dtype=None, encoding='utf8')
         except:
-            raise("The file containing the solutions could not be read!")
+            raise ValueError("The file containing the solutions could not be read!")
         if len(D.shape) == 0:
             for x in par:
                 if par[x][1] != None:

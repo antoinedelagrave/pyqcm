@@ -536,6 +536,7 @@ class VCA:
         if isinstance(accur_grad, float) == False: raise ValueError("'accur_grad' in VCA() should be a single float")
         
         nvar = len(varia)
+        if len(set(varia)) != nvar: raise ValueError('There are duplicate elements in the list of Weiss fields')
         if type(steps) != list: 
             if type(steps) == float : steps = [steps]*nvar
             else : steps = list(steps)

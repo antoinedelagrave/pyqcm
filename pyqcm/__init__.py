@@ -662,10 +662,10 @@ class model_instance:
 
         """
 
-        return qcm.susceptibility(op_name, freqs, self.label)
+        return qcm.susceptibility(op_name, freqs, self.label*self.model.nclus + clus)
 
     #-----------------------------------------------------------------------------------------------
-    def qmatrix(self):
+    def qmatrix(self, clus=0):
         """
         Returns the Lehmann representation of the Green function
 
@@ -675,10 +675,10 @@ class model_instance:
 
         """	
 
-        return qcm.qmatrix(self.label)
+        return qcm.qmatrix(self.label*self.model.nclus + clus)
 
     #-----------------------------------------------------------------------------------------------
-    def write(self, filename):
+    def write(self, filename, clus=0):
         """
         Writes the solved cluster model instance to a text file
         
@@ -687,7 +687,7 @@ class model_instance:
 
         """
 
-        qcm.write_instance_to_file(filename, self.label)
+        qcm.write_instance_to_file(filename, self.label*self.model.nclus + clus)
 
     #-----------------------------------------------------------------------------------------------
     def parameters(self):
@@ -745,9 +745,9 @@ class model_instance:
         :return: a complex-valued matrix
 
         """
-        
+        if clus >= self.model.nclus: raise ValueError('cluster label out of range')
         if full:
-            return qcm.hopping_matrix(spin_down, clus, True)
+            return qcm.hopping_matrix(spin_down, False, self.label*self.model.nclus + clus, True)
         else:
             return qcm.cluster_hopping_matrix(clus, spin_down, self.label)
 
@@ -796,7 +796,7 @@ class model_instance:
 
         """
 
-        W,Q = self.qmatrix()
+        W,Q = self.qmatrix(clus)
         if self.is_complex:
             Z = np.empty((W.shape[0], Q.shape[1]+1), dtype=complex)
             Z[:,1:] = np.round(Q, 8)

@@ -112,7 +112,7 @@ void Hamiltonian_Eigen<HilbertField>::HS_ops_map(const map<string, double> &valu
     for (auto& x : keys) {
         Hermitian_operator& op = *this->the_model->term.at(x);
         if(op.HS_operator.find(this->sec) == op.HS_operator.end()){
-            cout << this->the_model->name+" : building "+op.name+" in "+to_string<sector>(this->sec)+'\n' << std::flush;
+            // cout << this->the_model->name+" : building "+op.name+" in "+to_string<sector>(this->sec)+'\n' << std::flush;
             op.HS_operator[this->sec] = op.build_HS_operator(this->sec, is_complex); // ***TEMPO***
         }
     }

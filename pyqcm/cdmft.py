@@ -431,7 +431,8 @@ class CDMFT:
         fig.set_size_inches(24/2.54, nrows*6/2.54)
         niter = self.var_data.shape[0]
         for i,x in enumerate(self.var):
-            plt.sca(ax[i//ncols,i%ncols])
+            if nrows==1: plt.sca(ax[i])
+            else: plt.sca(ax[i//ncols,i%ncols])
             plt.plot(range(self.iter), self.var_data[i,0:self.iter], 'o-', ms=3, lw=0.5)
             plt.title(self.var[i])
         plt.savefig('iterations.pdf')

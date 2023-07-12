@@ -1,6 +1,5 @@
 #ifndef model_instance_h
 #define model_instance_h
-
 #define LOOK_UP
 #ifdef _OPENMP
 #include <omp.h>
@@ -325,7 +324,7 @@ void model_instance<HilbertField>::compute_weights(){
   
   double temperature = global_double("temperature");
   
-  if(temperature < SMALL_VALUE){
+  if(temperature < MIDDLE_VALUE){
     // looping over states to keep only the lowest-energy states
     double E0 = 1e12;
     for(auto &x : states) if(x->energy < E0) E0 = x->energy;
@@ -529,7 +528,7 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
   matrix<Complex> G_recycled;
   #pragma omp critical
   for(auto &x: *LKUP){
-    if(abs(z - x.first) < SMALL_VALUE){
+    if(abs(z - x.first) < MIDDLE_VALUE){
       // cout << "recycling G for z = " << z << " and x.first = " << x.first << "  G(0,0) = " << x.second(0,0) << endl;
       G_recycled = x.second;
       break;
@@ -1112,6 +1111,7 @@ void model_instance<HilbertField>::write(ostream& fout)
   
   // writing the info line
   // fout << "cluster: " << the_model->name << '\n';
+  fout << setprecision((int)global_int("print_precision"));
   for (auto &x : value) fout << x.first << '\t' << x.second << '\n';
   fout << "\nGS_energy: " << GS_energy << " GS_sector: " << GS_string() << '\n';
   if(GF_solver == GF_format_CF) fout << "GF_format: cf\n";
@@ -1134,7 +1134,7 @@ void model_instance<HilbertField>::read(istream& fin)
     if(input.size()==0) break;
     if(input.size()!=2) qcm_ED_throw("failed to read a parameter in input. Need two columns per parameter");
     if(value.find(input[0])==value.end()) qcm_ED_throw("unkown parameter "+input[0]+" in solutions file");
-    if(abs(value[input[0]] - from_string<double>(input[1])) > SMALL_VALUE) qcm_ED_throw("The value of "+input[0]+" from the solution read differs from the expected value");
+    if(abs(value[input[0]] - from_string<double>(input[1])) > MIDDLE_VALUE) qcm_ED_throw("The value of "+input[0]+" from the solution read ("+input[1]+") differs from the expected value ("+to_string<double>(value[input[0]])+").");
   }
   
   string tmp;

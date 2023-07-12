@@ -206,6 +206,7 @@ Q_matrix<HilbertField> Q_matrix_set<HilbertField>::consolidated_qmatrix()
 template<typename HilbertField>
 void Q_matrix_set<HilbertField>::write(ostream&fout)
 {
+  fout << setprecision((int)global_int("print_precision"));
   for(auto& x : q) fout << x;
 }
 #endif /* Q_matrix_set_h */

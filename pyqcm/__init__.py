@@ -1,6 +1,7 @@
 
 import os
 import sys
+import traceback
 
 import numpy as np
 import re
@@ -11,6 +12,7 @@ try:
 except:
     print("pyqcm was unable to load the QCM library. You will not be able to run simulations...")
     print("Please reinstall pyqcm!")
+    traceback.print_exc()
     qcm = None
 
 des_dict = {}  # use to store description lines in output files. filename->current description line
@@ -622,7 +624,7 @@ class model_instance:
 
         # special solver (the function solver(...) must use I.read() at the end)
         if solver != None:
-            solver(self.I)
+            solver(self)
 
     #-----------------------------------------------------------------------------------------------
     def __del__(self):
@@ -747,6 +749,7 @@ class model_instance:
         """
         if clus >= self.model.nclus: raise ValueError('cluster label out of range')
         if full:
+            if self.model.clus[clus].cluster_model.n_bath == 0: raise ValueError('the cluster has no bath, the option "full" must be false in cluster_hopping_matrix')
             return qcm.hopping_matrix(spin_down, False, self.label*self.model.nclus + clus, True)
         else:
             return qcm.cluster_hopping_matrix(clus, spin_down, self.label)

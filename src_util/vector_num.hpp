@@ -16,6 +16,7 @@
 #include "lapack-blas.h"
 
 #define SMALL_VALUE 1.0e-12
+#define MIDDLE_VALUE 1.0e-8
 
 /**
  prototypes

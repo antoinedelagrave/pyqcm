@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <typeinfo>
+#include <cstdint>
 
 #include "qcm_ED.hpp"
 #include "matrix.hpp"

@@ -59,9 +59,19 @@ class convergence_manager:
     
     def print(self):
         if self.iter <= self.depth: return
-        S = 'differences in ' + self.name + ' : '
+        S = 'differences in ' + self._str() + ' : '
         for i in range(self.depth): S += '{:1.2e}\t'.format(self.diff[i])
         print(S)
+
+    def _str(self):
+        if type(self.name) is list:
+            S = ''
+            for x in self.name:
+                S += x + '/'
+            S = S[:-1]
+        else:
+            S = self.name
+        return S
     
 def test_params(x, y):
     """
@@ -162,8 +172,12 @@ class CDMFT:
         convergence_needs_GF = True
         convergence_as_operator = None
         convergence_diff_function = None
-        
-        if convergence in model.parameters():
+        convergence_is_list = False
+        if type(convergence) is list:
+            convergence_is_list = True
+            convergence_as_operator = convergence
+            convergence_diff_function = lambda x,y : np.linalg.norm(np.array(x)-np.array(y))/len(x)
+        elif convergence in model.parameters():
             convergence_as_operator = convergence
             convergence_diff_function = lambda x,y : np.abs(x-y)
         elif convergence == 'parameters':
@@ -254,7 +268,10 @@ class CDMFT:
                 else: converged = convergence_test.test(self.Hyb)
 
             if convergence_as_operator != None:
-                converged = convergence_test.test(self.I.averages()[convergence_as_operator])
+                if convergence_is_list:
+                    converged = convergence_test.test([self.I.averages()[op] for op in convergence_as_operator])
+                else:
+                    converged = convergence_test.test(self.I.averages()[convergence_as_operator])
 
             # optimization of the bath parameters
             sol, iter_done = optimize(lambda x : qcm.CDMFT_distance(x, self.I.label), params_array, method, initial_step, accur, accur_dist, max_function_eval)
@@ -315,7 +332,7 @@ class CDMFT:
                     
             if converged and hartree_converged and self.iter > miniter:
                 converged = True
-                pyqcm.banner('CDMFT converged on '+convergence_test.name, '=')
+                pyqcm.banner('CDMFT converged on '+convergence_test._str(), '=')
                 break
 
             self.iter += 1
@@ -353,7 +370,7 @@ class CDMFT:
 
             if file != None:
                 des = 'GS_consistency\titerations\tdist_function\tconvergence\t'
-                val = '{:s}\t{:d}\t{:s}\t{:s}\t'.format(GS_cons, self.iter, self.grid.dist_function, convergence)
+                val = '{:s}\t{:d}\t{:s}\t{:s}\t'.format(GS_cons, self.iter, self.grid.dist_function, convergence_test._str())
                 if SEF : 
                     des += 'omegaH\t'
                     val += '{: #.8g}\t'.format(omegaH)

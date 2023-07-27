@@ -1990,7 +1990,7 @@ def varia_table(var, val, prefix = ''):
     """
     s = prefix
     for i,p in enumerate(var):
-        s += '{:<9} = {: .4g}\t'.format(p,val[i])
+        s += '{:<9} = {: .5g}\t'.format(p,val[i])
         if (i+1)%5 == 0:
             s += '\n'
             s += prefix

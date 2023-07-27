@@ -9,7 +9,7 @@ M.model.set_target_sectors(['R0:N6:S0'])
 # Simulation parameters
 M.model.set_parameters("""
     U=4
-    mu=0.5*U
+    mu=2
     t=1
     t_1=1e-9
     tb1_1=0.5
@@ -18,10 +18,19 @@ M.model.set_parameters("""
     eb2_1=-1.0*eb1_1
 """)
 
+# convergence = 'GS energy'; accur = 1e-3
+# convergence='self-energy'; accur = 1e-4
+# convergence='t'; accur = 1e-4
+# convergence='parameters'; accur = 1e-4
+convergence=('parameters', 'hybridization', 'self-energy'); accur = (5e-4, 1e-4, 1e-4)
+# convergence=('mu', 't'); accur=(1e-4, 5e-4)
+
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():
-    X = CDMFT(M.model, varia=["tb1_1", "eb1_1"], wc=10, grid_type='self') # setting the bath operators as the variationnal 
+    X = CDMFT(M.model, varia=["tb1_1", "eb1_1"], wc=10, grid_type='self', accur=accur, convergence=convergence)
     return X.I
+
+run_cdmft(); exit()
 
 # Looping over values of U
 M.model.controlled_loop(

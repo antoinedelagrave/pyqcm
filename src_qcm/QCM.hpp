@@ -89,6 +89,7 @@ namespace QCM{
   void Green_function_solve(int label);
   void CDMFT_variational_set(vector<string>& varia);
   void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label);
+  void set_CDMFT_host(int label, const vector<double>& freqs, const int clus, const vector<matrix<Complex>>& H, const bool spin_down);
   double CDMFT_distance(const vector<double>& p, int label);
   void switch_cluster_model(const string &name);
   vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down, int label);

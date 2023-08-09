@@ -186,6 +186,66 @@ vector<double> vectors_from_Py(PyArrayObject *k_pyobj)
   }
   return k;
 }
+
+//------------------------------------------------------------------------------
+vector<complex<double>> complex_array1_from_Py(PyArrayObject *k_pyobj)
+{
+  vector<complex<double>> k;
+  if(PyArray_Check(k_pyobj)){
+    assert(PyArray_NDIM((PyArrayObject*)k_pyobj) == 1);
+    npy_intp *dims;
+    dims = PyArray_DIMS((PyArrayObject*)k_pyobj);
+
+    int nelem = PyArray_SIZE(k_pyobj);
+    k.assign(nelem, 0.0);
+    for(size_t i=0; i<nelem; i++){
+      k[i] = *(complex<double>*)PyArray_GETPTR1(k_pyobj, i);
+    }
+  }
+  return k;
+}
+
+//------------------------------------------------------------------------------
+matrix<complex<double>> complex_array2_from_Py(PyArrayObject *k_pyobj)
+{
+  matrix<complex<double>> k;
+  if(PyArray_Check(k_pyobj)){
+    assert(PyArray_NDIM((PyArrayObject*)k_pyobj) == 2);
+    npy_intp *dims;
+    dims = PyArray_DIMS((PyArrayObject*)k_pyobj);
+
+    int nelem = PyArray_SIZE(k_pyobj);
+    k.set_size(dims[0], dims[1]);
+    for(size_t i=0; i<k.r; i++){
+      for(size_t j=0; j<k.c; j++){
+        k(i,j) = *(complex<double>*)PyArray_GETPTR2(k_pyobj, i, j);
+      }
+    }
+  }
+  return k;
+}
+
+//------------------------------------------------------------------------------
+vector<matrix<complex<double>>> complex_array3_from_Py(PyArrayObject *k_pyobj)
+{
+  vector<matrix<complex<double>>> k;
+  if(PyArray_Check(k_pyobj)){
+    assert(PyArray_NDIM((PyArrayObject*)k_pyobj) == 3);
+    npy_intp *dims;
+    dims = PyArray_DIMS((PyArrayObject*)k_pyobj);
+
+    k.assign(dims[0], matrix<complex<double>>(dims[1],dims[2]));
+    for(size_t i=0; i<dims[0]; i++){
+      for(size_t j=0; j<dims[1]; j++){
+        for(size_t l=0; l<dims[2]; l++){
+          k[i](j,l) = *(complex<double>*)PyArray_GETPTR3(k_pyobj, i, j, l);
+        }
+      }
+    }
+  }
+  return k;
+}
+
 //------------------------------------------------------------------------------
 vector<string> strings_from_PyList(PyObject* lst)
 {

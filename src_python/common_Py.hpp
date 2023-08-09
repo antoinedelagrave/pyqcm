@@ -28,6 +28,9 @@ vector<vector3D<int64_t>> many_intvectors_from_Py(PyArrayObject *k_pyobj);
 vector<int64_t> intvectors_from_Py(PyArrayObject *k_pyobj);
 vector<int> intarray_from_Py(PyArrayObject *k_pyobj);
 vector<double> vectors_from_Py(PyArrayObject *k_pyobj);
+vector<complex<double>> complex_array1_from_Py(PyArrayObject *k_pyobj);
+matrix<complex<double>> complex_array2_from_Py(PyArrayObject *k_pyobj);
+vector<matrix<complex<double>>> complex_array3_from_Py(PyArrayObject *k_pyobj);
 vector<string> strings_from_PyList(PyObject* lst);
 vector<double> doubles_from_Py(PyObject* lst);
 

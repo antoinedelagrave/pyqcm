@@ -523,7 +523,8 @@ class VCA:
         hartree=None, 
         hartree_self_consistent=False,
         symmetrized_operator=None,
-        var_max_start = None
+        var_max_start = None,
+        consistency_check=False
     ):
         self.model = model
         global SEF_eval
@@ -582,6 +583,8 @@ class VCA:
         elif len(steps) != nvar:
             print('the argument "steps" should have ', nvar, ' components')
             raise pyqcm.MissingArgError('steps')
+    
+        self.consistency_check = consistency_check
 
         SEF_eval = 0
         def var2x(x):
@@ -599,7 +602,7 @@ class VCA:
             SEF_eval += 1
             self.I = pyqcm.model_instance(model)
             current_instance = self.I
-            return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator)
+            return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator,consistency_check=self.consistency_check)
             
         if root:
             if hartree is None:
@@ -832,7 +835,7 @@ class VCA:
         return sol
 
 ################################################################################
-def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True, symmetrized_operator=None):
+def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, show=True, symmetrized_operator=None, consistency_check=False):
     """Draws a plot of the Potthoff functional as a function of a parameter param taken from the list prm. The results are going to be appended to 'sef.tsv'
     
     :param lattice_model model: the lattice model
@@ -861,7 +864,7 @@ def plot_sef(model, param, prm, file="sef.tsv", accur_SEF=1e-4, hartree=None, sh
     for i in range(len(prm)):
         model.set_parameter(param, prm[i])
         I = pyqcm.model_instance(model)
-        omega[i] = I.Potthoff_functional(hartree, file=file, symmetrized_operator=symmetrized_operator)
+        omega[i] = I.Potthoff_functional(hartree, file=file, symmetrized_operator=symmetrized_operator, consistency_check=consistency_check)
         print("omega(", prm[i], ") = ", omega[i])
     
     if show:

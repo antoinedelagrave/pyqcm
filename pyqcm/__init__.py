@@ -452,29 +452,29 @@ class lattice_model:
         qcm.set_parameter(name, value)
 
     #-----------------------------------------------------------------------------------------------
-    def parameter_string(self, lattice=True, CR=False):
+    def parameter_string(self, clus=None, CR=False, constr=False):
         """
         Returns a string with the model parameters. Used for including in plots.
-        :param boolean lattice : if True, only indicates the independent lattice parameters.
+        :param int clus : cluster label to print the parameters of (starts at 1). If 0, prints lattice parameters only. If None, prints all parameters.
         :param boolean CR : if True, puts each parameter on a line.
+        :param boolean constr : if True, also includes constrained parameters
         """
         par = qcm.parameter_set()
         S = ''
         sep = ', '
         if CR:
             sep = '\n'
-        first = True
         for x in par:
-            if par[x][1] != None:
+            c = x.partition('_')[-1]
+            if c == '': c = 0
+            else: c = int(c)
+            if clus != None and c != clus:
                 continue
-            if '_' in x and lattice:
-                continue
-            if first is False:
-                S += sep        
-            S += x + '={:g}'.format(par[x][0])
-            if first:
-                first = False
-        return S            
+            if par[x][1] != None and constr:
+                S += x + '= {:g}*{:s}'.format(par[x][2], par[x][1])+sep
+            else:
+                S += x + '={:g}'.format(par[x][0])+sep
+        return S[:-1]         
 
     #-----------------------------------------------------------------------------------------------
     def parameters(self):
@@ -885,6 +885,19 @@ class model_instance:
         
         return qcm.CPT_Green_function(z, k, spin_down, self.label)
 
+    #-----------------------------------------------------------------------------------------------
+    def CPT_Green_function_inverse(self, z, k, spin_down=False):
+        """
+        Computes the inverse CPT Green function at a given frequency
+
+        :param z: complex frequency
+        :param k: array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
+        :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
+        :return: a single or an array of complex-valued matrices
+        
+        """
+        
+        return qcm.CPT_Green_function_inverse(z, k, spin_down, self.label)
 
     #-----------------------------------------------------------------------------------------------
     def dispersion(self, k, spin_down=False, label=0):
@@ -1138,7 +1151,7 @@ class model_instance:
         return rho, basis
 
     #-----------------------------------------------------------------------------------------------
-    def Potthoff_functional(self, hartree=None, file='sef.tsv', symmetrized_operator=None):
+    def Potthoff_functional(self, hartree=None, file='sef.tsv', symmetrized_operator=None, consistency_check=False):
         """
         Computes the Potthoff functional for a given instance
 
@@ -1146,10 +1159,13 @@ class model_instance:
         :param str file: name of the file to append with the result
         :param [hartree] hartree: Hartree approximation couplings (see pyqcm/hartree.py)
         :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
+        :param boolean consistency_check: checks the consistency of the Green function
         :return: the value of the self-energy functional
 
         """
         OM = qcm.Potthoff_functional(self.label)
+        C = ''
+        if consistency_check: C = self.GS_consistency(True)
 
         if symmetrized_operator is not None:
             try:
@@ -1169,8 +1185,10 @@ class model_instance:
             for C in hartree:
                 OM += C.omega_var()/L
 
-        self.write_summary(file, suppl_descr='omegaH\t', suppl_values='{:.8g}\t'.format(OM))
-
+        if consistency_check: 
+            self.write_summary(file, suppl_descr='omegaH\tconsistency\t', suppl_values='{:.8g}\t{:s}\t'.format(OM, C))
+        else:
+            self.write_summary(file, suppl_descr='omegaH\t', suppl_values='{:.8g}\t'.format(OM))
         return OM
 
 

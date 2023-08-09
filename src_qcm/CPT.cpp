@@ -280,7 +280,7 @@ matrix<Complex> lattice_model_instance::projected_Green_function(Complex w, bool
 						set_Gcpt(M);
 						// #pragma omp critical
 						PGF += M.Gcpt;
-            nk++;
+            			nk++;
 					}
 				}
 			}
@@ -371,6 +371,36 @@ vector<vector<matrix<Complex>>> lattice_model_instance::get_CDMFT_host(bool spin
 
 //==============================================================================
 /** 
+ sets the CDMFT host from input data
+ @param freqs [in] frequency array (along the imaginary axis)
+ @param clus [in] label of the cluster
+ @param H [in] vector of matrices (host)
+ @param spin_down [in] boolean : true if spin-down sector (mixing = 4) 
+ */
+void lattice_model_instance::set_CDMFT_host(const vector<double>& freqs, const int clus, const vector<matrix<Complex>>& H, const bool spin_down)
+{
+	CDMFT_weights.assign(freqs.size(), 1.0/freqs.size());
+	CDMFT_freqs = freqs;
+
+	if(G_host.size()==0){
+		G_host.assign(freqs.size(), vector<matrix<Complex>>(n_clus));
+		for(int i=0; i<freqs.size(); i++){
+			for(int c=0; c<n_clus; c++){
+				int d = model->GF_dims[c];
+				G_host[i][c].set_size(d,d);
+			}
+		}
+	}
+	
+	if(spin_down){
+		for(int i=0; i<freqs.size(); i++) G_host_down[i][clus] = H[i];
+	}
+	else{
+		for(int i=0; i<freqs.size(); i++) G_host[i][clus] = H[i];
+	}
+}
+//==============================================================================
+/** 
  Computes the CDMFT distance function
  @param p values of the variational parameters
  @returns the distance function
@@ -382,6 +412,7 @@ double lattice_model_instance::CDMFT_distance(const vector<double>& p)
 		model->param_set->set_value(model->param_set->CDMFT_variational[i], p[i]);
 	}
 	auto I = lattice_model_instance(model, label+999);
+	
 	// #pragma omp parallel for reduction (+:dist)
 	for(int i=0; i<CDMFT_freqs.size(); i++){
 		double distw = 0.0;
@@ -410,5 +441,6 @@ double lattice_model_instance::CDMFT_distance(const vector<double>& p)
 
 	if(model->mixing == 0) dist *= 2;
 	else if(model->mixing == 3) dist *= 0.5;
+
 	return dist;
 }

@@ -346,7 +346,7 @@ static PyObject*  CDMFT_variational_set_python(PyObject *self, PyObject *args)
 
   try{
     if(!PyArg_ParseTuple(args, "O", &v))
-      qcm_throw("failed to read parameters in call to CPT_Green_function (python)");
+      qcm_throw("failed to read parameters in call to CDMFT_variational_set (python)");
     qcm_model->param_set->CDMFT_variational_set(strings_from_PyList(v));
   } catch(const string& s) {qcm_catch(s);}
   return Py_BuildValue("");
@@ -355,7 +355,7 @@ static PyObject*  CDMFT_variational_set_python(PyObject *self, PyObject *args)
 //==============================================================================
 const char*  CDMFT_host_help =
 R"{(
-defines the set of CDMFT variational parameters
+computes the CDMFT host function
 arguments:
 1. a vector of double : frequencies
 2. a vector of double : weights
@@ -379,6 +379,37 @@ static PyObject*  CDMFT_host_python(PyObject *self, PyObject *args)
 }
 
   
+//==============================================================================
+const char*  set_CDMFT_host_help =
+R"{(
+sets the CDMFT host function from data
+arguments:
+1. a vector of double : frequencies
+2. int : a cluster label
+3. a vector of complex matrices : host function
+4. bool : spin-down tag
+5. int : label of instance
+){";
+//------------------------------------------------------------------------------
+static PyObject*  set_CDMFT_host_python(PyObject *self, PyObject *args)
+{
+  PyObject *freqs = nullptr;
+  PyObject *H = nullptr;
+  int label = 0;
+  int clus = 0;
+  int spin_down = 0;
+
+  try{
+    if(!PyArg_ParseTuple(args, "iOO|ii", &label, &freqs, &H, &clus, &spin_down))
+      qcm_throw("failed to read parameters in call to set_CDMFT_host (python)");
+    vector<double> _freqs = doubles_from_Py(freqs);
+    vector<matrix<complex<double>>> Hv = complex_array3_from_Py((PyArrayObject*)H);
+    QCM::set_CDMFT_host(label, _freqs, clus, Hv, spin_down);
+  }catch(const string& s) {qcm_catch(s);}
+  return Py_BuildValue("");
+}
+
+
 
 //==============================================================================
 const char*  get_CDMFT_host_help =
@@ -531,7 +562,7 @@ static PyObject* CPT_Green_function_inverse_python(PyObject *self, PyObject *arg
   
   try{
     if(!PyArg_ParseTuple(args, "DO|ii", &z, &k_pyobj, &spin_down, &label))
-      qcm_throw("failed to read parameters in call to CPT_Green_function (python)");
+      qcm_throw("failed to read parameters in call to CPT_Green_function_inverse (python)");
     int ndim = PyArray_NDIM(k_pyobj);
     if(ndim != 2) qcm_throw("Argument 3 of 'CPT_Green_function_inverse' should be of dimension 2");
     

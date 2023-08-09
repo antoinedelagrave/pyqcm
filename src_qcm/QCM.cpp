@@ -293,7 +293,7 @@ void erase_lattice_model_instance(size_t label){
   
   
 /**
-   returns the CPT Green function at a given frequency and for an array of wavevectors
+   returns the inverse CPT Green function at a given frequency and for an array of wavevectors
    * @param spin_down true if the spin-down sector is covered
    */
   vector<matrix<complex<double>>> CPT_Green_function_inverse(const complex<double> w, const vector<vector3D<double>> &k, bool spin_down, int label)
@@ -934,6 +934,15 @@ check_instance(label);
     #endif
     lattice_model_instances.at(label)->CDMFT_Host(freqs, weights); 
   }
+
+  void set_CDMFT_host(int label, const vector<double>& freqs, const int clus, const vector<matrix<Complex>>& H, const bool spin_down)
+  {
+    #ifdef QCM_DEBUG
+    check_instance(label);
+    #endif
+    lattice_model_instances.at(label)->set_CDMFT_host(freqs, clus, H, spin_down);
+  }
+
 
   vector<vector<matrix<Complex>>> get_CDMFT_host(bool spin_down, int label)
   {

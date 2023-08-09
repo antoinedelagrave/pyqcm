@@ -81,6 +81,7 @@ class convergence_manager:
                 self.converged = True
                 return True
             else:
+                self.converged = False
                 return False
     
     def stdev_test(self, x):
@@ -138,6 +139,7 @@ class CDMFT:
     :param boolean check_ground_state: if True, checks the ground state consistency and raises exception if inconsistent
     :param int max_function_eval: maximum number of distance function evaluations when minimizing distance
     :param boolean compute_potential_energy: If True, computes Tr(Sigma*G) along with the averages
+    :param ndarray host_function: if not None, function that computes the host array and passes it to qcm
     :param function pre_host: function to be executed before computing the host. Takes a model instance as argument
     :param float max_value: maximum absolute value of variational parameters
     :ivar lattice_model model: (unique) model on which the computation is based
@@ -170,8 +172,9 @@ class CDMFT:
         hartree=None,
         SEF=False,
         check_ground_state = False,
-        max_function_eval = 5000000,
+        max_function_eval = 500000,
         compute_potential_energy = False,
+        host_function = None,
         pre_host = None,
         max_value = 100
     ):
@@ -287,7 +290,14 @@ class CDMFT:
             t1 = timeit.default_timer()
             if pre_host != None:
                 pre_host(self.I)
-            qcm.CDMFT_host(self.grid.wr, self.grid.weight, self.I.label)
+
+            # computing or transferring the host array --------------------------------------
+            if host_function == None:
+                qcm.CDMFT_host(self.grid.wr, self.grid.weight, self.I.label)
+            else:
+                host_function(self.I)
+            #--------------------------------------------------------------------------------
+
             self.set_Hyb()
             t2 = timeit.default_timer()
             time_ED += t2 - t1
@@ -295,9 +305,16 @@ class CDMFT:
             gs = self.I.ground_state()
             
             # optimization of the bath parameters
-            sol, iter_done = optimize(lambda x : qcm.CDMFT_distance(x, self.I.label), params_array, method, initial_step, accur_bath, accur_dist, max_function_eval)
+            def DIST(x):
+                d = qcm.CDMFT_distance(x, self.I.label)
+                # print(x, '\tdist = ', d); exit(1)
+                return d
+            sol, iter_done = optimize(DIST, params_array, method, initial_step, accur_bath, accur_dist, max_function_eval)
+            # sol, iter_done = optimize(lambda x : qcm.CDMFT_distance(x, self.I.label), params_array, method, initial_step, accur_bath, accur_dist, max_function_eval)
             t3 = timeit.default_timer()
             time_MIN += t3 - t2
+
+            print('optimized set:', sol.x) # TEMPO
 
             if method != 'ANNEAL' and not sol.success:
                 print(sol)
@@ -375,7 +392,7 @@ class CDMFT:
 
             print('\nCDMFT iteration ', self.iter, flush=True)
             print('GS sector : ', [x[1] for x in gs])
-            print('{:d} minimization steps, time(MIN)/time(ED)={:.5f}'.format(iter_done, time_MIN/time_ED), flush=True)
+            print('{:d} minimization steps, time(MIN)/time(ED)={:.5f}, distance = {:1.9e}'.format(iter_done, time_MIN/time_ED, sol.fun), flush=True)
             for C in convergence_test:
                 C.print()
 
@@ -580,7 +597,7 @@ class frequency_grid:
     :ivar int nw: number of frequencies in the grid
     """
 
-    def __init__(self, I, grid_type='sharp', beta=50, wc=2):
+    def __init__(self, I=None, grid_type='sharp', beta=50, wc=2):
         self.beta = beta
         self.wc = wc
         self.grid_type = grid_type

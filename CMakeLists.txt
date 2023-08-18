@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # set the project name and version
-project(qcm LANGUAGES CXX VERSION 1.0 DESCRIPTION "Quantum Cluster Methods shared library")
+project(qcm LANGUAGES C CXX VERSION 1.0 DESCRIPTION "Quantum Cluster Methods shared library")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -23,7 +23,7 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
     set(OpenMP_CXX_INCLUDE_DIR "/opt/homebrew/opt/libomp/include")
 else()
     if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
-        set(CMAKE_CXX_FLAGS_RELEASE "-O2 -xHost -ftree-vectorize -funroll-loops")
+        set(CMAKE_CXX_FLAGS_RELEASE "-O2 -xHost -funroll-loops")
     else()
         set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native -ftree-vectorize -funroll-loops")
     endif()
@@ -126,7 +126,7 @@ if (WITH_PRIMME)
         include(ExternalProject)
         set(cmd_make_primme "make")
         list(APPEND cmd_make_primme "lib")
-        list(APPEND cmd_make_primme "CFLAGS=${CMAKE_CXX_FLAGS_RELEASE} -fPIC -DNDEBUG")
+        list(APPEND cmd_make_primme "CC=${CMAKE_C_COMPILER}" "CFLAGS=${CMAKE_CXX_FLAGS_RELEASE} -fPIC -DNDEBUG")
         ExternalProject_Add(PRIMME
             PREFIX ${CMAKE_SOURCE_DIR}/external
             SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/primme
@@ -176,7 +176,7 @@ if (DOWNLOAD_CUBA)
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/cuba
         URL http://www.feynarts.de/cuba/Cuba-4.2.2.tar.gz
         URL_HASH MD5=a92897343027893ba2ec40dc15558b32
-        CONFIGURE_COMMAND COMMAND ${CMAKE_SOURCE_DIR}/external/cuba/configure "CFLAGS=-O3 -fPIC -ffast-math -fomit-frame-pointer"
+        CONFIGURE_COMMAND COMMAND ${CMAKE_SOURCE_DIR}/external/cuba/configure "CFLAGS=-O3 -fPIC -ffast-math" "CC=${CMAKE_C_COMPILER}"
         BUILD_COMMAND COMMAND make "lib"
         BUILD_IN_SOURCE 1
         INSTALL_COMMAND ""

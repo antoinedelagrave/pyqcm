@@ -653,13 +653,13 @@ class model_instance:
         return qcm.susceptibility_poles(op_name, self.label*self.model.nclus + clus)
 
     #-----------------------------------------------------------------------------------------------
-    def susceptibility(self, op_name, freqs):
+    def susceptibility(self, op_name, freqs, clus=0):
         """
         Computes the dynamic susceptibility of an operator point by point
 
         :param str op_name: name of the operator
         :param [complex] freqs: array of complex frequencies
-        :param int label: label of cluster model instance
+        :param int clus: label of the cluster (starts at 0)
         :return: array of complex susceptibilities
 
         """
@@ -716,7 +716,7 @@ class model_instance:
 
         if pr:
             for x in ave:
-                print('<{:s}> = {:f}'.format(x, ave[x]))
+                print('<{:s}> = {:1.9g}'.format(x, ave[x]))
             
         return ave
 
@@ -971,8 +971,9 @@ class model_instance:
             ave[x[0:-len(s)]] = ave[x]
 
         if pr:
+            print('\nAverages and variances of operators on cluster {:d} of model {:s}'.format(clus+1, self.model.clus[clus].cluster_model.name))
             for x in ave:
-                print('<{:s}> = {:f}\tvar({:s}) = {:f}'.format(x, ave[x][0], x, ave[x][1]))
+                print('<{:s}> = {:1.9g}\tvar({:s}) = {:g}'.format(x, ave[x][0], x, ave[x][1]))
 
         return ave
 

@@ -1074,11 +1074,11 @@ class hybridization:
         """
         Evaluates the distance function bewteen the data and the hybridization function of an impurity model instance of label I
 
-        :param int I: label of the impurity model instance
+        :param [model_instance] I: model instance
         """
         M = np.zeros((self.nw, self.n, self.n), dtype=np.complex128)
         for i in range(self.nw):
-            M[i,:,:] = pyqcm.hybridization_function(0, self.w[i]*1j, spin_down=False, label=I)
+            M[i,:,:] = I.hybridization_function(self.w[i]*1j, spin_down=False)
         
         # print('M : '); print(M)
         # print('Delta : '); print(self.Delta)
@@ -1094,7 +1094,7 @@ class hybridization:
         return S
 
     #-----------------------------------------------------------------------------------------------
-    def optimize_bath(self, varia, x, method='Nelder-Mead', accur = 1e-4, accur_dist = 1e-8):
+    def optimize_bath(self, model, varia, x, method='Nelder-Mead', accur = 1e-4, accur_dist = 1e-8):
         """
         Optimizes the bath parameters to fit the hybridization function delta
         :param [str] varia: list of variational parameters (bath parameters) from PyQCM
@@ -1104,9 +1104,9 @@ class hybridization:
         nvar = len(varia)
         def tmp_distance(x):
             for i in range(nvar):
-                self.model.set_parameter(varia[i], x[i])
-            pyqcm.new_model_instance(1)
-            return self.distance(1)
+                model.set_parameter(varia[i], x[i])
+            I = pyqcm.model_instance(model)
+            return self.distance(I)
 
         return optimize(tmp_distance, x, method=method, accur = accur, accur_dist = accur_dist)
 

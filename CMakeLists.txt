@@ -17,7 +17,7 @@ endif()
 #------------------
 # QCM specific options
 #------------------
-option(DOWNLOAD_CUBA "Specify to download and compile automatically the CUBA integration library" ON)
+option(DOWNLOAD_CUBA "Specify to download and compile automatically the CUBA integration library" OFF)
 option(CUBA_DIR "If CUBA not downloaded and build by this project, specify the path to CUBA directory for linking Pyqcm against (must contain compiled Cuba library libcuba.a along with the header cuba.h")
 #option(BLA_VENDOR "BLAS implementation to use. See CMake vendor documentation https://cmake.org/cmake/help/latest/module/FindBLAS.html for more information" OFF)
 option(EIGEN_HAMILTONIAN "Specify to compile with Eigen format for the Hamiltonian for better performance in the diagonalisation solver on multi-core machine (require Eigen library)" ON)
@@ -56,8 +56,15 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g ")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -xHost -funroll-loops")
-else(CMAKE_CXX_COMPILER_ID MATCHES Clang OR CMAKE_CXX_COMPILER_ID MATCHES GCC)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native -ftree-vectorize -funroll-loops")
+#elseif(CMAKE_CXX_COMPILER_ID MATCHES Clang OR CMAKE_CXX_COMPILER_ID MATCHES GNU)
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -ftree-vectorize -funroll-loops")
+    include(CheckCXXCompilerFlag)
+    CHECK_CXX_COMPILER_FLAG("-march=native" NATIVE_ARCH_BUILD)
+    if (NATIVE_ARCH_BUILD)
+        message(STATUS "Target this machine architecture (enable -march=native)")
+        set(CMAKE_CXX_FLAGS_RELEASE "-march=native ${CMAKE_CXX_FLAGS_RELEASE}")
+    endif()
 endif()
 
 if(QCM_DEBUG)

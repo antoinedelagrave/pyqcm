@@ -14,6 +14,12 @@ else()
     message(WARNING "Potentially unsupported system, compilation may fail...")
 endif()
 
+if(POLICY CMP0135) # From CMake 3.24
+    # We don't care about DOWNLOAD_EXTRACT_TIMESTAMP; prefer the new behavior
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
+
 #------------------
 # QCM specific options
 #------------------
@@ -169,7 +175,6 @@ if (WITH_PRIMME)
             INSTALL_COMMAND ""
             STEP_TARGETS build
             BUILD_BYPRODUCTS ${CMAKE_SOURCE_DIR}/external/primme/lib/libprimme.a
-            DOWNLOAD_EXTRACT_TIMESTAMP false
         )
         add_dependencies(qcm PRIMME)
         set(PRIMME_LIBRARY ${CMAKE_SOURCE_DIR}/external/primme/lib/libprimme.a)
@@ -213,7 +218,6 @@ if (DOWNLOAD_CUBA)
         INSTALL_COMMAND ""
         STEP_TARGETS build
         BUILD_BYPRODUCTS ${CMAKE_SOURCE_DIR}/external/cuba/libcuba.a
-        DOWNLOAD_EXTRACT_TIMESTAMP false
     )
     add_dependencies(qcm Cuba)
     set(CUBA_LIBRARY ${CMAKE_SOURCE_DIR}/external/cuba/libcuba.a)

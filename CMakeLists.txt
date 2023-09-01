@@ -293,6 +293,10 @@ target_include_directories(qcm PUBLIC src_qcm src_ed src_python src_util ${Pytho
 #------------------
 # Install targets
 #------------------
+# Be sure to install in the pyqcm folder
+if (NOT CMAKE_INSTALL_PREFIX)
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
+endif()
 # install(TARGETS qcm DESTINATION ${PYTHON_INCLUDE_DIR}/site-packages)
 # install(TARGETS qcm DESTINATION ${CMAKE_SOURCE_DIR}/pyqcm)
 install(TARGETS qcm DESTINATION pyqcm)

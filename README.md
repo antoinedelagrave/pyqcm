@@ -1,4 +1,4 @@
-#Pyqcm
+# Pyqcm
 
 Pyqcm is a Python/C++ library that implements a few quantum cluster methods with an exact diagonalization impurity solver. 
 Quantum cluster methods are used in the study of strongly correlated electrons to provide an approximate solution to Hubbard-like models.

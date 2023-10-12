@@ -22,7 +22,8 @@ try:
 except:
     #install outside git repository, the subprocess calling git should fail
     fin = open("pyqcm/qcm_git_hash.py", "r")
-    version = fin.readlines()[1].split(' ')[1].split('\'')[1]
+    version = fin.readlines()[1].split(' ')[-1].split('\'')[1]
+    fin.close()
 
  
 here = pathlib.Path(__file__).parent.resolve()
@@ -44,4 +45,3 @@ skbuild.setup(
     install_requires=["numpy", "matplotlib", "scipy"],
     python_requires=">=3.7",
 )
-

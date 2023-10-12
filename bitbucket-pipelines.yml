@@ -9,4 +9,4 @@ pipelines:
           script:
             - pip install scikit-build==0.17.6 twine==4.0.2
             - python setup.py sdist
-            - python -m twine upload --repository testpypi dist/*
+            - python -m twine upload dist/*

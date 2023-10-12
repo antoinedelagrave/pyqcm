@@ -18,16 +18,18 @@ fout.write("git_hash = '{:s}'\n".format(git_hash))
 fout.write("version = '{:s}'\n".format(version))
 fout.close() 
  
-
+long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 skbuild.setup(
     name="pyqcm",
     version=version[1:],
     description="Quantum cluster methods for the physics of strongly correlated systems",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    url='https://bitbucket.org/dsenechQCM/qcm_wed/',
     author="David Sénéchal",
     license="GPL",
     packages=find_packages(),
-    cmake_args=["-DWITH_PRIMME=1", "-DEIGEN_HAMILTONIAN=1"],
     # package_dir={"": "."},
     # cmake_install_dir=".",
     include_package_data=True,

@@ -52,8 +52,7 @@ lattice_model_instance::lattice_model_instance(shared_ptr<lattice_model> _model,
     string name = x.first;
     auto P = model->name_and_label(name, true);
     if(P.second){
-      if(x.second != 0.0){
-        // cout << "setting " << P.first << " at cluster " << P.second << " to " << x.second << endl; // TEMPO
+      if(x.second != 0.0 or P.first == "mu"){
         cluster_values[P.second-1][P.first] = x.second;
       }
     }

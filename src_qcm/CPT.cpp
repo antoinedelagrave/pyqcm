@@ -158,9 +158,8 @@ void lattice_model_instance::periodized_Green_function(Green_function_k &M)
 		M.g = model->periodize(M.k, M.Gcpt);
 	}
 	else if(periodization == 'M'){ // cumulant
-    if(params.find("mu") == params.end())
-      qcm_throw("The M periodization scheme requires a value for mu");
-    double mu = params.at("mu");
+    	double mu = 0.0;
+    	if(params.find("mu") != params.end()) mu = params.at("mu");
 		matrix<Complex> gtmp(M.Gcpt);
 		matrix<Complex> ep(M.g.r);
 		gtmp.inverse();

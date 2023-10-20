@@ -2,6 +2,7 @@ import numpy as np
 import pyqcm
 import matplotlib.pyplot as plt
 import model_2x2_C2 as M
+
 I = pyqcm.model_instance(M.model)
 
 ax = None
@@ -67,8 +68,11 @@ def test_spectral():
     pyqcm.banner('testing momentum_profile()', c='#', skip=1); I.plot_momentum_profile('t', nk=10, file = F, plt_ax=ax)
     
     F = 'test_spectral_function.pdf'
+    F2 = 'test_spectral_function_M.pdf'
     pyqcm.banner('testing spectral_function()', c='#', skip=1); I.spectral_function(nk=8, file = F, plt_ax=ax)
-    
+    pyqcm.set_global_parameter('periodization', 'M')
+    pyqcm.banner('testing spectral_function()', c='#', skip=1); I.spectral_function(nk=8, file = F2, plt_ax=ax)
+
     F = 'test_spectral_function_Lehmann.pdf'
     pyqcm.banner('testing spectral_function_Lehmann()', c='#', skip=1); I.spectral_function_Lehmann(lims=(-5,5), nk=8, file = F, plt_ax=ax)
     

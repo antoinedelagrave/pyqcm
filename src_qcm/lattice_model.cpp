@@ -160,6 +160,7 @@ void lattice_model::add_chemical_potential()
 {
   auto tmp = make_shared<lattice_operator>(*this, "mu", latt_op_type::one_body);
   term[tmp->name] = tmp;
+  tmp->is_active = true;
   for(int s=0; s<sites.size(); ++s){
     tmp->elements.push_back({s,0,s,0,0,-1.0});
     tmp->elements.push_back({s,1,s,1,0,-1.0});
@@ -311,6 +312,7 @@ void lattice_model::post_parameter_consolidate(size_t label)
 	// erasing the unused operators
 	auto it = term.begin();
 	while(it != term.end()){
+    if(it->first == "mu") it->second->is_active = true;
 		if(it->second->is_active == false){
 			term.erase(it++);
 		}

@@ -5,7 +5,7 @@ import timeit
 
 pyqcm.set_global_parameter('verb_ED')
 pyqcm.set_global_parameter('verb_Hilbert')
-#pyqcm.set_global_parameter('parallel_sectors')
+pyqcm.set_global_parameter('parallel_sectors')
 pyqcm.set_global_parameter('seed',1234)
 F = 'E'
 L = 14
@@ -20,6 +20,6 @@ model.set_parameters("""
 I = pyqcm.model_instance(model)
 T = timeit.default_timer()
 print("ground state : ", I.ground_state())
-I.cluster_Green_function(0.1j, 0)
+print('GF = ', I.cluster_Green_function(0.1j, 0)[0,0])
 T = timeit.default_timer() - T
 print('format {:s} : time = {:1.2f}'.format(F, T))

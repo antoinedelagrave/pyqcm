@@ -2029,6 +2029,101 @@ def epsilon(y, pr=False):
     return M[0,-1]
 
 #---------------------------------------------------------------------------------------------------
+def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  miniter=0, alpha = 0.0):
+    """
+    Performs the direct iteration algorithm for a set of nonlinear equations with customized convergence tests
+
+    :param function F: vector-valued nonlinear function whose roots are desired
+    :param [float] x0: initial point
+    :param float iJ0: initial guess for the inverse jacobian (proportional to the unit matrix)
+    :param float xtol: tolerance for convergence on the variables
+    :param float ftol: tolerance for convergence on the value of the function
+    :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
+    :param int maxiter: maximum number of iterations
+    :return: the solution
+    :rtype: [float]
+
+    """
+    n = len(x0)
+    x = np.copy(x0)
+    conv = ''
+    for i in range(maxiter):
+        x = (alpha-1)*F(x0) + x0
+        delta_x = x - x0
+        x0 = x
+        dx = np.linalg.norm(delta_x)
+        print('direct |delta x| = ', dx)
+        if convergence_test is None:
+            if dx < xtol and i >= miniter: 
+                conv = 'position'
+                break
+        else:
+            if convergence_test(): 
+                conv = 'custom test'
+                break;
+
+    if conv == '':
+        raise TooManyIterationsError(maxiter)
+    else:
+        banner('direct iteration procedure converged on ' + conv, '=')
+    return x  
+    
+
+#---------------------------------------------------------------------------------------------------
+def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, ftol=1e-6, convergence_test=None, maxiter=32, miniter=0):
+    """
+    Performs the Broyden algorithm with customized convergence tests
+
+    :param function F: vector-valued nonlinear function whose roots are desired
+    :param [float] x0: initial point
+    :param float iJ0: initial guess for the inverse jacobian (proportional to the unit matrix)
+    :param float xtol: tolerance for convergence on the variables
+    :param float ftol: tolerance for convergence on the value of the function
+    :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
+    :param int maxiter: maximum number of iterations
+    :return: the solution
+    :rtype: [float]
+
+    """
+    n = len(x0)
+    I = iJ0*np.eye(n)
+    f0 = F(x0)
+    f = np.copy(f0)
+    x = np.copy(x0)
+    conv = ''
+    for i in range(maxiter):
+        delta_x = -I@f
+        x += delta_x
+        dx = np.linalg.norm(delta_x)
+        print('Broyden |delta x| = ', dx)
+        if convergence_test is None:
+            if dx < xtol and i >= miniter:
+                conv = 'position'
+                break
+        else:
+            if convergence_test() and i >= miniter: 
+                conv = 'custom test'
+                break;
+        f = F(x)
+        delta_f = f - f0
+        df = np.linalg.norm(delta_f)
+        print('Broyden |delta f| = ', df)
+        if convergence_test is None:
+            if df < ftol and i >= miniter:  
+                conv = 'value'
+                break
+        f0 = np.copy(f)
+        T = np.kron((delta_x - I@delta_f), delta_x).reshape((n,n))
+        I += T@I/(delta_x@(I@delta_f))
+
+    if conv == '':
+        raise TooManyIterationsError(maxiter)
+    else:
+        banner('Broyden method converged on ' + conv, '=')
+    return x  
+    
+
+#---------------------------------------------------------------------------------------------------
 def general_interaction_matrix_elements(e, n):
     """
     Translates a list of matrix elements (i,j,k,l,v) for a general interaction into a list of compound elements (I,J,v)

@@ -20,22 +20,18 @@ M.model.set_parameters("""
 varia = ['eb1_1', 'eb2_1', 'tb1_1', 'tb2_1']
 
 # convergence = 'GS energy'; accur = 1e-3
-# convergence='self-energy'; accur = 1e-4
+convergence='self-energy'; accur = 1e-4
 # convergence='t'; accur = 1e-4
 # convergence='parameters'; accur = 1e-4
 # convergence=('parameters', 'hybridization', 'self-energy'); accur = (5e-4, 1e-4, 1e-4)
 # convergence=('mu', 't'); accur=(1e-3, 1e-3)
 # convergence=[]; accur = []
 # convergence=('t',); accur=(1e-3,)
-# convergence = ('Broyden', 'self-energy'); accur=(1e-4, 1e-4)
-convergence = 'Broyden'; accur=1e-4
 
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():
-    X = CDMFT(M.model, varia=varia, wc=10, grid_type='self', accur=accur, convergence=convergence, converge_with_stdev=False, miniter=1, maxiter=64, depth=1)
+    X = CDMFT(M.model, varia=varia, wc=10, grid_type='self', accur=accur, convergence=convergence, converge_with_stdev=False, miniter=1, maxiter=64, depth=1, iteration='simple')
     return X.I
-
-run_cdmft(); exit()
 
 # Looping over values of U
 M.model.controlled_loop(

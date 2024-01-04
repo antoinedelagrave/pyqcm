@@ -2,6 +2,10 @@ import pyqcm
 from pyqcm.cdmft import CDMFT
 from model_1D_2_4b import model
 
+# import numpy as np
+# A = np.kron([1,2], [10,20]).reshape((2,2))
+# print(A); exit()
+
 model.set_target_sectors('R0:N6:S0')
 model.set_parameters("""
     U=4
@@ -23,7 +27,7 @@ def run_cdmft():
     U = model.parameters()['U']
     V = model.parameters()['V']
     model.set_parameter('mu', 0.5*U+2*V)
-    X = CDMFT(model, varia=varia, hartree=(Vm_H,), convergence='Broyden', accur=1e-4) 
+    X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration='Broyden', convergence=('self-energy', 'parameters'), accur=(1e-4, 1e-4)) 
     return X.I
 
 # Looping over values of U

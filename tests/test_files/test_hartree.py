@@ -41,8 +41,13 @@ for V in np.arange(V_start, V_stop, V_step):
     model.set_parameter('V', V)
     _adjust_mu()
 
-    model.Hartree_procedure(F, Vm_H)
+    model.Hartree_procedure(F, Vm_H, iteration='simple')
 
+for V in np.arange(V_start, V_stop, V_step):
+    model.set_parameter('V', V)
+    _adjust_mu()
+
+    model.Hartree_procedure(F, Vm_H, iteration='Broyden')
 ################################### - VCA approach - ####################################
 
 # This is the function to run inside of controlled_loop to perform the vca itself

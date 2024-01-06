@@ -86,6 +86,9 @@ class ParseError(Exception):
 class WrongArgumentError(ValueError):
     pass
 
+class EpsilonError(Exception):
+    pass
+
 def script_file():
     return os.path.basename(sys.argv[0])
 
@@ -1623,12 +1626,6 @@ class hartree:
     def print(self):
         print('<{:s}> = {:g}\t{:s} = {:g} (diff = {:g}, {:g}%)'.format(self.Vm, self.ave, self.Vm, self.vm, self.diff, 100*self.diff_rel))
 
-    #-----------------------------------------------------------------------------------------------
-    def init_epsilon(self, n, eps_length):
-        self.data = np.empty(n+1)
-        self.epsilon = eps_length
-        self.iter = 0
-
     
 ####################################################################################################
 # FUNCTIONS RELATION TO OPTIONS
@@ -2016,20 +2013,23 @@ def epsilon(y, pr=False):
     """
     
     if len(y)%2 ==0 :
-        print("the epsilon algorithm requires an odd-length sequence")
-        return 0
+        raise EpsilonError("the epsilon algorithm requires an odd-length sequence")
     M = np.zeros((len(y),len(y)+1))
     M[:,1] = y
-    for i in range(len(y)-2, -1, -1):
-        for k in range(2,len(y)-i+1):
-            M[i,k] = M[i+1,k-2] + 1.0/(M[i+1,k-1]-M[i,k-1])
+    try:
+        for i in range(len(y)-2, -1, -1):
+            for k in range(2,len(y)-i+1):
+                M[i,k] = M[i+1,k-2] + 1.0/(M[i+1,k-1]-M[i,k-1])
+    except:
+        raise EpsilonError("Error in the epsilon algorithm")
+
     np.set_printoptions(linewidth=1000)
     if pr == True :
         print(M)
     return M[0,-1]
 
 #---------------------------------------------------------------------------------------------------
-def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  miniter=0, alpha = 0.0):
+def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  miniter=0, alpha = 0.0, eps_algo=0):
     """
     Performs the direct iteration algorithm for a set of nonlinear equations with customized convergence tests
 
@@ -2040,6 +2040,7 @@ def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  minit
     :param float ftol: tolerance for convergence on the value of the function
     :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
     :param int maxiter: maximum number of iterations
+    :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
     :return: the solution
     :rtype: [float]
 
@@ -2047,12 +2048,31 @@ def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  minit
     n = len(x0)
     x = np.copy(x0)
     conv = ''
-    for i in range(maxiter):
+    data = np.empty((n, maxiter+1))
+    if eps_algo > 0:
+        pass
+    iter = 0
+    while True:
+        print('simple iteration {:d}'.format(iter+1))
         x = (alpha-1)*F(x0) + x0
+        data[:, iter] = np.copy(x0)
         delta_x = x - x0
-        x0 = x
         dx = np.linalg.norm(delta_x)
-        print('direct |delta x| = ', dx)
+        print('|delta x| = {:1.6g}'.format(dx))
+        #--------------------------- convergence acceleration ---------------------------
+        eps_length = 2*eps_algo + 1
+        if eps_algo and iter >= 2*eps_length and iter%(2*eps_length) == 0:
+            for i in range(n):
+                z = epsilon(data[i,iter-eps_length:iter])
+                data[i,iter] = z
+                x[i] = z
+            print('epsilon algorithm : ', x0, " ---> ", x)
+        else:
+            print(x0, " ---> ", x)
+        #-------------------------------------------------------------------------------
+        print('\n')
+        x0 = np.copy(x)
+
         if convergence_test is None:
             if dx < xtol and i >= miniter: 
                 conv = 'position'
@@ -2061,12 +2081,12 @@ def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  minit
             if convergence_test(): 
                 conv = 'custom test'
                 break;
+        iter += 1
+        if iter > maxiter:
+            raise TooManyIterationsError(maxiter)
 
-    if conv == '':
-        raise TooManyIterationsError(maxiter)
-    else:
-        banner('direct iteration procedure converged on ' + conv, '=')
-    return x  
+    banner('direct iteration procedure converged on ' + conv, '=')
+    return x, iter
     
 
 #---------------------------------------------------------------------------------------------------
@@ -2081,8 +2101,8 @@ def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, ftol=1e-6, convergence_test=None, maxit
     :param float ftol: tolerance for convergence on the value of the function
     :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
     :param int maxiter: maximum number of iterations
-    :return: the solution
-    :rtype: [float]
+    :return: the solution, the number of iterations needed
+    :rtype: [float], int  
 
     """
     n = len(x0)
@@ -2091,36 +2111,38 @@ def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, ftol=1e-6, convergence_test=None, maxit
     f = np.copy(f0)
     x = np.copy(x0)
     conv = ''
-    for i in range(maxiter):
+    iter = 0
+    while True:
         delta_x = -I@f
         x += delta_x
         dx = np.linalg.norm(delta_x)
-        print('Broyden |delta x| = ', dx)
+        print('\nBroyden iteration {:d}'.format(iter+1))
+        print('|delta x| = {:1.6g}'.format(dx))
         if convergence_test is None:
-            if dx < xtol and i >= miniter:
+            if dx < xtol and iter >= miniter:
                 conv = 'position'
                 break
         else:
-            if convergence_test() and i >= miniter: 
+            if convergence_test() and iter >= miniter: 
                 conv = 'custom test'
                 break;
         f = F(x)
         delta_f = f - f0
         df = np.linalg.norm(delta_f)
-        print('Broyden |delta f| = ', df)
+        # print('|delta f| = ', df)
         if convergence_test is None:
-            if df < ftol and i >= miniter:  
+            if df < ftol and iter >= miniter:  
                 conv = 'value'
                 break
         f0 = np.copy(f)
         T = np.kron((delta_x - I@delta_f), delta_x).reshape((n,n))
         I += T@I/(delta_x@(I@delta_f))
+        iter += 1
+        if iter > maxiter:
+            raise TooManyIterationsError(maxiter)
 
-    if conv == '':
-        raise TooManyIterationsError(maxiter)
-    else:
-        banner('Broyden method converged on ' + conv, '=')
-    return x  
+    banner('Broyden method converged on ' + conv, '=')
+    return x, iter
     
 
 #---------------------------------------------------------------------------------------------------

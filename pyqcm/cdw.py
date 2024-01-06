@@ -38,6 +38,7 @@ class superlattice:
         # print('super unit cell volume = ', self.vol)
 
         # folding the sites
+        self.siteF_index = {}
         if type(sites) is not tuple:
             sites = (sites,)
         sitesF = []
@@ -57,7 +58,6 @@ class superlattice:
         # for i in range(self.N):
         #     print(i+1, '\t', self.sites[i], '\t', self.sitesF[i], '\tdiff = ', self.sitesF[i]-self.sites[i])
         # dictionary of sites (for getting the index from the position)
-        self.siteF_index = {}
         for i,c in enumerate(sitesF):
             S = '[{:d},{:d},{:d}]'.format(c[0], c[1], c[2])
             self.siteF_index[S] = i

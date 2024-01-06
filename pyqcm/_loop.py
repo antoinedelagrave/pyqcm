@@ -469,14 +469,16 @@ def fade(self, task, p1, p2, n):
 
 
 #---------------------------------------------------------------------------------------------------
-def Hartree_procedure(self, task, couplings, maxiter=10, eps_algo=0, file='hartree.tsv', SEF=False, pr = False):
+def Hartree_procedure(self, task, couplings, maxiter=32, iteration='simple', eps_algo=0, file='hartree.tsv', SEF=False, pr = False, alpha=0.0):
 	"""
 	Performs the Hartree approximation
 	
 	:param task: task to perform within the loop. Must return a model_instance
 	:param [hartree] couplings: sequence of couplings (or single coupling)
 	:param int maxiter: maximum number of iterations
+    :param str iteration: method of iteration of parameters ('simple' or 'Broyden')
 	:param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
+    :param float alpha: if iteration='simple', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian.
 	:returns: None
 
 	"""
@@ -491,40 +493,46 @@ def Hartree_procedure(self, task, couplings, maxiter=10, eps_algo=0, file='hartr
 	diff_tot = 1e6
 	var_data = np.empty((len(couplings), maxiter+2))
 
-	if eps_algo:
-		for C in couplings:
-			C.init_epsilon(maxiter, eps_algo)
+	n = len(couplings)
+	P = self.parameters()
+	X = np.empty(n)
+	for i,C in enumerate(couplings):
+		X[i] = P[C.Vm]
 
-	iter = 0
-	while True:
+
+	def F(x):
+		x_new = np.copy(x)
+		for i,C in enumerate(couplings):
+			self.set_parameter(C.Vm, x[i])
 		I = task()
-		iter += 1
-		pyqcm.banner('Hartree iteration {:d}'.format(iter), '-')
-		diff_tot = 0
-		hartree_converged = True
 		for i,C in enumerate(couplings):
 			C.update(I, pr=pr)
 			C.print()
-			diff_tot += np.abs(C.diff)
+			x_new[i] = C.vm
+		return x - x_new
+	
+	def G():
+		hartree_converged = True
+		for i,C in enumerate(couplings):
 			hartree_converged = hartree_converged and C.converged()
-			var_data[i, iter] = C.vm
+		return hartree_converged
+			
+	if iteration == 'Broyden':
+		hartree_params, niter = pyqcm.broyden(F, X, iJ0 = 1+alpha, maxiter=maxiter, convergence_test=G)
+	elif iteration == 'simple':
+		hartree_params, niter = pyqcm.direct_iteration(F, X, xtol=1e-6, convergence_test=G, maxiter=maxiter, alpha=alpha, eps_algo=eps_algo)
+	else:
+		raise ValueError('type of iteration unknown in call to Hartree_procedure(...)')
 
-
-		print('total difference = {:g}'.format(diff_tot))
-
-		if hartree_converged:
-			des=''
-			val=''
-			if SEF:
-				sef = I.Potthoff_functional(hartree=couplings)
-				val = '{:.8g}\t'.format(sef)
-				des = 'omegaH\t'
-			I.write_summary(file, suppl_descr = des, suppl_values = val)
-			first_time = False
-			break
-
-		if iter > maxiter :
-			raise RuntimeError('Maximum number of Hartree iterations exceeded! Aborting...')
+	I = pyqcm.model_instance(self)
+	des='method\titerations\t'
+	val='{:s}\t{:d}\t'.format(iteration, niter)
+	if SEF:
+		sef = I.Potthoff_functional(hartree=couplings)
+		val = '{:.8g}\t'.format(sef)
+		des = 'omegaH\t'
+	I.write_summary(file, suppl_descr = des, suppl_values = val)
+	first_time = False
 
 	pyqcm.banner('Hartree procedure has converged', c='*')
 	return I

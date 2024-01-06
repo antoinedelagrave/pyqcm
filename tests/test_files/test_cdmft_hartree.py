@@ -23,16 +23,23 @@ Vm_H = pyqcm.hartree(model, 'Vm', 'V', model.Vm_eig, lattice=False)
 # Vm_H = pyqcm.hartree(model, 'Vm', 'V', model.Vm_eig, lattice=True) 
 
 varia = ['eb1_1', 'eb2_1', 'tb1_1', 'tb2_1']
-def run_cdmft():
+def run_cdmft(iteration):
     U = model.parameters()['U']
     V = model.parameters()['V']
     model.set_parameter('mu', 0.5*U+2*V)
-    X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration='Broyden', convergence=('self-energy', 'parameters'), accur=(1e-4, 1e-4)) 
+    X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration=iteration, convergence=('self-energy', 'parameters'), accur=(1e-4, 1e-4), eps_algo=2) 
     return X.I
 
 # Looping over values of U
 model.controlled_loop(
-    task=run_cdmft, 
+    task=lambda : run_cdmft('simple'), 
+    varia=varia+['Vm'],
+    loop_param='U', 
+    loop_range=(2, 4.1, 0.5)
+)
+
+model.controlled_loop(
+    task=lambda : run_cdmft('Broyden'), 
     varia=varia+['Vm'],
     loop_param='U', 
     loop_range=(2, 4.1, 0.5)

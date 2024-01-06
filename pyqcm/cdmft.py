@@ -126,7 +126,8 @@ class CDMFT:
     :param [str] convergence: the convergence tests (sequence of strings or single string)
     :param [float] accur: the tolerance for the various convergence tests (sequence of floats or single float)
     :param boolean converge_with_stdev: If True, checks convergence using the standard deviation of the convergence tests, not the difference
-    :param float alpha: damping parameter (fraction of the previous iteration in the new one)
+    :param str iteration: method of iteration of parameters ('simple' or 'Broyden')
+    :param float alpha: if iteration='simple', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian.
     :param boolean displaymin: displays the minimum distance function when minimized
     :param str method: method to use, as used in scipy.optimize.minimize()
     :param str file: name of the file where the solution is written
@@ -252,11 +253,7 @@ class CDMFT:
             self.hartree = []
         else:
             pyqcm.banner('CDMFT procedure (combined with Hartree procedure)', '*', skip=1)
-            if eps_algo:
-                for C in self.hartree:
-                    C.init_epsilon(maxiter, eps_algo)
         self.nhartree = len(self.hartree)
-
 
         #-------------- first define the frequency grid for the distance function ---------
         print('frequency grid type = ', grid_type)
@@ -266,7 +263,6 @@ class CDMFT:
         print('-'*100)
         
         # ------------------------------------- CDMFT loop --------------------------------
-        self.iter = 0
         globally_converged = False
         hartree_converged = True
 
@@ -288,9 +284,9 @@ class CDMFT:
             return self.check_convergence()
         try:
             if iteration == 'Broyden':
-                self.CDMFT_params = pyqcm.broyden(F, self.CDMFT_params, iJ0 = 1+alpha, maxiter=maxiter, miniter=miniter, ftol=accur[0], xtol=accur[0], convergence_test=G)
+                self.CDMFT_params, self.niter = pyqcm.broyden(F, self.CDMFT_params, iJ0 = 1+alpha, maxiter=maxiter, miniter=miniter, ftol=accur[0], xtol=accur[0], convergence_test=G)
             elif iteration == 'simple':
-                self.CDMFT_params = pyqcm.direct_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=alpha)
+                self.CDMFT_params, self.niter = pyqcm.direct_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=alpha, eps_algo=eps_algo)
             globally_converged=True
             # pyqcm.banner('CDMFT converged on '+convergence_test_string, '=')
         except pyqcm.TooManyIterationsError:
@@ -312,7 +308,7 @@ class CDMFT:
             # check consistency
             GS_cons = self.I.GS_consistency(check_ground_state)
             var_val = pyqcm.varia_table(self.var,self.CDMFT_params)
-            pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.iter), '-')
+            pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
             print(var_val)
 
             ave = self.I.averages(pr=True)
@@ -322,8 +318,8 @@ class CDMFT:
                 omegaH=self.I.Potthoff_functional(hartree)
 
             if file != None:
-                des = 'GS_consistency\titerations\tdist_function\tconvergence\tmethod\t'
-                val = '{:s}\t{:d}\t{:s}\t{:s}\t{:s}\t'.format(GS_cons, self.iter, self.grid.dist_function, convergence_test_string, iteration)
+                des = 'GS_consistency\tmethod\titerations\tdist_function\tconvergence\t'
+                val = '{:s}\t{:s}\t{:d}\t{:s}\t{:s}\t'.format(GS_cons, iteration, self.niter, self.grid.dist_function, convergence_test_string)
                 if SEF : 
                     des += 'omegaH\t'
                     val += '{: #.8g}\t'.format(omegaH)
@@ -346,7 +342,6 @@ class CDMFT:
         parameters and updates it to the next set of values
         """
 
-        self.iter += 1
         for i in range(self.nvar):
             self.model.set_parameter(self.var[i], self.CDMFT_params[i])
         for i in range(self.nhartree):
@@ -407,7 +402,6 @@ class CDMFT:
         self.I.write_summary('cdmft_iter.tsv', first_of_series=CDMFT.first_time2)
         CDMFT.first_time2 = False
 
-        print('\nCDMFT iteration ', self.iter, flush=True)
         print('GS sector : ', [X[1] for X in gs])
         print('{:d} minimization steps, time(MIN)/time(ED)={:.5f}, distance = {:1.9e}'.format(iter_done, time_MIN/time_ED, sol.fun), flush=True)
 
@@ -606,7 +600,7 @@ class CDMFT:
         for i,x in enumerate(self.var):
             if nrows==1: plt.sca(ax[i])
             else: plt.sca(ax[i//ncols,i%ncols])
-            plt.plot(range(self.iter), self.var_data[i,0:self.iter], 'o-', ms=3, lw=0.5)
+            plt.plot(range(self.niter), self.var_data[i,0:self.niter], 'o-', ms=3, lw=0.5)
             plt.title(self.var[i])
         plt.savefig('iterations.pdf')
 

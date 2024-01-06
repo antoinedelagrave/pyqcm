@@ -27,12 +27,12 @@ def run_cdmft(iteration):
     U = model.parameters()['U']
     V = model.parameters()['V']
     model.set_parameter('mu', 0.5*U+2*V)
-    X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration=iteration, convergence=('self-energy', 'parameters'), accur=(1e-4, 1e-4), eps_algo=2) 
+    X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration=iteration, convergence=('GS energy', 'parameters'), accur=(1e-4, 1e-4), eps_algo=2) 
     return X.I
 
 # Looping over values of U
 model.controlled_loop(
-    task=lambda : run_cdmft('simple'), 
+    task=lambda : run_cdmft('fixed_point'), 
     varia=varia+['Vm'],
     loop_param='U', 
     loop_range=(2, 4.1, 0.5)

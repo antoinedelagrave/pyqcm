@@ -126,8 +126,8 @@ class CDMFT:
     :param [str] convergence: the convergence tests (sequence of strings or single string)
     :param [float] accur: the tolerance for the various convergence tests (sequence of floats or single float)
     :param boolean converge_with_stdev: If True, checks convergence using the standard deviation of the convergence tests, not the difference
-    :param str iteration: method of iteration of parameters ('simple' or 'Broyden')
-    :param float alpha: if iteration='simple', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian.
+    :param str iteration: method of iteration of parameters ('fixed_point' or 'Broyden')
+    :param float alpha: if iteration='fixed_point', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian.
     :param boolean displaymin: displays the minimum distance function when minimized
     :param str method: method to use, as used in scipy.optimize.minimize()
     :param str file: name of the file where the solution is written
@@ -165,7 +165,7 @@ class CDMFT:
         accur=1e-4,
         accur_dist=1e-9,
         converge_with_stdev = False,
-        iteration = 'simple', # or 'Broyden'
+        iteration = 'Broyden', # or 'fixed_point'
         alpha = 0.0,
         method='Nelder-Mead',
         file='cdmft.tsv',
@@ -284,16 +284,16 @@ class CDMFT:
             return self.check_convergence()
         try:
             if iteration == 'Broyden':
-                self.CDMFT_params, self.niter = pyqcm.broyden(F, self.CDMFT_params, iJ0 = 1+alpha, maxiter=maxiter, miniter=miniter, ftol=accur[0], xtol=accur[0], convergence_test=G)
-            elif iteration == 'simple':
-                self.CDMFT_params, self.niter = pyqcm.direct_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=alpha, eps_algo=eps_algo)
+                self.CDMFT_params, self.niter = pyqcm.broyden(F, self.CDMFT_params, iJ0 = 1+alpha, maxiter=maxiter, miniter=miniter, xtol=accur[0], convergence_test=G)
+            elif iteration == 'fixed_point':
+                self.CDMFT_params, self.niter = pyqcm.fixed_point_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=alpha, eps_algo=eps_algo)
             globally_converged=True
             # pyqcm.banner('CDMFT converged on '+convergence_test_string, '=')
         except pyqcm.TooManyIterationsError:
             raise pyqcm.TooManyIterationsError(maxiter)
         except:
             globally_converged=False
-            self.plot_iterations()
+            if self.niter > 5 : self.plot_iterations()
 
         # -----------------------------------------------------------------------------
         # here we have converged

@@ -30,7 +30,7 @@ convergence='self-energy'; accur = 1e-4
 
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():
-    X = CDMFT(M.model, varia=varia, wc=10, grid_type='self', accur=accur, convergence=convergence, converge_with_stdev=False, miniter=1, maxiter=64, depth=1, iteration='simple')
+    X = CDMFT(M.model, varia=varia, wc=10, grid_type='self', accur=accur, convergence=convergence, converge_with_stdev=False, miniter=1, maxiter=64, depth=1, iteration='fixed_point')
     return X.I
 
 # Looping over values of U

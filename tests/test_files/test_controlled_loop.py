@@ -22,7 +22,7 @@ model.set_parameters("""
 
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():
-    X = CDMFT(model, varia=["tb1_1", "eb1_1"], accur=1e-5) 
+    X = CDMFT(model, varia=["tb1_1", "eb1_1"], accur=1e-4) 
     return X.I
 
 def control(I):

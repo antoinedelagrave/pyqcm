@@ -2029,31 +2029,30 @@ def epsilon(y, pr=False):
     return M[0,-1]
 
 #---------------------------------------------------------------------------------------------------
-def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  miniter=0, alpha = 0.0, eps_algo=0):
+def fixed_point_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  miniter=0, alpha = 0.0, eps_algo=0):
     """
-    Performs the direct iteration algorithm for a set of nonlinear equations with customized convergence tests
+    Performs the fixed point iteration algorithm for a set of nonlinear equations with customized convergence tests
 
     :param function F: vector-valued nonlinear function whose roots are desired
     :param [float] x0: initial point
-    :param float iJ0: initial guess for the inverse jacobian (proportional to the unit matrix)
     :param float xtol: tolerance for convergence on the variables
-    :param float ftol: tolerance for convergence on the value of the function
     :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
     :param int maxiter: maximum number of iterations
+    :param int miniter: minimum number of iterations
+    :param float alpha: damping coefficient
     :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
-    :return: the solution
-    :rtype: [float]
+    :return: the solution, the number of iterations
+    :rtype: [float], int
 
     """
     n = len(x0)
     x = np.copy(x0)
-    conv = ''
     data = np.empty((n, maxiter+1))
     if eps_algo > 0:
         pass
     iter = 0
     while True:
-        print('simple iteration {:d}'.format(iter+1))
+        print('\nfixed_point iteration {:d}'.format(iter+1))
         x = (alpha-1)*F(x0) + x0
         data[:, iter] = np.copy(x0)
         delta_x = x - x0
@@ -2067,30 +2066,24 @@ def direct_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  minit
                 data[i,iter] = z
                 x[i] = z
             print('epsilon algorithm : ', x0, " ---> ", x)
-        else:
-            print(x0, " ---> ", x)
         #-------------------------------------------------------------------------------
-        print('\n')
         x0 = np.copy(x)
 
         if convergence_test is None:
             if dx < xtol and i >= miniter: 
-                conv = 'position'
                 break
         else:
             if convergence_test(): 
-                conv = 'custom test'
                 break;
         iter += 1
         if iter > maxiter:
             raise TooManyIterationsError(maxiter)
 
-    banner('direct iteration procedure converged on ' + conv, '=')
     return x, iter
     
 
 #---------------------------------------------------------------------------------------------------
-def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, ftol=1e-6, convergence_test=None, maxiter=32, miniter=0):
+def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, convergence_test=None, maxiter=32, miniter=0):
     """
     Performs the Broyden algorithm with customized convergence tests
 
@@ -2098,19 +2091,18 @@ def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, ftol=1e-6, convergence_test=None, maxit
     :param [float] x0: initial point
     :param float iJ0: initial guess for the inverse jacobian (proportional to the unit matrix)
     :param float xtol: tolerance for convergence on the variables
-    :param float ftol: tolerance for convergence on the value of the function
     :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
     :param int maxiter: maximum number of iterations
+    :param int miniter: minimum number of iterations
     :return: the solution, the number of iterations needed
     :rtype: [float], int  
 
     """
     n = len(x0)
-    I = iJ0*np.eye(n)
+    I = iJ0*np.eye(n) # inverse Jacobian (trial value)
     f0 = F(x0)
     f = np.copy(f0)
     x = np.copy(x0)
-    conv = ''
     iter = 0
     while True:
         delta_x = -I@f
@@ -2118,30 +2110,21 @@ def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, ftol=1e-6, convergence_test=None, maxit
         dx = np.linalg.norm(delta_x)
         print('\nBroyden iteration {:d}'.format(iter+1))
         print('|delta x| = {:1.6g}'.format(dx))
-        if convergence_test is None:
-            if dx < xtol and iter >= miniter:
-                conv = 'position'
-                break
-        else:
+        if dx < xtol and iter >= miniter:
+            break
+        if convergence_test != None:
             if convergence_test() and iter >= miniter: 
-                conv = 'custom test'
                 break;
         f = F(x)
         delta_f = f - f0
-        df = np.linalg.norm(delta_f)
-        # print('|delta f| = ', df)
-        if convergence_test is None:
-            if df < ftol and iter >= miniter:  
-                conv = 'value'
-                break
         f0 = np.copy(f)
+        # updating the inverse Jaccobian
         T = np.kron((delta_x - I@delta_f), delta_x).reshape((n,n))
         I += T@I/(delta_x@(I@delta_f))
         iter += 1
         if iter > maxiter:
             raise TooManyIterationsError(maxiter)
 
-    banner('Broyden method converged on ' + conv, '=')
     return x, iter
     
 

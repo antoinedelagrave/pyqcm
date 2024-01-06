@@ -41,7 +41,7 @@ for V in np.arange(V_start, V_stop, V_step):
     model.set_parameter('V', V)
     _adjust_mu()
 
-    model.Hartree_procedure(F, Vm_H, iteration='simple')
+    model.Hartree_procedure(F, Vm_H, iteration='fixed_point')
 
 for V in np.arange(V_start, V_stop, V_step):
     model.set_parameter('V', V)

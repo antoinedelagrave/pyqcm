@@ -478,8 +478,8 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 	:param int maxiter: maximum number of iterations
     :param str iteration: method of iteration of parameters ('fixed_point' or 'Broyden')
 	:param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
-    :param float alpha: if iteration='fixed_point', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian.
-	:returns: None
+    :param float alpha: if iteration='fixed_point', damping parameter, otherwise trial inverse Jacobian (if a float, that is (1+alpha)*unit matrix)
+	:returns: model instance, converged inverse Jacobian
 
 	"""
 	
@@ -516,9 +516,10 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 		for i,C in enumerate(couplings):
 			hartree_converged = hartree_converged and C.converged()
 		return hartree_converged
-			
+	
+	niter = 0
 	if iteration == 'Broyden':
-		hartree_params, niter = pyqcm.broyden(F, X, iJ0 = 1+alpha, maxiter=maxiter, convergence_test=G)
+		hartree_params, niter, alpha = pyqcm.broyden(F, X, iJ0 = alpha, maxiter=maxiter, convergence_test=G)
 	elif iteration == 'fixed_point':
 		hartree_params, niter = pyqcm.fixed_point_iteration(F, X, xtol=1e-6, convergence_test=G, maxiter=maxiter, alpha=alpha, eps_algo=eps_algo)
 	else:
@@ -535,7 +536,7 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 	first_time = False
 
 	pyqcm.banner('Hartree procedure has converged', c='*')
-	return I
+	return I, niter, alpha
 	
 
 

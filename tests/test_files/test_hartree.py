@@ -35,6 +35,7 @@ def F():
     return pyqcm.model_instance(model)
 
 ############################# - Self-consistency approach - #############################
+alpha = 0.0
 
 # This is simply a loop that applies the self_consistency approach over V_range
 for V in np.arange(V_start, V_stop, V_step):
@@ -47,7 +48,7 @@ for V in np.arange(V_start, V_stop, V_step):
     model.set_parameter('V', V)
     _adjust_mu()
 
-    model.Hartree_procedure(F, Vm_H, iteration='Broyden')
+    I, niter, alpha = model.Hartree_procedure(F, Vm_H, iteration='Broyden', alpha = alpha)
 ################################### - VCA approach - ####################################
 
 # This is the function to run inside of controlled_loop to perform the vca itself

@@ -2083,23 +2083,28 @@ def fixed_point_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  
     
 
 #---------------------------------------------------------------------------------------------------
-def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, convergence_test=None, maxiter=32, miniter=0):
+def broyden(F, x0, iJ0 = 0.0, xtol=1e-6, convergence_test=None, maxiter=32, miniter=0):
     """
     Performs the Broyden algorithm with customized convergence tests
 
     :param function F: vector-valued nonlinear function whose roots are desired
     :param [float] x0: initial point
-    :param float iJ0: initial guess for the inverse jacobian (proportional to the unit matrix)
+    :param float iJ0: initial guess for the inverse jacobian ((1+iJ0)*unit matrix if float, otherwise a matrix being the actual initial inverse Jacobian)
     :param float xtol: tolerance for convergence on the variables
     :param function convergence_test: function called to perform custom convergence tests. Returns True if converged
     :param int maxiter: maximum number of iterations
     :param int miniter: minimum number of iterations
-    :return: the solution, the number of iterations needed
-    :rtype: [float], int  
+    :return: the solution, the number of iterations needed, the concerged inverse Jacobian
+    :rtype: [float], int, [[float]]
 
     """
     n = len(x0)
-    I = iJ0*np.eye(n) # inverse Jacobian (trial value)
+    if type(iJ0) is float or type(iJ0) is int:
+        I = (1.0+iJ0)*np.eye(n) # inverse Jacobian (trial value)
+    elif type(iJ0) is np.ndarray:
+        if iJ0.shape[0] != n  or  iJ0.shape[1] != n:
+            raise ValueError('the initial Jacobian has the wrong dimensions')
+        I = np.copy(iJ0)
     f0 = F(x0)
     f = np.copy(f0)
     x = np.copy(x0)
@@ -2125,7 +2130,7 @@ def broyden(F, x0, iJ0 = 1.0, xtol=1e-6, convergence_test=None, maxiter=32, mini
         if iter > maxiter:
             raise TooManyIterationsError(maxiter)
 
-    return x, iter
+    return x, iter, I
     
 
 #---------------------------------------------------------------------------------------------------

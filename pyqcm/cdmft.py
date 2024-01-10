@@ -19,11 +19,11 @@ class convergence_manager:
     its predecessors, and convergence is declared when the result of this difference (a float) is smaller than
     the tolerance (`tol`) for each of the `depth` previous iterations.
     The possible values of the 'name' argument are: 
-        * 'parameters' : the set of bath parameters is the quantity used.
-        * 'GS energy' : the ground state energy of the impurity problem is used. In the case of more than one cluster, the sum is used.
-        * 'hybridization' : the hybridization function (or set thereof, in the case of many clusters). The test is based on the norm of the matrix differences, summed over grid frequencies.
-        * 'self-energy' : same as above, but using the impurity self-energy instead.
-        * any one-body or anomalous lattice operator name. The lattice average is used as test value.
+    * 'parameters' : the set of bath parameters is the quantity used.
+    * 'GS energy' : the ground state energy of the impurity problem is used. In the case of more than one cluster, the sum is used.
+    * 'hybridization' : the hybridization function (or set thereof, in the case of many clusters). The test is based on the norm of the matrix differences, summed over grid frequencies.
+    * 'self-energy' : same as above, but using the impurity self-energy instead.
+    * any one-body or anomalous lattice operator name. The lattice average is used as test value.
     """
 
     def __init__(self, name, diff_func, tol, depth=2, stdev=False):

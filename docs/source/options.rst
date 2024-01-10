@@ -6,6 +6,7 @@ Boolean options
     :header: "name", "default", "description"
     :widths: 15, 10, 50
 
+    "Ground_state_init_last", "false", "Keep ground state in memory for initializing eigenvector in further ground state solving"
     "check_lanczos_residual", "false", "checks the Lanczos residual at the end of the eigenvector computation"
     "continued_fraction", "false", "Uses the continued fraction solver for the Green function instead of the band Lanczos method"
     "dual_basis", "false", "uses the dual basis for wavevector computations"
@@ -34,6 +35,7 @@ Integer-valued options
     :widths: 15, 10, 50
 
     "Davidson_states", "1", "Number of states requested in the Davidson-Liu algorithm"
+    "GF_lookup_depth", "64", "depth of the look-up table for the cluster Green function"
     "GK_min_regions", "8", "minimum number of regions in the Gauss-Kronrod method"
     "PRIMME_algorithm", "1", "PRIMME algorithm to solve ground state (if qcm_wed was compiled with PRIMME): 1 (PRIMME_DYNAMIC - default), 2 (PRIMME_DEFAULT_MIN_TIME), 3 (PRIMME_DEFAULT_MIN_MATVECS), 4 (PRIMME_Arnoldi), 5 (PRIMME_GD), 6 (PRIMME_GD_plusK), 7 (PRIMME_GD_Olsen_plusK), 8 (PRIMME_JD_Olsen_plusK), 9 (PRIMME_RQI), 10 (PRIMME_JDQR), 11 (PRIMME_JDQMR), 12 (PRIMME_JDQMR_ETol), 13 (PRIMME_STEEPEST_DESCENT), 14 (PRIMME_LOBPCG_OrthoBasis), 15 (PRIMME_LOBPCG_OrthoBasis_Window). See PRIMME documentation for more information"
     "PRIMME_preconditionning", "0", "Choose of preconditionner to solve ground state (if qcm_wed was compiled with PRIMME): 0 (No preconditionning), 1 (Jacobi preconditionner)"
@@ -83,7 +85,7 @@ Char-valued options
     :header: "name", "default", "description"
     :widths: 15, 10, 50
 
-    "Ground_state_method", "L", "Desired method to compute the ground state: L (Lanczos method - default), P (use external PRIMME eigensolver - need qcm_wed to be compiled with PRIMME)"
+    "Ground_state_method", "L", "Desired method to compute the ground state: L (Lanczos method - default), D (Davidson method), P (use external PRIMME eigensolver - need qcm_wed to be compiled with PRIMME)"
     "Hamiltonian_format", "E", "Desired Hamiltonian format: S (CSR matrix), O (individual operators), F (factorized), N (none = on the fly), E (Eigen CSR matrix))"
     "periodization", "G", "periodization scheme: G, S, M, C or N (None)"
 

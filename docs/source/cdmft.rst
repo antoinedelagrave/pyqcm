@@ -13,8 +13,6 @@ Some auxiliary classes are also defined:
 
 * `general_bath` defines general cluster models with bath, with automatic bath parameter definitions, etc.
 
-* `observable` defines quantities that can be used to assess the convergence of the CDMFT procedure, if the latter is not base on the bath parameters themselves
-
 .. autoclass:: pyqcm.cdmft.CDMFT
     :members:
 
@@ -28,8 +26,5 @@ Some auxiliary classes are also defined:
     :members:
 
 .. autoclass:: pyqcm.cdmft.general_bath
-    :members:
-
-.. autoclass:: pyqcm.cdmft.observable
     :members:
 

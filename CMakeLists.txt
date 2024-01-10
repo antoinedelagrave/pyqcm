@@ -38,7 +38,16 @@ option(GENERIC_BUILD "Compile qcm_wed with the minimum optimization flag to targ
 
 
 # set the project name and version
-project(qcm LANGUAGES C CXX VERSION 2.2.6 DESCRIPTION "Quantum Cluster Methods shared library")
+set(GIT_DESCRIBE_CMD "")
+execute_process(
+  COMMAND git describe --abbrev=0
+  COMMAND tr -d 'v'
+  OUTPUT_VARIABLE GIT_DESCRIBE_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+message(STATUS "QCM_WED version: ${GIT_DESCRIBE_VERSION}")
+project(qcm LANGUAGES C CXX VERSION ${GIT_DESCRIBE_VERSION} DESCRIPTION "Quantum Cluster Methods shared library")
+
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)

@@ -264,8 +264,7 @@ class CDMFT:
         print('-'*100)
         
         # ------------------------------------- CDMFT loop --------------------------------
-        globally_converged = False
-        hartree_converged = True
+        converged = False
 
         # initializaing the array of parameters
         self.CDMFT_params = np.zeros(self.nvar + self.nhartree)
@@ -289,18 +288,21 @@ class CDMFT:
                 self.CDMFT_params, self.niter, self.alpha = pyqcm.broyden(F, self.CDMFT_params, self.alpha, maxiter=maxiter, miniter=miniter, xtol=1e-6, convergence_test=G)
             elif iteration == 'fixed_point':
                 self.CDMFT_params, self.niter = pyqcm.fixed_point_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=self.alpha, eps_algo=eps_algo)
-            globally_converged=True
-            # pyqcm.banner('CDMFT converged on '+convergence_test_string, '=')
+            converged=True
         except pyqcm.TooManyIterationsError:
+            converged=False
+            pyqcm.banner('CDMFT : too many iterations', '!')
             raise pyqcm.TooManyIterationsError(maxiter)
         except:
-            globally_converged=False
+            converged=False
             if self.niter > 5 : self.plot_iterations()
+            pyqcm.banner('CDMFT failure', '!')
+            raise pyqcm.CDMFTError
 
         # -----------------------------------------------------------------------------
         # here we have converged
 
-        if globally_converged:
+        if converged:
             self.I = pyqcm.model_instance(self.model)  # a last instance with the converged parameters
 
             # check consistency
@@ -327,11 +329,6 @@ class CDMFT:
                 CDMFT.first_time2 = True
 
             pyqcm.banner('CDMFT completed successfully', '*')
-        else:
-            if n_convergence_test > 0:
-                pyqcm.banner('Failure of the CDMFT algorithm', '*')
-            else:
-                pyqcm.banner('CDMFT completed with the prescribed number of iterations, but bot converged', '*')
  
 
     #-----------------------------------------------------------------------------------------------
@@ -386,15 +383,17 @@ class CDMFT:
 
         if self.method != 'ANNEAL' and not sol.success:
             print(sol)
+            pyqcm.banner('Error in the scipy minimization procedure within CDMFT ', '!')
             raise pyqcm.MinimizationError()
 
         if sol.nfev > self.max_function_eval:
             print(sol)
-            print('number of function evaluations exceeds preset maximum of ', self.max_function_eval)
+            pyqcm.banner('number of function evaluations exceeds preset maximum of {:d}'.format(self.max_function_eval), '!')
             raise pyqcm.MinimizationError()
         
         if np.any(np.isnan(sol.x)):
             print(sol)
+            pyqcm.banner('NaN found in optimization of bath parameters', '!')
             raise pyqcm.MinimizationError('NaN found in optimization of bath parameters')
 
         # push back into array

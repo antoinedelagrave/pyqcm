@@ -197,6 +197,10 @@ def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, co
 			else:
 				try_again = True
 
+		except:
+			print('task failed. Aborting loop.')
+			break
+			
 		if control_func is not None:
 			if not control_func(I):
 				if loop_counter < 2 and retry == None:

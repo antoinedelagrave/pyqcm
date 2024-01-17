@@ -31,8 +31,11 @@ def run_cdmft(iteration):
     U = model.parameters()['U']
     V = model.parameters()['V']
     model.set_parameter('mu', 0.5*U+2*V)
-    X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration=iteration, convergence=('GS energy', 'parameters'), accur=(1e-4, 1e-4), eps_algo=2, alpha = alpha) 
-    return X.I
+    try:
+        X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration=iteration, convergence=('GS energy', 'parameters'), accur=(1e-4, 1e-4), eps_algo=2, alpha = alpha) 
+        return X.I
+    except:
+        raise pyqcm.CDMFTError
 
 # Looping over values of U
 model.controlled_loop(

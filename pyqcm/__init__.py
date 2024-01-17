@@ -71,6 +71,12 @@ class TooManyIterationsError(Exception):
     def __str__(self):
         return 'the number of iterations has exceeded {:d}'.format(self.max_iteration)
 
+class CDMFTError(Exception):
+    def __init__(self):
+        pass
+    def __str__(self):
+        return 'The CDMFT failed to converge to a solution'
+
 class VarParamMismatchError(Exception):
     pass
 
@@ -2055,8 +2061,6 @@ def fixed_point_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  
     while True:
         print('\nfixed_point iteration {:d}'.format(iter+1))
         x = (alpha-1)*F(x0) + x0
-        if np.any(np.isnan(x)):
-            raise ValueError('NaN produced in fixed-point method')
         data[:, iter] = np.copy(x0)
         delta_x = x - x0
         dx = np.linalg.norm(delta_x)

@@ -683,11 +683,11 @@ class VCA:
 
         except pyqcm.OutOfBoundsError as E:
             print(E)
-            raise pyqcm.OutOfBoundsError(E.variable)
+            raise pyqcm.SolverError('Failure of the VCA method')
 
         except pyqcm.TooManyIterationsError as E:
-            print('VCA method failed to converge after ', E.max_iteration, ' iterations')
-            raise pyqcm.TooManyIterationsError(E.max_iteration)
+            print(E)
+            raise pyqcm.SolverError('Failure of the VCA method')
 
         omega = var2x(sol)  # final, converged value
         if root:

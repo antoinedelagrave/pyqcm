@@ -121,16 +121,9 @@ def linear_loop(self, N, task, varia=None, params = None, predict=True):
 			print('predictor: ', start, fit_type)
 		try:
 			task()
-			P = self.parameters()
-			for i in range(len(varia)):
-				sol[0, i] = P[varia[i]]
-
-		except pyqcm.OutOfBoundsError as E:
-			print('Out of bound on starting values in linear_loop(), aborting')
-			return
-		except pyqcm.TooManyIterationsError as E:
-			print('Cannot converge on starting values in linear_loop(), aborting')
-			return 
+		except: raise
+			
+		sol[0,:] = self.parameters(varia)
 
 	pyqcm.banner('linear loop ended normally', '%')
 
@@ -179,27 +172,19 @@ def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, co
 	nretry = 0
 	fac = 1
 	start = [0]*nvar
+	abort = False
 	while True:  # main loop here
 		self.set_parameter(loop_param, prm[0])
+		pyqcm.banner('loop index = {:d}, {:s} = {:1.4f}'.format(loop_counter + 1, loop_param, prm[0]), '=', skip=1)
 		try:
-			pyqcm.banner('loop index = {:d}, {:s} = {:1.4f}'.format(loop_counter + 1, loop_param, prm[0]), '=', skip=1)
 			I = task()
 
-		except pyqcm.OutOfBoundsError as E:
+		except (pyqcm.OutOfBoundsError, pyqcm.TooManyIterationsError, Exception) as E:
+			print(E)
 			if loop_counter == 0 or not retry:
 				raise ValueError('Out of bound on starting values in controlled_loop(), aborting')
 			else:
 				try_again = True
-
-		except pyqcm.TooManyIterationsError as E:
-			if loop_counter == 0 or not retry:
-				raise ValueError('Cannot converge on starting values in controlled_loop(), aborting')
-			else:
-				try_again = True
-
-		except:
-			print('task failed. Aborting loop.')
-			break
 			
 		if control_func is not None:
 			if not control_func(I):
@@ -208,6 +193,7 @@ def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, co
 					break
 				elif retry == None:
 					print('Control failed. Aborting loop.')
+					abort = True
 					break
 				try_again = True
 	
@@ -230,9 +216,7 @@ def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, co
 
 		prm[0] = prm[1] + fac*step  # updates the loop parameter
 
-		P = I.parameters()
-		for i in range(len(varia)):
-			sol[0, i] = P[varia[i]]
+		sol[0,:] = I.parameters(varia)
 
 		if loop_range[1] >= loop_range[0] and prm[0] > loop_range[1]:
 			break
@@ -275,6 +259,8 @@ def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, co
 
 	if nretry > max_retry:
 		pyqcm.banner('controlled loop ended on signal by control function', '%')
+	elif abort:
+		pyqcm.banner('controlled loop ended with error', '%')
 	else:
 		pyqcm.banner('controlled loop ended normally', '%')
 
@@ -368,7 +354,7 @@ def fixed_density_loop(self, task,
 		print(loop_param, ' = {:1.4f}'.format(loop_values[i]))
 
 		# density search:
-		max_trials = 12
+		max_trials = 32
 		mu2 = np.zeros(max_trials+1)
 		n = np.zeros(max_trials+1)
 		var2 = {}

@@ -140,6 +140,7 @@ class CDMFT:
     :param ndarray host_function: if not None, function that computes the host array and passes it to qcm
     :param function pre_host: function to be executed before computing the host. Takes a model instance as argument
     :param float max_value: maximum absolute value of variational parameters
+    :param boolean fallback: if True, falls back to the other iteration method (Broyden or fixed_point) if the current one fails
     :ivar lattice_model model: (unique) model on which the computation is based
     :ivar ndarray Hyb: host function
     :ivar ndarray Hyb_down: host function for the spin down component in the case of mixing=4
@@ -177,6 +178,7 @@ class CDMFT:
         host_function = None,
         pre_host = None,
         max_value = 100,
+        fallback=False
     ):
 
         self.model =model
@@ -268,67 +270,88 @@ class CDMFT:
 
         # initializaing the array of parameters
         self.CDMFT_params = np.zeros(self.nvar + self.nhartree)
-        P = model.parameters()
-        for i in range(self.nvar):
-            self.CDMFT_params[i] = P[self.var[i]]
-        for i in range(self.nhartree):
-            self.CDMFT_params[i+self.nvar] = P[self.hartree[i].Vm]
+        vartot = self.var + [x.Vm for x in self.hartree]
+        self.CDMFT_params = model.parameters(vartot)
 
         #------------------------------- CDMFT main iteration loop ------------------------
         self.niter = 0
         def F(x):
             self.CDMFT_params = np.copy(x)
-            self.CDMFT_step()
-            return x - self.CDMFT_params
+            try:
+                self.CDMFT_step()
+            except : raise
+            else: return x - self.CDMFT_params
 
         def G():
             return self.check_convergence()
-        try:
-            if iteration == 'Broyden':
+
+        CDMFT_params0 = self.CDMFT_params
+
+        if iteration == 'Broyden':
+            try:
+                actual_method = 'Broyden'
                 self.CDMFT_params, self.niter, self.alpha = pyqcm.broyden(F, self.CDMFT_params, self.alpha, maxiter=maxiter, miniter=miniter, xtol=1e-6, convergence_test=G)
-            elif iteration == 'fixed_point':
+            except Exception as E:
+                if fallback:
+                    pyqcm.banner('restarting CDMFT with fixed-point method', '+', skip=1)
+                    model.set_parameter(vartot, CDMFT_params0, pr=True)
+                    try:
+                        actual_method = 'fixed_point'
+                        self.CDMFT_params, self.niter = pyqcm.fixed_point_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=self.alpha, eps_algo=eps_algo)
+                    except Exception as E:
+                        print(E)    
+                        raise pyqcm.SolverError('Failure of the CDMFT method')
+                else:
+                    print(E)    
+                    raise pyqcm.SolverError('Failure of the CDMFT method')
+
+        elif iteration == 'fixed_point':
+            try:
+                actual_method = 'fixed_point'
                 self.CDMFT_params, self.niter = pyqcm.fixed_point_iteration(F, self.CDMFT_params, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=self.alpha, eps_algo=eps_algo)
-            converged=True
-        except pyqcm.TooManyIterationsError:
-            converged=False
-            pyqcm.banner('CDMFT : too many iterations', '!')
-            raise pyqcm.TooManyIterationsError(maxiter)
-        except:
-            converged=False
-            if self.niter > 5 : self.plot_iterations()
-            pyqcm.banner('CDMFT failure', '!')
-            raise pyqcm.CDMFTError
+            except Exception as E:
+                if fallback:
+                    pyqcm.banner('restarting CDMFT with Broyden method', '+', skip=1)
+                    model.set_parameter(vartot, CDMFT_params0, pr=True)
+                    try:
+                        actual_method = 'Broyden'
+                        self.CDMFT_params, self.niter, self.alpha = pyqcm.broyden(F, self.CDMFT_params, self.alpha, maxiter=maxiter, miniter=miniter, xtol=1e-6, convergence_test=G)
+                    except Exception as E:
+                        print(E)    
+                        raise pyqcm.SolverError('Failure of the CDMFT method')
+                else:
+                    print(E)    
+                    raise pyqcm.SolverError('Failure of the CDMFT method')
 
-        # -----------------------------------------------------------------------------
-        # here we have converged
+        else: raise ValueError('unknown iteration method in CDMFT. must be either "Broyden" or "fixed_point". Check spelling.')
+            
+        # Here we have converged
+        self.I = pyqcm.model_instance(self.model)  # a last instance with the converged parameters
 
-        if converged:
-            self.I = pyqcm.model_instance(self.model)  # a last instance with the converged parameters
+        # check consistency
+        GS_cons = self.I.GS_consistency(check_ground_state)
+        var_val = pyqcm.varia_table(self.var,self.CDMFT_params)
+        pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
+        print(var_val)
 
-            # check consistency
-            GS_cons = self.I.GS_consistency(check_ground_state)
-            var_val = pyqcm.varia_table(self.var,self.CDMFT_params)
-            pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
-            print(var_val)
+        ave = self.I.averages(pr=True)
+        if compute_potential_energy : 
+            self.I.potential_energy()
+            omegaH=self.I.Potthoff_functional(hartree)
+        if SEF:
+            omegaH=self.I.Potthoff_functional(hartree)
 
-            ave = self.I.averages(pr=True)
-            if compute_potential_energy : 
-                self.I.potential_energy()
-                omegaH=self.I.Potthoff_functional(hartree)
-            if SEF:
-                omegaH=self.I.Potthoff_functional(hartree)
+        if file != None:
+            des = 'GS_consistency\tmethod\titerations\tdist_function\tconvergence\t'
+            val = '{:s}\t{:s}\t{:d}\t{:s}\t{:s}\t'.format(GS_cons, actual_method, self.niter, self.grid.dist_function, convergence_test_string)
+            if SEF : 
+                des += 'omegaH\t'
+                val += '{: #.8g}\t'.format(omegaH)
+            self.I.write_summary(file, suppl_descr = des, suppl_values = val, first_of_series=CDMFT.first_time)
+            CDMFT.first_time = False
+            CDMFT.first_time2 = True
 
-            if file != None:
-                des = 'GS_consistency\tmethod\titerations\tdist_function\tconvergence\t'
-                val = '{:s}\t{:s}\t{:d}\t{:s}\t{:s}\t'.format(GS_cons, iteration, self.niter, self.grid.dist_function, convergence_test_string)
-                if SEF : 
-                    des += 'omegaH\t'
-                    val += '{: #.8g}\t'.format(omegaH)
-                self.I.write_summary(file, suppl_descr = des, suppl_values = val, first_of_series=CDMFT.first_time)
-                CDMFT.first_time = False
-                CDMFT.first_time2 = True
-
-            pyqcm.banner('CDMFT completed successfully', '*')
+        pyqcm.banner('CDMFT completed successfully', '*')
  
 
     #-----------------------------------------------------------------------------------------------
@@ -398,7 +421,13 @@ class CDMFT:
 
         # push back into array
         x_new[0:self.nvar] = np.copy(sol.x)
-        check_bounds(x_new[0:self.nvar], self.max_value, v=self.var)
+        try:
+            check_bounds(x_new[0:self.nvar], self.max_value, v=self.var)
+        except pyqcm.OutOfBoundsError as error:
+            raise error
+        except:
+            raise ValueError
+
 
         # writing the parameters in a progress file
         self.I.write_summary('cdmft_iter.tsv', first_of_series=CDMFT.first_time2)
@@ -651,7 +680,7 @@ class frequency_grid:
             self.weight *= 1.0 / self.weight.sum()
             self.dist_function = 'self_wc_{0:.1f}_b_{1:d}'.format(self.wc, int(self.beta))
         else:
-            raise pyqcm.WrongArgumentError(f"unknown frequency grid type `{grid_type}`")
+            raise ValueError(f"unknown frequency grid type `{grid_type}`")
 
 ####################################################################################################
 class general_bath:
@@ -1150,10 +1179,10 @@ def check_bounds(x, B=100, v=None):
     for i in range(len(x)):
         if np.abs(x[i]) > B:
             if v != None:
-                print('parameter ', v[i], ' = ', x[i], ' is out of bounds!!!')
+                S = 'parameter {:s} = {:g} is out of bounds!'.format(v[i], x[i])
             else:
-                print('parameter no ', i+1, ' = ', x[i], ' is out of bounds!!!')
-            raise pyqcm.OutOfBoundsError(i)
+                S = 'parameter no {:d}  = {:g} is out of bounds!'.format(i+1, x[i])
+            raise pyqcm.OutOfBoundsError(S)
 
 
 #---------------------------------------------------------------------------------------------------

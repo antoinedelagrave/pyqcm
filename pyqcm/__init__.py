@@ -49,50 +49,24 @@ graphene_K = (2/3)*np.array([1,1/np.sqrt(3),0])
 # EXCEPTIONS
 
 class OutOfBoundsError(Exception):
-    def __init__(self, variable):
-        self.variable = variable
-    def __str__(self):
-        if type(self.variable) == str:
-            return 'variable {:s} is out of bounds'.format(self.variable)
-        elif type(self.variable) == int:
-            return 'variable no {:d} is out of bounds'.format(self.variable)
-        else:
-            return 'a variable is out of bounds'
-
-class SolverError(Exception):
-    def __init__(self):
-        pass
-    def __str__(self):
-        return 'The impurity solver failed to converge to a solution'
-
+    pass
+        
 class TooManyIterationsError(Exception):
     def __init__(self, max_iteration):
         self.max_iteration = max_iteration
     def __str__(self):
         return 'the number of iterations has exceeded {:d}'.format(self.max_iteration)
 
-class CDMFTError(Exception):
-    def __init__(self):
-        pass
-    def __str__(self):
-        return 'The CDMFT failed to converge to a solution'
-
-class VarParamMismatchError(Exception):
+class SolverError(Exception):
     pass
 
-class MissingArgError(ValueError):
+class MissingArgError(TypeError):
     pass
 
 class MinimizationError(Exception):
     pass
 
 class ParseError(Exception):
-    pass
-
-class WrongArgumentError(ValueError):
-    pass
-
-class EpsilonError(Exception):
     pass
 
 def script_file():
@@ -448,17 +422,24 @@ class lattice_model:
     #-----------------------------------------------------------------------------------------------
     def set_parameter(self, name, value, pr=False):
         """
-        sets the value of a parameter within a parameter_set
+        sets the value of one or more parameter within a parameter_set
 
-        :param str name: name of the parameter
-        :param float value: its value
+        :param str name: name of the parameter, or list of names
+        :param float value: its value (or iterable of values)
         :return: None
 
         """
         if pr:
             print('-----> ', name, ' = ', value)
-
-        qcm.set_parameter(name, value)
+        try:
+            if type(name) == list:
+                assert len(name) == len(value), 'The length of "name" and "value" must be the same in "set_parameter"'
+                for i,x in enumerate(name):
+                    qcm.set_parameter(x, value[i])
+            else:
+                qcm.set_parameter(name, value)
+        except:
+            raise ValueError('Error in set_parameter()')
 
     #-----------------------------------------------------------------------------------------------
     def parameter_string(self, clus=None, CR=False, constr=False):
@@ -486,14 +467,22 @@ class lattice_model:
         return S[:-1]         
 
     #-----------------------------------------------------------------------------------------------
-    def parameters(self):
+    def parameters(self, param=None):
         """
-        returns the values of the parameters in the parameter set, in the form of a dict.
+        returns the values of the parameters in the parameter set, in the form of a dict, if p is None.
+        if p is a list of parameter names, then returns an array of values associated (in the same order) to this list.
 
-        :return: a dict {string,float}
+        :param [str] param: a list of parameter names (optional)
+        :return: a dict {string,float} OR a numpy array of values
 
         """
-        return qcm.parameters()
+        par = qcm.parameters()
+        if param == None:
+            return par
+        else:
+            V = [par[x] for x in param]
+            return np.array(V)
+
 
     #-----------------------------------------------------------------------------------------------
     def parameter_set(self, opt='all'):
@@ -543,7 +532,7 @@ class lattice_model:
         sets the parameters in the parameter_set object from a file
 
         :param str out_file: name of output file from which parameters are read
-        :param int n: line number of data in output file (excluding titles)
+        :param int n: line number of data in output file (excluding titles); -1 means the last line
         :return: nothing
 
         """
@@ -701,14 +690,20 @@ class model_instance:
         qcm.write_instance_to_file(filename, self.label*self.model.nclus + clus)
 
     #-----------------------------------------------------------------------------------------------
-    def parameters(self):
+    def parameters(self, param=None):
         """
         Returns the values of the parameters of the instance (as opposed to the parameter_set object)
 
         :return: a dict {string,float}
 
         """
-        return qcm.instance_parameters(self.label)
+
+        par = qcm.instance_parameters(self.label)
+        if param == None:
+            return par
+        else:
+            V = [par[x] for x in param]
+            return np.array(V)
 
     #-----------------------------------------------------------------------------------------------
     def averages(self, ops=[], file='averages.tsv', pr=False):
@@ -2020,15 +2015,14 @@ def epsilon(y, pr=False):
     """
     
     if len(y)%2 ==0 :
-        raise EpsilonError("the epsilon algorithm requires an odd-length sequence")
+        raise ValueError("the epsilon algorithm requires an odd-length sequence")
     M = np.zeros((len(y),len(y)+1))
     M[:,1] = y
     try:
         for i in range(len(y)-2, -1, -1):
             for k in range(2,len(y)-i+1):
                 M[i,k] = M[i+1,k-2] + 1.0/(M[i+1,k-1]-M[i,k-1])
-    except:
-        raise EpsilonError("Error in the epsilon algorithm")
+    except: raise
 
     np.set_printoptions(linewidth=1000)
     if pr == True :
@@ -2112,7 +2106,12 @@ def broyden(F, x0, iJ0 = 0.0, xtol=1e-6, convergence_test=None, maxiter=32, mini
         if iJ0.shape[0] != n  or  iJ0.shape[1] != n:
             raise ValueError('the initial Jacobian has the wrong dimensions')
         I = np.copy(iJ0)
-    f0 = F(x0)
+    try:
+        f0 = F(x0)
+    except OutOfBoundsError as error:
+        raise error
+    except:
+        raise ValueError
     f = np.copy(f0)
     x = np.copy(x0)
     iter = 0

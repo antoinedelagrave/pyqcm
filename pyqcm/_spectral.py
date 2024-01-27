@@ -422,10 +422,11 @@ def spectral_function_Lehmann(self, path='triangle', nk=32, orb=1, offset=0.1, l
 def gap(self, k, orb = 1, threshold=1e-3):
     """Computes the spectral gap for a series of wavevectors
 
-    :param k : set of wavevectors
-    :param int orb : orbital number (starts at 1)
-    :param float threshold : weight below which a Lehmann contribution is deemed zero
-    returns: an array of gap values
+    :param k: set of wavevectors
+    :param int orb: orbital number (starts at 1)
+    :param float threshold: weight below which a Lehmann contribution is deemed zero
+    return: an array of gap values
+
     """
 
     if len(k.shape)==1:

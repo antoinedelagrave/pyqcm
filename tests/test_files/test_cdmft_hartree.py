@@ -35,7 +35,7 @@ def run_cdmft(iteration):
         X = CDMFT(model, varia=varia, hartree=(Vm_H,), iteration=iteration, convergence=('GS energy', 'parameters'), accur=(1e-4, 1e-4), eps_algo=2, alpha = alpha) 
         return X.I
     except:
-        raise pyqcm.CDMFTError
+        raise pyqcm.SolverError('Failure of the CDMFT method')
 
 # Looping over values of U
 model.controlled_loop(

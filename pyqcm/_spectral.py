@@ -189,9 +189,9 @@ def spectral_function(self, wmax=6.0, eta=0.05, path='triangle', nk=32, orb=None
                 ax.plot(np.real(w), A_down[:, j] + offset * j, 'r-', lw=0.5, **kwargs)
             ax.plot(np.real(w), A[:, j] + offset * j, 'b-', lw=0.5, **kwargs)
     if title is None and plt_ax is None:
-        ax.set_title(r'$A(\mathbf{k},\omega)$: '+self.model.parameter_string(), fontsize=9)
+        ax.set_title(r'$A(\mathbf{k},\omega)$: '+self.model.parameter_string(), fontsize=6)
     else:
-        ax.set_title(title, fontsize=9)
+        ax.set_title(title, fontsize=6)
     if threeD:
         ax.set_ylim(0, (1+len(k))* offset)
         ax.set_zlim(0, 2*np.max(A))
@@ -358,7 +358,7 @@ def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0,
 
     plt.xlabel(r'$\omega$')
     plt.axvline(0, ls='solid', lw=0.5)
-    plt.title(self.model.parameter_string(), fontsize=9)
+    plt.title(self.model.parameter_string(), fontsize=6)
 
     if file is not None:
         plt.savefig(file)
@@ -400,7 +400,7 @@ def spectral_function_Lehmann(self, path='triangle', nk=32, orb=1, offset=0.1, l
 
     if lims is not None:
         plt.xlim(lims[0], lims[1])
-    plt.title(self.model.parameter_string(), fontsize=9)
+    plt.title(self.model.parameter_string(), fontsize=6)
     plt.yticks(offset * tick_pos, tick_str)
     G = self.Lehmann_Green_function(k, orb)
     for i in range(len(k)):
@@ -452,7 +452,7 @@ def gap(self, k, orb = 1, threshold=1e-3):
 
 
 #---------------------------------------------------------------------------------------------------
-def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors=None, file=None, data_file='dos.tsv', plt_ax=None, **kwargs):
+def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors=None, file=None, data_file='dos.tsv', plt_ax=None, spin_up = False, **kwargs):
     """Plots the density of states (DoS) as a function of frequency
 
     :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (wmax[0], wmax[1]). w can also be an explicit list of real frequencies, or of complex frequencies (in which case eta is ignored)
@@ -463,6 +463,7 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     :param [str] colors: colors of the different curves
     :param str file: if not None, saves the plot in a file with that name
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
+    :param boolean spin_up: only plots the spin up bands, even if mixing is nonzero
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :return: None
     
@@ -479,7 +480,7 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
             plt.figure()
             plt.gcf().set_size_inches(13.5/2.54, 9/2.54)
             ax = plt.gca()
-            plt.title('DoS: '+self.model.parameter_string())
+            plt.title('DoS: '+self.model.parameter_string(clus=0), fontsize=6)
         else:
             ax = plt_ax
 
@@ -488,8 +489,11 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     nw = len(w)
     mix = self.model.mixing
     nband = self.model.nband
+    if mix == 4 and spin_up: mix = 0 
     d = nband
     if mix != 0: d *=2
+
+    pyqcm.banner("computing the DoS, mixing={:d}, {:d} bands".format(mix, nband), '*')
     # reserves space for the DoS
     A = np.zeros((nw, d))
     accum = np.zeros((nw, d))
@@ -662,7 +666,7 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
         title = _set_legend_mdc(plane, k_perp)
         if freq != 0.0 :
             title += ', $\omega = {:1.3f}$'.format(freq)
-        ax.set_title('mdc: '+title, fontsize=9)
+        ax.set_title('mdc: '+title, fontsize=6)
         ax.set_xlabel('$k_'+ax1+'$')
         ax.set_ylabel('$k_'+ax2+'$')
         plt.colorbar(CS, shrink=0.8)
@@ -782,7 +786,7 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, quadrant=False, opt='spin', freq =
         title = _set_legend_mdc(plane, k_perp)
         if freq != 0.0 :
             title += ', $\omega = {:1.3f}$'.format(freq)
-        ax.set_title('spin texture: '+title, fontsize=9)
+        ax.set_title('spin texture: '+title, fontsize=6)
         ax.set_xlabel('$k_'+ax1+'$')
         ax.set_ylabel('$k_'+ax2+'$')
         if (opt == 'sz') or (opt == 'spinp'):
@@ -820,7 +824,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
         ax = plt.gca()
-        plt.title('anomalous mdc: '+self.model.parameter_string(), fontsize=9)
+        plt.title('anomalous mdc: '+self.model.parameter_string(), fontsize=6)
     else:
         ax = plt_ax
     ax.set_aspect(1)
@@ -928,7 +932,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
         if len(orbs) > 1:
             print('Contour plots of the dispersion with more than one orbital make no sense visually! first label used only')
         CS = plt.contour(x, x, e[:, :, orbs[0]], linewidths=0.5)
-        ax.clabel(CS, inline=True, fontsize=9)
+        ax.clabel(CS, inline=True, fontsize=6)
     else:
         x, y = np.meshgrid(x, x)
         for j in orbs:
@@ -936,7 +940,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
             
     if plt_ax is None:
         axis = _set_legend_mdc(plane, k_perp)
-        plt.title(axis+' '+self.model.parameter_string(), fontsize=9)
+        plt.title(axis+' '+self.model.parameter_string(), fontsize=6)
 
     if file is not None:
         plt.savefig(file)
@@ -962,7 +966,7 @@ def segment_dispersion(self, path='triangle', nk=64, file=None, plt_ax=None, orb
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
         ax = plt.gca()
-        plt.title(self.model.parameter_string(), fontsize=9)
+        plt.title(self.model.parameter_string(), fontsize=6)
     else:
         ax = plt_ax
 
@@ -1033,7 +1037,7 @@ def Fermi_surface(self, nk=64, orb=None, quadrant=False, plane='xy', k_perp=0.0,
 
     if plt_ax is None:
         axis = _set_legend_mdc('xy', 0.0)
-        plt.title('Fermi surface: '+axis+' '+self.model.parameter_string(), fontsize=9)
+        plt.title('Fermi surface: '+axis+' '+self.model.parameter_string(), fontsize=6)
     
     if file is not None:
         plt.savefig(file)
@@ -1071,7 +1075,7 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
             plt.gca().set_aspect(1)
         else:
             ax = plt.axes(projection='3d')
-        plt.title('G dispersion: '+self.model.parameter_string(), fontsize=9)
+        plt.title('G dispersion: '+self.model.parameter_string(), fontsize=6)
     else:
         ax = plt_ax
 
@@ -1108,7 +1112,7 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
             print('Contour plots of the dispersion with more than one orbital make no sense visually! first value used')
         A = e[:, :, orbs[0]]
         CS = plt.contour(x, x, A, **kwargs)
-        ax.clabel(CS, inline=True, fontsize=9)
+        ax.clabel(CS, inline=True, fontsize=6)
     else:    
         x, y = np.meshgrid(x, x)
         if max != None:
@@ -1149,7 +1153,7 @@ def Luttinger_surface(self, nk=200, orb=1, quadrant=False, k_perp = 0, plane = '
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
         ax = plt.gca()
-        plt.title('Luttinger surface : '+self.model.parameter_string(), fontsize=9)
+        plt.title('Luttinger surface : '+self.model.parameter_string(), fontsize=6)
     else:
         ax = plt_ax
     ax.set_aspect(1)
@@ -1191,7 +1195,7 @@ def plot_momentum_profile(self, op, nk=50, quadrant=False, k_perp=0.0, plane='xy
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
         ax = plt.gca()
-        plt.title('profile of '+op+' : '+self.model.parameter_string(), fontsize=9)
+        plt.title('profile of '+op+' : '+self.model.parameter_string(), fontsize=6)
     else:
         ax = plt_ax
     ax.set_aspect(1)
@@ -1330,7 +1334,7 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
     if plt_ax is None:
         axis = _set_legend_mdc(plane, k_perp)
         plt.colorbar(CS, shrink=0.8, extend='neither')
-        ax.set_title(axis, fontsize=9)
+        ax.set_title(axis, fontsize=6)
 
     if file is not None:
         plt.savefig(file)
@@ -1476,7 +1480,7 @@ def monopole_map(self, nk=40, orb=None, plane='z', k_perp=0.0, file=None, plt_ax
         plt.xticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
         plt.yticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
         plt.colorbar(CS, shrink=0.8, extend='neither')
-        plt.title('monopole map, '+axis, fontsize=9)
+        plt.title('monopole map, '+axis, fontsize=6)
     if file is not None:
         plt.savefig(file)
         plt.close()
@@ -1534,7 +1538,7 @@ def Berry_flux_map(self, nk=40, plane='z', dir='z', k_perp=0.0, orb=None, npoint
         plt.xticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
         plt.yticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
         plt.colorbar(CS, shrink=0.8, extend='neither')
-        plt.title(axis, fontsize=9)
+        plt.title(axis, fontsize=6)
 
     if file is not None:
         plt.savefig(file)
@@ -1617,7 +1621,7 @@ def Berry_field_map(self, nk=40, nsides = 4, plane='z', k_perp=0.0, orb=None, fi
 
     if plt_ax is None:
         plt.colorbar(CS, shrink=0.8)
-        ax.set_title(axis, fontsize=9)
+        ax.set_title(axis, fontsize=6)
         plt.xticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
         plt.yticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
 
@@ -1685,7 +1689,7 @@ def plot_profile(self, n_scale=1, bond_scale=1, current_scale=1, spin_scale=1,
     #...............................................................................................
     # normal part
 
-    plt.title('charge and spin', fontsize=9)
+    plt.title('charge and spin', fontsize=6)
     plt.plot(S[:,0], S[:,1], 'ko', ms = 1)
 
     for i in range(nb):
@@ -1738,7 +1742,7 @@ def plot_profile(self, n_scale=1, bond_scale=1, current_scale=1, spin_scale=1,
     plt.xlim(np.ma.min(S[:,0]) - 1, np.ma.max(S[:,0]) + 1)
     plt.ylim(np.ma.min(S[:,1]) - 1, np.ma.max(S[:,1]) + 1)
 
-    plt.title('singlet pairing', fontsize=9)
+    plt.title('singlet pairing', fontsize=6)
     plt.plot(S[:,0], S[:,1], 'ko', ms = 1)
 
     for i in range(nb):
@@ -1772,7 +1776,7 @@ def plot_profile(self, n_scale=1, bond_scale=1, current_scale=1, spin_scale=1,
     plt.xlim(np.ma.min(S[:,0]) - 1, np.ma.max(S[:,0]) + 1)
     plt.ylim(np.ma.min(S[:,1]) - 1, np.ma.max(S[:,1]) + 1)
 
-    plt.title('triplet pairing (d_z)', fontsize=9)
+    plt.title('triplet pairing (d_z)', fontsize=6)
     plt.plot(S[:,0], S[:,1], 'ko', ms = 1)
 
     for i in range(nb):
@@ -1800,7 +1804,7 @@ def plot_profile(self, n_scale=1, bond_scale=1, current_scale=1, spin_scale=1,
     plt.xlim(np.ma.min(S[:,0]) - 1, np.ma.max(S[:,0]) + 1)
     plt.ylim(np.ma.min(S[:,1]) - 1, np.ma.max(S[:,1]) + 1)
 
-    plt.title('triplet pairing (d_x and d_y)', fontsize=9)
+    plt.title('triplet pairing (d_x and d_y)', fontsize=6)
     plt.plot(S[:,0], S[:,1], 'ko', ms = 1)
 
     for i in range(nb):
@@ -1825,7 +1829,7 @@ def plot_profile(self, n_scale=1, bond_scale=1, current_scale=1, spin_scale=1,
         if np.sqrt(sx*sx+sz*sz) > 0.01 :
             ax.add_patch(patches.Arrow(x-0.5*sx, y-0.5*sz, sx, sz, width=0.2, fc = 'red', ec = 'black', lw = 0.5, zorder=100))
 
-    plt.gcf().suptitle(self.model.parameter_string()+', layer '+str(layer), y=1.0, fontsize=9)
+    plt.gcf().suptitle(self.model.parameter_string()+', layer '+str(layer), y=1.0, fontsize=6)
     plt.tight_layout()
 
     if file is None:

@@ -121,10 +121,10 @@ class superlattice:
             R -= self.E[1]*Q[1]
             S += self.E[1]*Q[1]
 
-        try:
-            Sstr = '[{:d},{:d},{:d}]'.format(S[0], S[1], S[2])
+        Sstr = '[{:d},{:d},{:d}]'.format(S[0], S[1], S[2])
+        if Sstr in self.siteF_index:
             I = self.siteF_index[Sstr]
-        except:
+        else:
             I = None
 
         assert np.linalg.norm(S+R-r)<1e-6, 'folding operation failed! r = {}, S={}, R={}'.format(r,S,R)

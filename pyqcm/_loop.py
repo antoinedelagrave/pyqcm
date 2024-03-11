@@ -62,6 +62,34 @@ def loop_from_file(self, task, file):
 
 
 #---------------------------------------------------------------------------------------------------
+def loop_from_table(self, task, data):
+	"""Performs a task 'task' over a set of model parameters defined in a table. The definition of each
+	model instance must be done in the task 'task'; it is not done by this looping function.
+
+	:param task: function (task) to perform
+	:param ndarray data: table of parameters, with named columns, as read or filtered from numpy.genfromtxt()
+
+	"""
+	param = self.parameter_set()
+	print('number of data sets: ', len(data))
+
+	independent_params = []
+	for key, val in param.items():
+		if val[1] is None and key in data.dtype.names:
+			independent_params.append(key)
+
+	print('independent parameters: ', independent_params)
+
+	N = len(data)
+	for i in range(N):
+		print('*'*30, ' set ', i+1, ' of ', N, '*'*30)
+		for x in independent_params:
+			print(x, ' --> ', data[x][i])
+			self.set_parameter(x, data[x][i])
+		task()
+
+
+#---------------------------------------------------------------------------------------------------
 # performs a loop (a linear trajectory) between two subsets of parameters
 def linear_loop(self, N, task, varia=None, params = None, predict=True):
 	"""
@@ -431,32 +459,75 @@ def fixed_density_loop(self, task,
 
 
 #---------------------------------------------------------------------------------------------------
-def fade(self, task, p1, p2, n):
+def fade(self, task, P, n):
 	"""
 	fades the model between two sets of parameters, in n steps
 
 	:param task: task to perform wihtin the loop
-	:param dict p1: first set of parameters
-	:param dict p2: second set of parameters
+	:param dict P: dict of parameters with a tuple of values (start and finish) for each
 	:param n: number of steps
 
 	"""
 
 	lambda_array = np.linspace(0.0, 1.0, n)
 	for L in lambda_array:
-		par = {}
-		for p in p2:
-			par[p] = L*p2[p]
-			if p in p1:
-				par[p] += (1-L)*p1[p]
-		for p in p1:
-			if p not in p2:
-				par[p] = (1-L)*p1[p]
-		
-		for p in par:
-			self.set_parameter(p, par[p])
+		for p in P:
+			self.set_parameter(p, L*P[p][1] + (1-L)*P[p][0])
 		task()
 
+#---------------------------------------------------------------------------------------------------
+def controlled_fade(self, task, P, n, C, file='fade.tsv', tol=1e-4, method='Broyden'):
+	"""
+	fades the model between two sets of parameters, in n steps
+
+	:param task: task to perform wihtin the loop
+	:param dict P: dict of parameters with a tuple of values (start and finish) for each
+	:param n: number of steps
+	:param C: list of adjustable parameters whose average should stay fixed during the fade
+	:param str file: file to which the converged results are written
+	:param float tol: precision on the averages
+
+	"""
+	assert type(P) is dict
+	assert type(C) is list
+	for x in P:
+		assert type(P[x]) is tuple
+	print('Fading procedure in ', n, 'steps :')
+	for x in P:
+		print(x, ' from ', P[x][0], ' to ', P[x][1])
+
+	A = np.zeros(len(C)) # allocating the array of fixed average values 
+	def F(x):
+		global I_current
+		self.set_parameter(C, x)
+		I = task()
+		ave = I.averages()
+		B = np.array([ave[x] for x in C]) # average values
+		return B-A
+
+	first_time = True
+	par = self.parameters()
+	Cv = np.array([par[x] for x in C])
+	Z = np.linspace(0.0, 1.0, n)
+	for i, z in enumerate(Z):
+		for p in P:
+			self.set_parameter(p, z*P[p][1] + (1-z)*P[p][0], pr=True)
+		if i==0:
+			A = F(Cv)
+			x0 = Cv
+		else:
+			try:
+				alpha = X[2]
+			except:
+				alpha = 0.0
+			if method == 'Broyden' : X = pyqcm.broyden(F, x0, iJ0 = alpha, xtol=tol, maxiter=32)
+			else : X = pyqcm.fixed_point_iteration(F, x0, xtol=tol, maxiter=32,  alpha = 0.0)
+			I = pyqcm.model_instance(self)
+			I.averages()
+			I.write_summary(file, first_of_series=first_time)
+			first_time = False
+			x0 = X[0]
+			
 
 #---------------------------------------------------------------------------------------------------
 def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point', eps_algo=0, file='hartree.tsv', SEF=False, pr = False, alpha=0.0):

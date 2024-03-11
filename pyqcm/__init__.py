@@ -432,7 +432,8 @@ class lattice_model:
         if pr:
             print('-----> ', name, ' = ', value)
         try:
-            if type(name) == list:
+            if is_sequence(name):
+            # if type(name) == list:
                 assert len(name) == len(value), 'The length of "name" and "value" must be the same in "set_parameter"'
                 for i,x in enumerate(name):
                     qcm.set_parameter(x, value[i])
@@ -594,7 +595,7 @@ class lattice_model:
     #-----------------------------------------------------------------------------------------------
     # imports further functions from other source files
 
-    from ._loop import loop_from_file, linear_loop, controlled_loop, fixed_density_loop, Hartree_procedure, fade
+    from ._loop import loop_from_file, loop_from_table, linear_loop, controlled_loop, fixed_density_loop, Hartree_procedure, fade, controlled_fade
 
     from ._draw import draw_operator, draw_cluster_operator
 

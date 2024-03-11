@@ -230,7 +230,7 @@ class CDMFT:
         for i, C in enumerate(convergence):
             convergence_test_string += C + '/'
             if C in model.parameters():
-                conv_manager = convergence_manager(C, lambda x,y : np.abs(np.abs(x)-np.abs(y)), accur[i], depth, stdev=converge_with_stdev)
+                conv_manager = convergence_manager(C, lambda x,y : np.abs(x-y), accur[i], depth, stdev=converge_with_stdev)
                 conv_manager.op = C
             else:
                 if converge_with_stdev and C != 'GS energy':
@@ -361,6 +361,14 @@ class CDMFT:
         parameters and updates it to the next set of values
         """
 
+        try:
+            check_bounds(self.CDMFT_params, self.max_value, v=self.var)
+        except pyqcm.OutOfBoundsError as error:
+            raise error
+        except:
+            raise ValueError
+
+
         for i in range(self.nvar):
             self.model.set_parameter(self.var[i], self.CDMFT_params[i])
         for i in range(self.nhartree):
@@ -421,6 +429,7 @@ class CDMFT:
 
         # push back into array
         x_new[0:self.nvar] = np.copy(sol.x)
+        
         try:
             check_bounds(x_new[0:self.nvar], self.max_value, v=self.var)
         except pyqcm.OutOfBoundsError as error:
@@ -441,6 +450,7 @@ class CDMFT:
 
         self.CDMFT_params = np.copy(x_new)
 
+            
     #-----------------------------------------------------------------------------------------------
     def check_convergence(self):
         """
@@ -1183,7 +1193,6 @@ def check_bounds(x, B=100, v=None):
             else:
                 S = 'parameter no {:d}  = {:g} is out of bounds!'.format(i+1, x[i])
             raise pyqcm.OutOfBoundsError(S)
-
 
 #---------------------------------------------------------------------------------------------------
 # optimization of the bath parameters

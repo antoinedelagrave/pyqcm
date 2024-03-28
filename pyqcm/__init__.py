@@ -596,7 +596,7 @@ class lattice_model:
     #-----------------------------------------------------------------------------------------------
     # imports further functions from other source files
 
-    from ._loop import loop_from_file, loop_from_table, linear_loop, controlled_loop, fixed_density_loop, Hartree_procedure, fade, controlled_fade
+    from ._loop import loop_from_file, loop_from_table, linear_loop, controlled_loop, Hartree_procedure, fade, controlled_fade, flexible_loop
 
     from ._draw import draw_operator, draw_cluster_operator
 
@@ -730,7 +730,7 @@ class model_instance:
 
         self.props['E_kin'] = qcm.kinetic_energy(self.label)
         for x in ave:
-            self.props['ave_'+x] = ave[x]
+            self.props[x+'_ave'] = ave[x]
 
         if pr:
             for x in ave:
@@ -888,7 +888,7 @@ class model_instance:
 
         
         n = np.trace(self.Green_function_average(clus, False))
-        if self.model.mixing == 4: n += np.trace(self.Green_function_average(self, clus, True))
+        if self.model.mixing == 4: n += np.trace(self.Green_function_average(clus, True))
         elif self.model.mixing == 0: n *= 2
         elif self.model.mixing == 3: n /= 2
 
@@ -989,9 +989,13 @@ class model_instance:
         for i in range(self.model.nclus):
             if self.model.clus[i].ref != None: continue
             ave = self.cluster_averages(i)
-            for x in ave: self.props['ave_{:s}_{:d}'.format(x,i+1)] = ave[x][0]
+            for x in ave: 
+                if '@' in x: continue
+                self.props['{:s}_{:d}_ave'.format(x,i+1)] = ave[x][0]
             if var:
-                for x in ave: self.props['var_{:s}_{:d}'.format(x,i+1)] = ave[x][1]
+                for x in ave: 
+                    if '@' in x: continue
+                    self.props['{:s}_{:d}_var'.format(x,i+1)] = ave[x][1]
 
             self.props['E0_{:d}'.format(i+1)] = GS[i][0]
             self.props['sector_{:d}'.format(i+1)] = GS[i][1]
@@ -1238,19 +1242,6 @@ class model_instance:
 
 
     #-----------------------------------------------------------------------------------------------
-    def properties(self):
-        """
-        Returns two strings of properties of a model instance
-        
-        :return: a pair of strings (the description line and the data line).
-
-        """
-        des, data = qcm.properties(self.label)
-        des += 'githash\tversion\t'
-        data += git_hash + '\t' + __version__ + '\t'
-        return des, data
-
-    #-----------------------------------------------------------------------------------------------
     def site_and_bond_profile(self):
         """
         Computes the site and bond profiles in all clusters of the repeated unit
@@ -1425,22 +1416,24 @@ class model_instance:
 
         """
 
+        self.props['githash'] = git_hash
+        self.props['version'] = __version__
         self.props['time'] = time.strftime("%Y-%m-%d@%H:%M", time.localtime()) # adds the timestamp
 
         des = ''
         val = ''
         for x in sorted(self.props.keys()):
             des += x + '\t'
-            val += str(self.props[x]) + '\t'
+            if type(self.props[x]) == float:
+                val += '{:1.10g}\t'.format(self.props[x])
+            else: 
+                val += str(self.props[x]) + '\t'
         
         first = False
         if f not in self.model.descrpt:
             self.model.descrpt[f] = ''
         if des != self.model.descrpt[f]:
             first = True
-            # print('difference in lengths : ', len(des), len(self.model.descrpt))
-            # print(des)
-            # print(self.model.descrpt)
         
         fout = open(f, 'a')
         if first:

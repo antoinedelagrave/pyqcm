@@ -118,7 +118,7 @@ class CDMFT:
     :param [str] varia: list of variational parameters 
     :param float beta: inverse fictitious temperature (for the frequency grid)
     :param float wc: cutoff frequency (for the frequency grid)
-    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
+    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self', 'adapt'
     :param int maxiter: maximum number of CDMFT iterations
     :param int miniter: minimum number of CDMFT iterations
     :param float accur_bath: the x-tolerance for distance function optimization
@@ -239,6 +239,8 @@ class CDMFT:
                 elif C == 'hybridization':
                     conv_manager = convergence_manager(C, lambda x,y : self.diff_matrix(x,y), accur[i], depth)
                 elif C == 'self-energy':
+                    if grid_type == 'adapt':
+                        raise ValueError('cannot use convergence on self-energy with adaptive frequency grid')
                     conv_manager = convergence_manager(C, lambda x,y : self.diff_matrix(x,y), accur[i], depth)
                 elif C == 'GS energy':
                     conv_manager = convergence_manager(C, lambda x,y : np.abs(x-y), accur[i], depth, stdev=converge_with_stdev)
@@ -336,9 +338,9 @@ class CDMFT:
         ave = self.I.averages(pr=True)
         if compute_potential_energy : 
             self.I.potential_energy()
-            omegaH=self.I.Potthoff_functional(hartree)
+            omega=self.I.Potthoff_functional(hartree)
         if SEF:
-            omegaH=self.I.Potthoff_functional(hartree)
+            omega=self.I.Potthoff_functional(hartree)
 
         if file != None:
             self.I.props['GS_consistency'] = GS_cons
@@ -365,12 +367,15 @@ class CDMFT:
         except:
             raise ValueError
 
-
         for i in range(self.nvar):
-            self.model.set_parameter(self.var[i], self.CDMFT_params[i])
+            self.model.set_parameter(self.var[i], self.CDMFT_params[i]) 
         for i in range(self.nhartree):
             self.model.set_parameter(self.hartree[i].Vm, self.CDMFT_params[i+self.nvar])
         self.I = pyqcm.model_instance(self.model)
+        if self.grid_type == 'adapt':  # find the maximum value of variational (bath) parameters
+            m = 2.0
+            self.wc = max([2.0, max(self.CDMFT_params[0:self.nvar])])
+
         self.grid = frequency_grid(self.I, self.grid_type, self.beta, self.wc)
 
         # solve the impurity problem
@@ -669,10 +674,10 @@ class frequency_grid:
         self.w = self.w * 1j
         self.w *= self.wr
         self.nw = len(self.w)
-        if self.grid_type == 'sharp':
+        if self.grid_type == 'sharp' or self.grid_type == 'adapt':
             self.weight = np.ones(self.nw)
             self.weight *= 1.0 /self.nw
-            self.dist_function = 'sharp_wc_{0:.1f}_b_{1:d}'.format(self.wc, int(self.beta))
+            self.dist_function = '{:s}_wc_{:.3g}_b_{:d}'.format(self.grid_type, self.wc, int(self.beta))
         elif self.grid_type == 'ifreq':
             self.weight = 1.0/self.wr
             self.weight *= 1.0 / self.weight.sum()

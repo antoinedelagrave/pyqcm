@@ -712,7 +712,7 @@ class VCA:
                 for i in range(nvar):
                     self.I.props['2der_' + varia[i]] = H[i, i]
             if hartree != None:
-                self.I.props[omegaH] = omega
+                self.I.props['omega'] = omega
             self.I.write_summary(file)
             VCA.first_time = False
 
@@ -907,13 +907,7 @@ def plot_GS_energy(model, param, prm, clus=0, file=None, plt_ax=None, **kwargs):
         print("omega(", prm[i], ") = ", omega[i])
 
         # writing the parameters in a progress file
-        f = open('GS.tsv', 'a')
-        des, val = I.properties()
-        if i == 0:
-            f.write('\n\n')
-            f.write(des + '\n')
-        f.write(val + '\n')
-        f.close()
+        I.write_summary('GS.tsv')
 
     
     ax.axhline(omega[0], c='r', ls='solid', lw=0.5)

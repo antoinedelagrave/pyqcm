@@ -292,171 +292,6 @@ def controlled_loop(self, task, varia=None, loop_param=None, loop_range=None, co
 	else:
 		pyqcm.banner('controlled loop ended normally', '%')
 
-#---------------------------------------------------------------------------------------------------
-# performs a loop on a parameter while trying to keep a fixed density
-
-def fixed_density_loop(self, task,
-	target_n,
-	initial_mu,
-	kappa=1.0,
-	maxdmu=0.2,
-	loop_param=None, 
-	loop_values=None,
-	var_param=None,
-	dens_tol=0.001,
-	dir='',
-	measure=None,
-	cluster_density=False
-):
-	"""Performs a loop while trying to keep a fixed density
-
-	:param task: function called at each step of the loop. No required argument; must return a model_instance.
-	:param float target_n: desired value of the density
-	:param float initial_mu: initial value of mu
-	:param kappa: initial guess of the compressibility
-	:param maxdmu: maximum change in mu at each step (absolute value)
-	:param str loop_param: name of the parameter looped over
-	:param float loop_values: an array of values of loop_param
-	:param str var_param: array of variational parameters (names) to be predicted
-	:param dens_tol: tolerance on the value of the density
-	:param dir: directory of calling script
-	:param measure: name of function to be called when the desired density is reached
-	:param cluster_density: if True, uses the cluster density instead of the lattice density
-
-	"""
-	first_time = True
-	print('fixed density loop over ', loop_param)
-	if loop_param is None:
-		raise pyqcm.MissingArgError('The name of the control parameter ("loop_param") is missing')
-	if loop_values is None:
-		raise pyqcm.MissingArgError('An array of values (loop_values) must be provided')
-
-	mu_list = np.empty(len(loop_values))  # current solution + 3 previous solutions
-	
-	mu = initial_mu
-	var = {}
-	if var_param != None:
-		for v in var_param:
-			var[v] = np.empty(len(loop_values))
-
-	i = 0
-	restart = False
-	if dir != '':
-		restart = os.path.isfile(dir+'/density_loop.tsv')
-	if restart:
-		first_time = False
-		dens_sol = np.genfromtxt(dir+'/density_loop.tsv', names=True)
-		last_mu = dens_sol[loop_param][-1]
-		i = 0
-		for j, x in enumerate(dens_sol[loop_param]):
-			if np.abs(x - last_mu) < 1e-8:
-				i = j
-		# i = loop_values.tolist().index(dens_sol[loop_param][-1])
-		if i != len(dens_sol)-1:
-			print('mismatch between the number of solutions in file ({:d}) and the index of loop parameter in loop_values ({:d})'.format(len(dens_sol),i+1))
-		mu_list[0:i+1] = dens_sol['mu']
-
-	while i < len(loop_values):
-		self.set_parameter(loop_param, loop_values[i])
-	
-		# predicting the starting value from previous solutions (do nothing if loop_counter=0)
-		fit_type = ''
-		if i == 1:
-			mu = mu_list[0]  # the starting point is the previous value in the loop
-			self.set_parameter('mu', mu)
-		if i == 2 :
-			fit_type = ' (linear fit)'
-			mu = _poly_predictor(loop_values, mu_list, i, 1)
-			if var_param != None:
-				for v in var_param:
-					self.set_parameter(v, _poly_predictor(loop_values, var[v], i, 1))
-		elif i > 2 :
-			fit_type = ' (quadratic fit)'
-			mu = _poly_predictor(loop_values, mu_list, i, 2)
-			if var_param != None:
-				for v in var_param:
-					self.set_parameter(v, _poly_predictor(loop_values, var[v], i, 2))
-			print('**** predictor: U =', loop_values[i-3:i], '  & mu = ', mu_list[i-3:i], ' --->  (U, mu) = (', loop_values[i], ',', mu, ')')
-
-		print('*'*100)
-		print(loop_param, ' = {:1.4f}'.format(loop_values[i]))
-
-		# density search:
-		max_trials = 32
-		mu2 = np.zeros(max_trials+1)
-		n = np.zeros(max_trials+1)
-		var2 = {}
-		if var_param != None:
-			for v in var_param:
-				var2[v] = np.empty(max_trials)
-
-		mu_converged = False
-		for j in range(max_trials):
-			#+++ CALLING THE FUNCTION +++
-			self.set_parameter('mu', mu)
-			pyqcm.banner('mu = {:1.4f}'.format(mu), '+')
-			I = task()
-			if cluster_density:
-				dens = I.cluster_averages()['mu'][0]
-			else:
-				dens = I.averages()['mu']
-			n[j] = target_n-dens
-			print('density = ', dens, '\t delta n = ', n[j])
-			#++++++++++++++++++++++++++++
-			if np.abs(n[j]) < dens_tol:
-				mu_converged = True
-				break
-			mu2[j] = mu
-			P = self.parameters()
-			if var_param != None:
-				for v in var_param:
-					var2[v][j] = P[v]
-
-			if j==0:
-				dmu = n[j]/kappa
-				if np.abs(dmu) > maxdmu:
-					dmu *= maxdmu/np.abs(dmu)
-				mu += dmu    
-			elif j==1:
-				mu_new = _poly_predictor(n, mu2, j+1, 1)
-				dmu = mu_new-mu
-				if np.abs(dmu) > maxdmu:
-					dmu *= maxdmu/np.abs(dmu)
-				mu += dmu    
-				if var_param != None:
-					for v in var_param:
-						self.set_parameter(v, _poly_predictor(n, var2[v], j+1, 1))
-			else:
-				mu_new = _poly_predictor(n, mu2, j+1, 2)
-				dmu = mu_new-mu
-				if np.abs(dmu) > maxdmu:
-					dmu *= maxdmu/np.abs(dmu)
-				mu += dmu    
-				if var_param != None:
-					for v in var_param:
-						self.set_parameter(v, _poly_predictor(n, var2[v], j+1, 2))
-
-		if not mu_converged:
-			raise RuntimeError('failed to find the value of chemical potential. Aborting')
-		mu_list[i] = mu
-
-		des, val = I.properties()
-		f = open('density_loop.tsv', 'a')
-		if first_time:
-			f.write(des + '\n')
-			first_time = False
-		f.write(val + '\n')
-		f.close()
-		if measure != None:
-			measure()
-
-		P = I.parameters()
-		if var_param != None:
-			for v in var_param:
-				var[v][i] = P[v]
-		i += 1    
-
-
 
 #---------------------------------------------------------------------------------------------------
 def fade(self, task, P, n):
@@ -595,3 +430,93 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 	
 
 
+#---------------------------------------------------------------------------------------------------
+# performs a loop over mu with adjustable step to make the density step more constant
+# IN DEVELOPMENT
+def flexible_loop(self, task, initial_mu, final_n, initial_step, delta_n=0.005, varia=[]):
+	"""
+	Performs a controlled loop for VCA or CDMFT with a predictor.  The definition of each
+	model instance must be done and returned by 'task'; it is not done by this looping function.
+
+	:param task: a function called at each step of the loop. Must return a model_instance.
+	:param (float) initial_mu: initial value of mu
+	:param (float) initial_step: initial step in mu
+	:param (float) final_n: final value of density
+	:param (float) delta_n: approximate step in density to keep constant
+	:param [str] varia: names of the variational parameters
+
+	"""
+
+	nvar = len(varia)  # number of variational parameters
+	sol = np.empty((4, nvar))  # current solution + 3 previous solutions
+	mu = np.empty(4)  # current mu + 3 previous values
+	n = np.empty(4)  # current density + 3 previous values
+	if initial_step*delta_n < 0 : delta_n *= -1
+
+	mu[0] = initial_mu
+	P = self.parameters()
+	for i,v in enumerate(varia):
+		sol[0] = P[v]
+	loop_counter = 1
+	
+	while True:  # main loop here
+		self.set_parameter('mu', mu[0])
+
+		pyqcm.banner('loop index = {:d},  mu = {:1.4f}'.format(loop_counter + 1, mu[0]), '=', skip=1)
+		try:
+			I = task()
+
+		except (pyqcm.OutOfBoundsError, pyqcm.TooManyIterationsError, Exception) as E:
+			print(E)
+			return
+					
+		n[0] = I.averages()['mu']
+		print('density = ', n[0])
+		mu = np.roll(mu, 1)  # cycles the values of the loop parameter
+		n = np.roll(n, 1)  # cycles the values of the loop parameter
+		sol = np.roll(sol, 1, 0)  # cycles the solutions
+
+
+		n[0] = n[1] + delta_n
+
+		# predicting the starting value from previous solutions (do nothing if loop_counter=0)
+		fit_type = ''
+		if loop_counter == 1:
+			start = sol[1, :]  # the starting point is the previous value in the loop
+			mu[0] = mu[1] + initial_step  # updates the loop parameter
+		elif loop_counter == 2:
+			fit_type = ' (linear fit)'
+			x = mu[1:3]  # the two previous values of mu
+			y = sol[1:3, :]  # the two previous values of the variational parameter
+			z = n[1:3]  # the two previous values of the density
+			pol_mu = np.polyfit(z, x, 1)
+			pol = np.polyfit(x, y, 1)
+			mu[0] = np.polyval(pol_mu, n[0])
+			if abs(mu[0]-mu[1]) > 10*np.abs(initial_step):
+				mu[0] = mu[1] + 10*initial_step
+				loop_counter -= 1
+			else:
+				for i in range(nvar):
+					start[i] = np.polyval(pol[:, i], mu[0])
+
+		else:
+			fit_type = ' (quadratic fit)'
+			x = mu[1:4]  # the three previous values of the loop parameter
+			y = sol[1:4, :]  # the three previous values of the loop parameter
+			z = n[1:4]  # the three previous values of the density
+			pol_mu = np.polyfit(z, x, 2)
+			pol = np.polyfit(x, y, 2)
+			mu[0] = np.polyval(pol_mu, n[0])
+			for i in range(nvar):
+				start[i] = np.polyval(pol[:, i], mu[0])
+
+		if loop_counter > 1:
+			print('flexible_loop step : mu = ', mu[0])
+			print('predictor : ', start, fit_type)
+			for i in range(len(varia)):
+				self.set_parameter(varia[i], start[i])
+				print(' ---> ', varia[i], ' = ', start[i])
+
+		loop_counter += 1
+
+	pyqcm.banner('flexible loop ended normally', '%')

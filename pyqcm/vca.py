@@ -591,7 +591,7 @@ class VCA:
             global current_instance, root
             for i in range(len(x)):
                 if np.abs(x[i]) > max[i]:
-                    raise pyqcm.OutOfBoundsError(variable=varia[i])
+                    raise pyqcm.OutOfBoundsError('parameter {:s} is out of bounds!'.format(varia[i]))
             global SEF_eval
             if var2sef is None:
                 for i in range(len(varia)): 

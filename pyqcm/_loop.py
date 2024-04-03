@@ -478,6 +478,8 @@ def flexible_loop(self, task, initial_mu, final_n, initial_step, delta_n=0.005, 
 
 
 		n[0] = n[1] + delta_n
+		if delta_n < 0 and n[0] < final_n: break
+		if delta_n > 0 and n[0] > final_n: break
 
 		# predicting the starting value from previous solutions (do nothing if loop_counter=0)
 		fit_type = ''
@@ -511,7 +513,7 @@ def flexible_loop(self, task, initial_mu, final_n, initial_step, delta_n=0.005, 
 				start[i] = np.polyval(pol[:, i], mu[0])
 
 		if loop_counter > 1:
-			print('flexible_loop step : mu = ', mu[0])
+			print('flexible_loop step : mu = ', mu[0]-mu[1])
 			print('predictor : ', start, fit_type)
 			for i in range(len(varia)):
 				self.set_parameter(varia[i], start[i])

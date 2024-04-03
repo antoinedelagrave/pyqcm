@@ -116,6 +116,9 @@ class cluster_model:
         if self.is_closed:
             raise ValueError('cluster_model.new_operator() cannot be called any more : the model is closed')
 
+        if '_' in op_name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
+
         if op_type == 'anomalous':
             for x in elem:  
                 if x[0] >= x[1] :
@@ -139,6 +142,9 @@ class cluster_model:
 
         if self.is_closed:
             raise ValueError('cluster_model.new_operator() cannot be called any more : the model is closed')
+
+        if '_' in op_name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
 
         if op_type == 'anomalous':
             for x in elem:  
@@ -253,6 +259,9 @@ class lattice_model:
 
         """
 
+        if '_' in name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
+
         if link == ( 0, 0, 0):
             if "tau" in kwargs:
                 if kwargs["tau"] != 0: kwargs["tau"] = 0
@@ -282,6 +291,9 @@ class lattice_model:
 
         """
         
+        if '_' in name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
+
         orb1, orb2 = orbital_pair_manager(orbitals) 
 
         for orb_no1 in orb1:
@@ -305,6 +317,9 @@ class lattice_model:
         :return: None
 
         """
+        if '_' in name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
+
         qcm.explicit_operator(name, elem, **kwargs)
 
     #-----------------------------------------------------------------------------------------------
@@ -326,7 +341,8 @@ class lattice_model:
         :return: None
 
         """
-
+        if '_' in name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
         qcm.density_wave(name, t, Q, **kwargs)
 
     #-----------------------------------------------------------------------------------------------
@@ -361,7 +377,8 @@ class lattice_model:
         """
 
         orb1, orb2 = orbital_pair_manager(orbitals) 
-
+        if '_' in name:
+            raise ValueError('names of operators must not include the character "_" (underline)')
         for orb_no1 in orb1:
             for orb_no2 in orb2:
                 qcm.interaction_operator(name, orb1=orb_no1, orb2=orb_no2, link=link, **kwargs)

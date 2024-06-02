@@ -363,6 +363,10 @@ class CDMFT:
         parameters and updates it to the next set of values
         """
 
+        if self.cap :
+            for i in range(self.nvar):
+                if np.abs(self.CDMFT_params[i]) > self.max_value: self.CDMFT_params[i] = np.sign(self.CDMFT_params[i])*self.max_value*0.99999
+
         try:
             check_bounds(self.CDMFT_params, self.max_value, v=self.var)
         except pyqcm.OutOfBoundsError as error:

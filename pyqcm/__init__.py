@@ -1481,7 +1481,7 @@ class model_instance:
             self.model.set_parameter(x, corr[x], pr=True)
 
     #-----------------------------------------------------------------------------------------------
-    def GS_consistency(self, check_ground_state=False):
+    def GS_consistency(self, check_ground_state=False, threshold = 0.0001):
         """
         compares the density from the wavefunction and from the Green function
 
@@ -1494,9 +1494,9 @@ class model_instance:
             ave = self.cluster_averages(i)
             ng = self.Green_function_density(i)
             diffGS = np.abs(ave['mu'][0] - ng)
-            if diffGS > 1e-6:
+            if diffGS > threshold:
                 GS_cons += 'N'
-                banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}: {:1.5f} (WF) vs {:1.5f} (GF)".format(i+1,ave['mu'][0], ng), '+', skip=1)
+                banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}: {:1.7g} (WF) vs {:1.7g} (GF) [diff = {:1.7g} > {:1.7g}]".format(i+1,ave['mu'][0], ng, diffGS, threshold), '+', skip=1)
                 if check_ground_state:
                     raise ValueError("failed GS consistency for cluster {:d}".format(i+1))
             else: GS_cons += 'Y'

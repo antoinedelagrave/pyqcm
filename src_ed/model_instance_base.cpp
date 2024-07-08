@@ -2,6 +2,8 @@
 #include "model_instance_base.hpp"
 #include "Operators/Hermitian_operator.hpp"
 
+extern double max_gap;
+
 //==============================================================================
 // implementation of model_instance_base
 
@@ -18,6 +20,9 @@ model_instance_base::model_instance_base(size_t _label, shared_ptr<model> _the_m
 
   GF_solver = global_bool("continued_fraction") ? GF_format_CF : GF_format_BL;
   
+  max_gap = -log(global_double("minimum_weight"))*global_double("temperature");
+  if(max_gap < MIN_GAP) max_gap = MIN_GAP;
+
   if(first_instance){
     first_instance = false;
     auto S = global_char("Hamiltonian_format");

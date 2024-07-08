@@ -73,6 +73,7 @@ struct model_instance : model_instance_base
   void compute_weights();
   void insert_state(shared_ptr<state<HilbertField>> S);
   void set_hopping_matrix(bool spin_down);
+  void merge_states();
   string GS_string() const;
   void build_bases_and_HS_operators(const sector& GS_sector, bool spin_down);
   double fidelity(model_instance<HilbertField>& label);
@@ -197,30 +198,24 @@ Hamiltonian<HilbertField>* model_instance<HilbertField>::create_hamiltonian(
     //enforced Hamiltonian format
     if(the_model->is_factorized) {
         H = new Hamiltonian_Factorized<HilbertField>(the_model, value, s);
-        //std::cout << "Hamiltonian Factorized" << std::endl;
     }
     else if (the_model->provide_basis(s)->dim < global_int("max_dim_full")) {
         H = new Hamiltonian_Dense<HilbertField>(the_model, value, s);
-        //std::cout << "Hamiltonian Dense1" << std::endl;
     }
     else {
         switch(Hamiltonian_format) {
             //native implementation
             case H_format_csr:
                 H = new Hamiltonian_CSR<HilbertField>(the_model, value, s);
-                //std::cout << "Hamiltonian CSR" << std::endl;
                 break;
             case H_format_dense:
                 H = new Hamiltonian_Dense<HilbertField>(the_model, value, s);
-                //std::cout << "Hamiltonian DENSe2" << std::endl;
                 break;
             case H_format_onthefly:
                 H = new Hamiltonian_OnTheFly<HilbertField>(the_model, value, s);
-                //std::cout << "Hamiltonian OTF" << std::endl;
                 break;
             case H_format_ops:
                 H = new Hamiltonian_Operator<HilbertField>(the_model, value, s);
-                //std::cout << "Hamiltonian OTF" << std::endl;
                 break;
             case H_format_factorized:
                 break;
@@ -287,6 +282,30 @@ pair<double, string> model_instance<HilbertField>::low_energy_states()
   
   compute_weights();
   
+  // eliminate states with small weight
+  auto min = global_double("minimum_weight");
+  set<shared_ptr<state<HilbertField>>> states_tmp; //!< set of states forming the density matrix
+  double tot_weight=0.0;
+  for(auto &x : states){
+    if(x->weight >= min){
+      states_tmp.insert(x);
+      tot_weight += x->weight;
+    }
+  }
+  states.clear();
+  states = states_tmp;
+  tot_weight = 1/tot_weight;
+  for(auto &x : states) x->weight *= tot_weight;
+
+
+
+  if(global_bool("verb_ED")){
+    cout << "states that are kept : " << endl;
+    for(auto &x : states){
+      cout << x->sec << '\t' << x->energy << '\t' << x->weight << endl;
+    }
+  }
+
   // sector_set is now restricted to the sectors containing low-energy states
   sector_set.clear();
   for(auto &x : states) sector_set.insert(x->sec);
@@ -297,7 +316,7 @@ pair<double, string> model_instance<HilbertField>::low_energy_states()
   if(mixing == HS_mixing::normal and up_down) mixing = HS_mixing::up_down;
   
   // average energy and sectors
-  GS_energy = (*states.begin())->energy;
+  GS_energy = 1.0e18;
   E0 = 0.0;
   for(auto &x : states){
     E0 += x->weight * x->energy;
@@ -327,6 +346,7 @@ void model_instance<HilbertField>::compute_weights(){
   
   double temperature = global_double("temperature");
   
+
   if(temperature < MIDDLE_VALUE){
     // looping over states to keep only the lowest-energy states
     double E0 = 1e12;
@@ -506,6 +526,12 @@ void model_instance<HilbertField>::Green_function_solve()
       else build_qmatrix(*x,true);
     }
   }
+
+  if(states.size() > 1 and GF_solver != GF_format_CF and global_bool("merge_states")){
+    cout << states.size() << " states were found. Merging..." << endl;
+    merge_states();
+  } 
+
   gf_solved = true;
   M.set_size(dim_GF);
   if(mixing&HS_mixing::up_down) M_down.set_size(dim_GF);
@@ -674,6 +700,7 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
   Q_matrix_set<HilbertField> Qm(the_model->group, mixing);
   Q_matrix_set<HilbertField> Qp(the_model->group, mixing);
 
+  check_signals();
   if(global_bool("verb_ED")){
     cout << "\ncomputing Q-matrix for state of energy " << Omega.energy << " in sector " << Omega.sec.name() << endl;
     if(spin_down) cout << "spin down part" << endl;
@@ -1092,10 +1119,14 @@ string model_instance<HilbertField>::GS_string() const
 {
   if(!is_correlated) return "uncorrelated";
 
-  ostringstream sout;
+  map<sector, double> ws;
   for(auto& s : states){
-    if(s->weight < 0.001) continue;
-    sout << s->sec << ':' << setprecision(3) << s->weight  << '/';
+    if(ws.find(s->sec) == ws.end()) ws[s->sec] = s->weight;
+    else ws[s->sec] += s->weight;
+  }
+  ostringstream sout;
+  for(auto& x: ws){
+    sout << x.first << ':' << setprecision(3) << x.second  << '/';
   }
   string out = sout.str();
   out.pop_back();
@@ -1390,4 +1421,70 @@ pair<matrix<Complex>, vector<uint64_t>> model_instance<HilbertField>::density_ma
 }
 
 
+/**
+Merging states belonging to the same sector in order to streamline the combined q-matrix representations
+Useless in the continued fraction representation is used
+Useful only at finite temperature when full diagonalization is used
+ */
+template<typename HilbertField>
+void model_instance<HilbertField>::merge_states()
+{
+  sector current_sector;
+  auto merged_state = shared_ptr<state<HilbertField>>(new state<HilbertField>());
+  
+  vector<multimap<double, vector<HilbertField>>> M(the_model->group->g); // for each irrep, a multimap that stands for the global Q matrix
+  cout << "merging " << states.size() << " states into one" << endl;
+  double E = 0.0;
+  for(auto &x : states){
+    E += x->weight*x->energy;
+    shared_ptr<Q_matrix_set<HilbertField>> Q = dynamic_pointer_cast<Q_matrix_set<HilbertField>>(x->gf);
+    Q->merge(M);
+  }
+  merged_state->energy = E;
+  vector<vector<double>> w(M.size());
+  vector<matrix<HilbertField>> q(M.size());
 
+  for(int i=0; i<M.size(); i++){
+    size_t map_size = M[i].size();
+    w[i].resize(map_size);
+    q[i].set_size(n_mixed*the_model->group->site_irrep_dim[i], map_size);
+    size_t j = 0;
+    for(auto& x: M[i]){
+      w[i][j] = x.first;
+      for(int k=0; k<x.second.size(); k++) q[i](k,j) = x.second[k]; 
+      j++;
+    }
+  }
+  auto Qmerged = shared_ptr<Q_matrix_set<HilbertField>>(new Q_matrix_set<HilbertField>(the_model->group, mixing, w, q));
+
+  Qmerged->streamline(true);
+  merged_state->gf = Qmerged;
+
+  if(mixing&HS_mixing::up_down){
+    vector<multimap<double, vector<HilbertField>>> M_down(the_model->group->g); 
+    for(auto &x : states){
+      shared_ptr<Q_matrix_set<HilbertField>> Q = dynamic_pointer_cast<Q_matrix_set<HilbertField>>(x->gf_down);
+      Q->merge(M_down);
+    }
+    vector<vector<double>> w(M_down.size());
+    vector<matrix<HilbertField>> q(M_down.size());
+
+    for(int i=0; i<M_down.size(); i++){
+      size_t map_size = M_down[i].size();
+      w[i].resize(map_size);
+      q[i].set_size(n_mixed*the_model->group->site_irrep_dim[i], map_size);
+      size_t j = 0;
+      for(auto& x: M_down[i]){
+        w[i][j] = x.first;
+        for(int k=0; k<x.second.size(); k++) q[i](k,j) = x.second[k]; 
+        j++;
+      }
+    }
+    auto Qmerged_down = shared_ptr<Q_matrix_set<HilbertField>>(new Q_matrix_set<HilbertField>(the_model->group, mixing, w, q));
+    Qmerged_down->streamline(true);
+    merged_state->gf_down = Qmerged_down;
+  }
+
+  states.clear();
+  states.insert(merged_state);
+}

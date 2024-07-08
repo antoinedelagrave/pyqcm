@@ -17,13 +17,13 @@ struct Q_matrix_set : Green_function_set
   Q_matrix<HilbertField> consolidated_qmatrix();
   void append(Q_matrix_set &Q);
   void check_norm(double threshold, double norm);
-  void streamline();
-  
+  void streamline(bool verb=false);
+  void merge(vector<multimap<double, vector<HilbertField>>>& M);
+
   // realizations of base class virtual methods
   void Green_function(const Complex &z, block_matrix<Complex> &G);
   void integrated_Green_function(block_matrix<Complex> &M);
   void write(ostream& fout);
-
 };
 
 
@@ -159,10 +159,10 @@ void Q_matrix_set<HilbertField>::check_norm(double threshold, double norm)
  Eliminating the small contributions
  */
 template<typename HilbertField>
-void Q_matrix_set<HilbertField>::streamline()
+void Q_matrix_set<HilbertField>::streamline(bool verb)
 {
   for(size_t r=0; r<q.size(); ++r){
-    q[r]->streamline();
+    q[r].streamline(verb);
   }
 }
 
@@ -209,4 +209,21 @@ void Q_matrix_set<HilbertField>::write(ostream&fout)
   fout << setprecision((int)global_int("print_precision"));
   for(auto& x : q) fout << x;
 }
+
+
+/**
+Merging into a multimap
+ */
+template<typename HilbertField>
+void Q_matrix_set<HilbertField>::merge(vector<multimap<double, vector<HilbertField>>>& M) 
+{
+  for(size_t r=0; r<q.size(); ++r){
+    for(int j=0; j< q[r].M; j++){
+      vector<HilbertField> v(q[r].L);
+      for(int k=0; k<q[r].L; k++) v[k] = q[r].v(k,j);
+      M[r].insert({q[r].e[j], v});
+    }
+  }
+}
+
 #endif /* Q_matrix_set_h */

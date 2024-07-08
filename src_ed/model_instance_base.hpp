@@ -64,6 +64,7 @@ struct model_instance_base
   virtual vector<pair<double,double>> susceptibility_poles(shared_ptr<Hermitian_operator> h) = 0;
   virtual void print(ostream& fout) = 0;
   virtual double tr_sigma_inf() = 0;
+  virtual void merge_states() = 0;
   virtual void write(ostream& fout) = 0;
   virtual void read(istream& fin) = 0;
   virtual void print_wavefunction(ostream& fout) = 0;

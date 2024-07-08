@@ -29,7 +29,7 @@ struct Q_matrix
   void check_norm(double threshold, double norm = 1.0);
   void Green_function(const Complex &z, matrix<Complex> &G);
   void integrated_Green_function(matrix<Complex> &G);
-  void streamline();
+  void streamline(bool verb=false);
   matrix<HilbertField> streamlineQ(const matrix<HilbertField> &Q, double threshold);
 };
 
@@ -71,8 +71,9 @@ Q_matrix<HilbertField>::Q_matrix(const Q_matrix<HilbertField> &q)
 template<typename HilbertField>
 Q_matrix<HilbertField>::Q_matrix(const vector<double>& _e, const matrix<HilbertField>& _v) : e(_e), v(_v)
 {
-  assert(e.size() == v.r);
-  L = v.c;
+  // cout << "Q dimensions : " << e.size() << '\t' << v.r << '\t' << v.c << endl; // TEMPO 
+  assert(e.size() == v.c);
+  L = v.r;
   M = e.size();
   #ifdef QCM_DEBUG
     cout << "Q-matrix built from array with " << L << " sites and " << M << " lines" << endl;
@@ -160,6 +161,8 @@ void Q_matrix<HilbertField>::Green_function(const Complex &z, matrix<Complex> &G
 #else
   VDVH_naive(G.v, v.v, u, L, M);
 #endif
+
+  // cout << "q-matrix contribution : " << L << '\t' << G.v << endl; // TEMPO
 }
 
 
@@ -190,7 +193,7 @@ void Q_matrix<HilbertField>::integrated_Green_function(matrix<Complex> &G)
  Eliminates the small contributions from the Q matrix
  */
 template<typename HilbertField>
-void Q_matrix<HilbertField>::streamline()
+void Q_matrix<HilbertField>::streamline(bool verb)
 {
   vector<int> f(M);
   double Qmatrix_wtol = global_double("Qmatrix_wtol");
@@ -226,7 +229,7 @@ void Q_matrix<HilbertField>::streamline()
     }
     i += n-1;
   }
-  if(global_bool("verb_ED")) cout << "streamlining Q-matrix from " << M << " to " << i2 << " rows" << endl;
+  if(global_bool("verb_Hilbert") or verb) cout << "streamlining Q-matrix from " << M << " to " << i2 << " rows" << endl;
   M = i2;
   e = e2;
   e.resize(M);

@@ -206,6 +206,7 @@ class CDMFT:
         self.KS_show = KS_show
         self.dist = 1e6
         self.delta_dist = 1e6
+        self.check_ground_state = check_ground_state
 
         if pyqcm.is_sequence(accur) == False:
             accur = (accur,)
@@ -225,6 +226,7 @@ class CDMFT:
             raise ValueError('CDMFT requires at least one variational parameter...Aborting.')
         qcm.CDMFT_variational_set(self.var)
         self.var_data = np.empty((self.nvar, maxiter+1))
+
         
         #------------------------- convergence test initialization ------------------------
         if pyqcm.is_sequence(convergence) == False:
@@ -345,7 +347,7 @@ class CDMFT:
         self.I = pyqcm.model_instance(self.model)  # a last instance with the converged parameters
 
         # check consistency
-        GS_cons = self.I.GS_consistency(check_ground_state)
+        GS_cons = self.I.GS_consistency(self.check_ground_state)
         var_val = pyqcm.varia_table(self.var,self.CDMFT_params)
         pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
         print(var_val)
@@ -433,7 +435,7 @@ class CDMFT:
                 plt.grid()
                 plt.xlabel('$\omega$')
                 plt.ylabel('cumulative (diagonal) hybridization')
-                plt.show()
+                plt.savefig('KS.pdf')
                 self.Hc0 = Hc
                 self.H0 = H
 
@@ -444,6 +446,8 @@ class CDMFT:
         else:
             self.host_function(self.I)
         #--------------------------------------------------------------------------------
+
+        self.I.GS_consistency(self.check_ground_state)
 
         if KS == False: self.set_Hyb()
         t2 = timeit.default_timer()
@@ -1275,7 +1279,7 @@ def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_d
             initial_simplex[i, :] = x
         for i in range(nvar):
             initial_simplex[i+1, i] += initial_step
-        sol = scipy.optimize.minimize(F, x, method='Nelder-Mead', options={'disp':displaymin, 'maxfev':maxfev, 'xatol': accur, 'frtol': accur_dist, 'initial_simplex': initial_simplex})
+        sol = scipy.optimize.minimize(F, x, method='Nelder-Mead', options={'disp':displaymin, 'maxfev':maxfev, 'xatol': accur, 'fatol': accur_dist, 'initial_simplex': initial_simplex, 'adaptive':True, 'disp': True})
         iter_done = sol.nit
 
     elif method == 'Nelder-Mead2':
@@ -1286,7 +1290,7 @@ def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_d
         for i in range(nvar):
             initial_simplex[i+1, i] += initial_step
         NM = pyqcm.NelderMead(F, initial_simplex, xtol = accur, ftol = accur_dist, maxfev = maxfev)
-        X = NM.minimize(verb=True)
+        X = NM.minimize(verb=False)
         sol = scipy.optimize.OptimizeResult(x=X,fun=NM.X[0,0],success=True, nfev=NM.nfev)
         iter_done = NM.iterdone
 

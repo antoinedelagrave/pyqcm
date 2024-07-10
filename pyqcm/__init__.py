@@ -1000,8 +1000,6 @@ class model_instance:
         """
 
         GS = qcm.ground_state(self.label)
-        if file is not None:
-            self.write_summary(file) 
         
         for i in range(self.model.nclus):
             if self.model.clus[i].ref != None: continue
@@ -1017,6 +1015,7 @@ class model_instance:
             self.props['E0_{:d}'.format(i+1)] = GS[i][0]
             self.props['sector_{:d}'.format(i+1)] = GS[i][1]
             self.props['n_{:d}'.format(i+1)] = self.cluster_density_from_GF(i)
+        if file is not None: self.write_summary(file) 
         if pr:
             for x in GS:
                 print('E0 = {:f}\tsector =  {:s}'.format(x[0], x[1]))

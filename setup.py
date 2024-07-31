@@ -37,7 +37,7 @@ skbuild.setup(
     long_description_content_type='text/markdown',
     url='https://bitbucket.org/dsenechQCM/qcm_wed/',
     author="David Sénéchal",
-    license="GPL",
+    # license="GPL",
     packages=find_packages(),
     # package_dir={"": "."},
     # cmake_install_dir=".",

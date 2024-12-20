@@ -462,13 +462,15 @@ class CDMFT:
         gs = self.I.ground_state()
 
         # optimization of the bath parameters
-        def DIST(y):
+        def DIST(y, grad=None):
             d = qcm.CDMFT_distance(y, self.I.label, KS)
             return d
 
         dist0 = self.dist
+
         sol = optimize(DIST, self.CDMFT_params[0:self.nvar], self.method, self.initial_step, self.accur_bath, self.accur_dist, self.max_function_eval)
         opt_x, opt_iter_done, opt_success, opt_fun = sol
+
         self.delta_dist = np.abs((self.dist - dist0)/dist0)
         t3 = timeit.default_timer()
         time_MIN = t3 - t2
@@ -1324,7 +1326,6 @@ def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_d
         raise ValueError(f'unknown method specified for minimization: {method}')
 
     if not success:
-        print(sol.message)
         raise pyqcm.MinimizationError()
 
     return opt_x, iter_done, success, fun

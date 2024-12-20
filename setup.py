@@ -37,6 +37,11 @@ skbuild.setup(
     license="GPL",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["numpy<2", "matplotlib", "scipy", "nlopt"],
-    python_requires=">=3.7",
+    install_requires=[
+        "numpy>=2",
+        "matplotlib",
+        "scipy",
+        "nlopt @ git+https://github.com/DanielBok/nlopt-python.git@master"
+    ],
+    python_requires=">=3.10",
 )

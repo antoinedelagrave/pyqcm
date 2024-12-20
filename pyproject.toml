@@ -3,9 +3,9 @@ requires = [
     "setuptools>=42",
     "wheel",
     "scikit-build>=0.12",
-    "numpy<2",
+    "numpy>=2",
     "ninja",
-    "nlopt"
+    "Pillow>=8.3"
 ]
 
 build-backend = "setuptools.build_meta"

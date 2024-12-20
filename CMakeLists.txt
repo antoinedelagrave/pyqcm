@@ -171,37 +171,9 @@ set_target_properties(
 
 # Find Python3
 find_package(
-  Python3 3.7
+  Python3 3.10
   COMPONENTS Interpreter Development NumPy
   REQUIRED)
-
-# Detect Python environment
-if(DEFINED ENV{VIRTUAL_ENV})
-  set(PYTHON_EXECUTABLE "$ENV{VIRTUAL_ENV}/bin/python")
-  if(EXISTS ${PYTHON_EXECUTABLE})
-    message(STATUS "Virtual environment detected: $ENV{VIRTUAL_ENV}")
-  else()
-    message(
-      FATAL_ERROR
-        "Python executable not found in virtual environment: $ENV{VIRTUAL_ENV}/bin/python"
-    )
-  endif()
-endif()
-
-execute_process(
-  COMMAND ${Python3_EXECUTABLE} -c "import numpy; print(numpy.__version__)"
-  OUTPUT_VARIABLE NUMPY_VERSION
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-# Check if NumPy version > 2.0
-if(NUMPY_VERSION VERSION_GREATER 2.0)
-  message(
-    FATAL_ERROR
-      "NumPy ${NUMPY_VERSION} is installed. Version must be < 2.0, try using a virtual environnment!"
-  )
-else()
-  message(STATUS "NumPy ${NUMPY_VERSION} is valid.")
-endif()
 
 # Manual NumPy include detection if not found
 if(NOT DEFINED Python3_NumPy_INCLUDE_DIRS)
@@ -216,6 +188,7 @@ else()
 endif()
 
 # Python information
+message(STATUS "Detected NumPy include directory: ${NUMPY_INCLUDE_DIR}")
 message(STATUS "Python executable: ${Python3_EXECUTABLE}")
 message(STATUS "Python include dir: ${Python3_INCLUDE_DIRS}")
 message(STATUS "Python libs: ${Python3_LIBRARIES}")
@@ -400,7 +373,7 @@ target_include_directories(
          src_python
          src_util
          ${Python3_INCLUDE_DIRS}
-         ${NUMPY_INCLUDE_DIR}/numpy
+         ${NUMPY_INCLUDE_DIR}
          ${CUBA_DIR}
          ${PRIMME_DIR}/include)
 

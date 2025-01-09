@@ -128,7 +128,7 @@ class CDMFT:
     :param str iteration: method of iteration of parameters ('fixed_point' or 'Broyden')
     :param float alpha: if iteration='fixed_point', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian (or alpha can literally be a matrix, the inverse Jacobian from a previous run).
     :param boolean displaymin: displays the minimum distance function when minimized
-    :param str method: method to use, as used in scipy.optimize.minimize()
+    :param str method: method to use, as used in scipy.optimize.minimize(). Choices: 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'ANNEAL', or a choice of NLopt methods : 'NELDERMEAD' (default), 'COBYLA', 'BOBYQA', 'PRAXIS', 'SUBPLEX'
     :param str file: name of the file where the solution is written
     :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
     :param float initial_step: initial step in the minimization routine
@@ -350,7 +350,6 @@ class CDMFT:
         pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
         print(var_val)
 
-        self.I.ground_state()
         ave = self.I.averages(pr=True)
         if compute_potential_energy :
             self.I.potential_energy()
@@ -364,6 +363,7 @@ class CDMFT:
             dist_function = self.grid.dist_function
 
         if file != None:
+            self.I.props['opt_method'] = method
             self.I.props['GS_consistency'] = GS_cons
             self.I.props['CDMFT_method'] = actual_method
             self.I.props['CDMFT_iterations'] = self.niter
@@ -1259,7 +1259,7 @@ def check_bounds(x, B=100, v=None):
 #---------------------------------------------------------------------------------------------------
 # optimization of the bath parameters
 
-def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_dist = 1e-8, maxfev=5000000):
+def optimize(F, x, method='NELDERMEAD', initial_step=0.1, accur = 1e-4, accur_dist = 1e-8, maxfev=5000000):
     """
 
     :param F: function to be optimized
@@ -1270,6 +1270,7 @@ def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_d
     :param float accur_dist: requested accuracy in the distance function
 
     """
+
     displaymin, nvar = False, len(x)
     nlopt_methods = {
         'COBYLA': nlopt.LN_COBYLA,

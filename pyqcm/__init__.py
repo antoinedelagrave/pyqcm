@@ -743,6 +743,7 @@ class model_instance:
         :rtype: {str,float}
 
         """
+        self.ground_state()
         ave = qcm.averages(ops, self.label)
 
         self.props['E_kin'] = qcm.kinetic_energy(self.label)
@@ -753,6 +754,7 @@ class model_instance:
             for x in ave:
                 print('<{:s}> = {:1.9g}'.format(x, ave[x]))
             
+        self.GS_consistency()
         self.write_summary(file)
         return ave
 
@@ -894,24 +896,6 @@ class model_instance:
         return qcm.Green_function_average(self.label*self.model.nclus + clus, spin_down)
 
     #-----------------------------------------------------------------------------------------------
-    def cluster_density_from_GF(self, clus=0):
-        """
-        Computes the cluster density from the cluster Green function average (integral over frequencies)
-
-        :param int clus: label of the cluster (0 to the number of clusters-1)
-        :return: float
-
-        """
-
-        
-        n = np.trace(self.Green_function_average(clus, False))
-        if self.model.mixing == 4: n += np.trace(self.Green_function_average(clus, True))
-        elif self.model.mixing == 0: n *= 2
-        elif self.model.mixing == 3: n /= 2
-
-        return n.real/self.model.clus[clus].nsites
-
-    #-----------------------------------------------------------------------------------------------
     def interactions(self, clus=0):
         """
         returns the density-density interactions on a specific cluster
@@ -984,6 +968,7 @@ class model_instance:
         :return: None
 
         """
+        self.ground_state()
         qcm.Green_function_solve(self.label)
 
 
@@ -1014,7 +999,7 @@ class model_instance:
 
             self.props['E0_{:d}'.format(i+1)] = GS[i][0]
             self.props['sector_{:d}'.format(i+1)] = GS[i][1]
-            self.props['n_{:d}'.format(i+1)] = self.cluster_density_from_GF(i)
+            self.props['n_{:d}'.format(i+1)] =  self.Green_function_density(clus=i)
         if file is not None: self.write_summary(file) 
         if pr:
             for x in GS:
@@ -1492,6 +1477,7 @@ class model_instance:
             if self.model.clus[i].ref != None: continue
             ave = self.cluster_averages(i)
             ng = self.Green_function_density(i)
+            print('consistency for cluster ', i+1, ' : GF = ', ave['mu'][0], '\tGS = ', ng) # TEMPO
             diffGS = np.abs(ave['mu'][0] - ng)
             if diffGS > threshold:
                 GS_cons += 'N'

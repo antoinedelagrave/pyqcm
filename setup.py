@@ -38,10 +38,9 @@ skbuild.setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "numpy>=2",
         "matplotlib",
         "scipy",
-        "nlopt @ git+https://github.com/DanielBok/nlopt-python.git@master"
+        "nlopt>=2.9"
     ],
     python_requires=">=3.10",
 )

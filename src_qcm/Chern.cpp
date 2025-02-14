@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 
+#define MAX_K_SIDE 5000
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -245,7 +247,7 @@ vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vec
   recursive = rec;
 
   if(model->spatial_dimension < 2) qcm_throw("'Berry_curvature' can only be applied to a 2D or 3D Brillouin zone!");
-  if(nk > 1000) qcm_throw("The wavevector grid has too many points. nk should be <= 1000");
+  if(nk > MAX_K_SIDE) qcm_throw("The wavevector grid has too many points. nk should be <= "+to_string<int>(MAX_K_SIDE));
   if(nk < 10) qcm_throw("The wavevector grid has too few points. nk should be >= 10");
   
   int opt=0;

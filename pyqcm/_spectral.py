@@ -459,6 +459,7 @@ def gap(self, k, orb = 1, threshold=1e-3):
 
     """
 
+    k = np.array(k)
     if len(k.shape)==1:
         k = np.array([k])
     G = self.Lehmann_Green_function(k, orb)

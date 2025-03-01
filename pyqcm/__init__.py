@@ -723,6 +723,31 @@ class model_instance:
         qcm.write_instance_to_file(filename, self.label*self.model.nclus + clus)
 
     #-----------------------------------------------------------------------------------------------
+    def write_all(self, filename):
+        """
+        Writes the solved model instance (all clusters) to a collection of text files
+        
+        :param str filename: name of the file
+        :return: None
+
+        """
+        for i in range(self.model.nclus):
+            self.write(filename+'_{:d}.sol'.format(i))
+
+    #-----------------------------------------------------------------------------------------------
+    def read_all(self, filename):
+        """
+        Reads the solved model instance (all clusters) from a collection of text files
+        
+        :param str filename: name of the file
+        :return: None
+
+        """
+        for i in range(self.model.nclus):
+            self.read(filename+'_{:d}.sol'.format(i))
+    
+
+    #-----------------------------------------------------------------------------------------------
     def parameters(self, param=None):
         """
         Returns the values of the parameters of the instance (as opposed to the parameter_set object)

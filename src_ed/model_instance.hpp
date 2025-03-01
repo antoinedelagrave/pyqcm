@@ -1168,7 +1168,9 @@ void model_instance<HilbertField>::read(istream& fin)
     if(input.size()==0) break;
     if(input.size()!=2) qcm_ED_throw("failed to read a parameter in input. Need two columns per parameter");
     if(value.find(input[0])==value.end()) qcm_ED_throw("unkown parameter "+input[0]+" in solutions file");
-    if(abs(value[input[0]] - from_string<double>(input[1])) > MIDDLE_VALUE) qcm_ED_throw("The value of "+input[0]+" from the solution read ("+input[1]+") differs from the expected value ("+to_string<double>(value[input[0]])+").");
+    // if(abs(value[input[0]] - from_string<double>(input[1])) > MIDDLE_VALUE) qcm_ED_throw("The value of "+input[0]+" from the solution read ("+input[1]+") differs from the expected value ("+to_string<double>(value[input[0]])+").");
+    if(abs(value[input[0]] - from_string<double>(input[1])) > MIDDLE_VALUE) 
+      cout << "WARNING : The value of "+input[0]+" from the solution read ("+input[1]+") differs from the expected value ("+to_string<double>(value[input[0]])+")." << endl;
   }
   
   string tmp;

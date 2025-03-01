@@ -92,7 +92,7 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, orb=None, offs
     :param int nk: the number of wavevectors along each segment of the path (passed to pyqcm.wavevector_grid())
     :param int orb: if not None, only plots the spectral function associated with this orbital number (starts at 1). If None, sums over all orbitals.
     :param float offset: vertical offset in the plot between the curves associated to successive wavevectors
-    :param str opt: 'A' : spectral function, 'self' : self-energy, 'Sx' : spin (x component), 'Sy' : spin (y component)
+    :param str opt: 'A' : spectral function, 'self' : self-energy, 'selfabs' : module of the self-energy
     :param boolean Nambu_redress: if True, evaluates the Nambu component at the opposite frequency
     :param boolean inverse_path: if True, inverts the path (k --> -k)
     :param str title: optional title for the plot. If None, a string with the model parameters will be used.
@@ -121,8 +121,8 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, orb=None, offs
     else:
         ax = plt_ax
 
-    dim = self.model.dimGF_red
     mix = self.model.mixing
+    norb=self.model.nband
 
     if orb is not None:
         assert (orb <= self.model.nband and orb > 0), 'The orbital index in plot_spectrum() must vary from 1 to {:d}'.format(self.model.nband)
@@ -138,26 +138,35 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, orb=None, offs
 
     k_str = self.wavevector_path_2_str(k)
 
+    if opt=='A':
+        title_prefix = r'$A(\mathbf{k},\omega)$: '
+    elif opt=='self':
+        title_prefix = r'$\Sigma_{ii}(\mathbf{k},\omega)$: '
+    elif opt=='selfabs':
+        title_prefix = r'$|\Sigma(\mathbf{k},\omega)|$: '
+
     A = np.zeros((len(w), len(k)))
     A_down = np.zeros((len(w), len(k)))
     plot_down = False
     for i in range(len(w)):
-        if opt=='self':
+        if opt=='selfabs':
             g = self.self_energy(w[i], k, False)
-        else:
-            g = self.periodized_Green_function(w[i], k, False)
-        if opt=='Sx':
-            assert mix&2, 'option Sx in spectral_function() only makes sense if spin-flip terms are present'
-        if opt=='Sy':
-            assert mix&2, 'option Sy in spectral_function() only makes sense if spin-flip terms are present'
-        for j in range(len(k)):
-            for l in orbs: 
-                A[i, j] += -g[j, l, l].imag
+            for j in range(len(k)):
+                A[i, j] += np.sqrt(np.linalg.norm(g[j, 0:norb, 0:norb]))
 
-            if mix&2:  
-                plot_down = True
+        else:
+            if opt=='self':
+                g = self.self_energy(w[i], k, False)
+            elif opt=='A':
+                g = self.periodized_Green_function(w[i], k, False)
+            for j in range(len(k)):
                 for l in orbs: 
-                    A_down[i, j] += -g[j, self.model.nband+l, self.model.nband+l].imag
+                    A[i, j] += -g[j, l, l].imag
+
+                if mix&2:  
+                    plot_down = True
+                    for l in orbs: 
+                        A_down[i, j] += -g[j, norb+l, norb+l].imag
 
     if mix == 1:
         # add the contribution to the Nambu channel, but with opposite frequency
@@ -168,30 +177,40 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, orb=None, offs
                 W = -np.conj(w[i])
             else:
                 W = w[i]
-            if opt=='self':
+            if opt=='selfabs':
                 g = self.self_energy(W, k, False)
+                for j in range(len(k)):
+                    A[i, j] += np.sqrt(np.linalg.norm(g[j, norb:2*norb, norb:2*norb]))
             else:
-                g = self.periodized_Green_function(W, k, False)
-            for j in range(len(k)):
-                plot_down = True
-                for l in orbs: 
-                    A_down[i, j] += -g[j, self.model.nband+l, self.model.nband+l].imag
+                if opt=='self':
+                    g = self.self_energy(W, k, False)
+                elif opt=='A':
+                    g = self.periodized_Green_function(W, k, False)
+                for j in range(len(k)):
+                    plot_down = True
+                    for l in orbs: 
+                        A_down[i, j] += -g[j, norb+l, norb+l].imag
 
     if mix == 4:
         plot_down = True
         # add the contribution to the spin-down channel in that case
         for i in range(len(w)):
-            if opt=='self':
-                g = self.self_energy(w[i], k, True)
+            if opt=='selfabs':
+                g = self.self_energy(w[i], k, False)
+                for j in range(len(k)):
+                    A[i, j] += np.sqrt(np.linalg.norm(g[j,: ,:]))
             else:
-                g = self.periodized_Green_function(w[i], k, True)
-            for j in range(len(k)):
-                for l in orbs: 
-                    A_down[i, j] += -g[j, l, l].imag
+                if opt=='self':
+                    g = self.self_energy(w[i], k, True)
+                else:
+                    g = self.periodized_Green_function(w[i], k, True)
+                for j in range(len(k)):
+                    for l in orbs: 
+                        A_down[i, j] += -g[j, l, l].imag
     
 
     freq_info = "\nnfreq = {:d}, wmin={:g}, wmax={:g}".format(len(w), w[0], w[-1])
-    np.savetxt(data_file+'.tsv', A, delimiter='\t', fmt='%1.6g', header = k_str+freq_info)
+    np.savetxt(data_file+'.tsv', A, delimiter='\t', fmt='%1.9g', header = k_str+freq_info)
     if plot_down:
         np.savetxt(data_file+'_down.tsv', A_down, delimiter='\t', fmt='%1.6g', header = k_str + freq_info)
         
@@ -227,7 +246,7 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, orb=None, offs
         ax.axvline(0, ls='solid', lw=0.5)
 
     if title is None and plt_ax is None:
-        ax.set_title(r'$A(\mathbf{k},\omega)$: '+self.model.parameter_string(clus=0), fontsize=6)
+        ax.set_title(title_prefix+self.model.parameter_string(clus=0), fontsize=6)
     else:
         ax.set_title(title, fontsize=6)
 

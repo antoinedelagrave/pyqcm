@@ -145,7 +145,7 @@ class superlattice:
         return I, S, R
 
     #-----------------------------------------------------------------------------------------------
-    def draw(self, basis=None, plt_ax=None):
+    def draw(self, basis=None, plt_ax=None, labels=False):
         """
         Plots the sites, the shifted sites and the superlattice vectors
         :param [[float]] basis: the real space, geometric basis
@@ -168,17 +168,28 @@ class superlattice:
         ax.set_aspect(1)
         ax.plot([0, e[0,0]], [0, e[0,1]], 'r-', lw=0.5)
         ax.plot([0, e[1,0]], [0, e[1,1]], 'r-', lw=0.5)
+        
+        # S = self.sitesF
+        # S = S@basis
+        # ax.plot(S[:,0], S[:,1], 'go', ms=3)
+
         S = self.sites
         S = S@basis
         ax.plot(S[:,0], S[:,1], 'bo', ms=6)
-        S = self.sitesF
-        S = S@basis
-        ax.plot(S[:,0], S[:,1], 'go', ms=3)
+
+        eps = 0.1
+        if(labels==True):
+            for i in range(S.shape[0]):
+                plt.text(S[i,0]+eps, S[i,1]-eps, '{:d}'.format(i+1), fontsize=8, ha='left', va='top')
+
+
+        ax.set_axis_off()
+
         if plt_ax is None:
             plt.show()
 
     #-----------------------------------------------------------------------------------------------
-    def draw_cdw(self, cdw, basis=None, plt_ax=None):
+    def draw_cdw(self, cdw, basis=None, plt_ax=None, labels=False, neighbors=True):
         """
         Plots the amplitudes of a cdw
         :param [float] cdw: the cdw amplitudes (same order as the sites)
@@ -199,31 +210,42 @@ class superlattice:
         
         e = self.e
         e = e@basis
+        plt.sca(ax)
         ax.set_aspect(1)
         ax.plot([0, e[0,0]], [0, e[0,1]], 'r-', lw=0.5)
         ax.plot([0, e[1,0]], [0, e[1,1]], 'r-', lw=0.5)
         S = self.sites
         S = S@basis
         fac = 8/np.max(np.abs(cdw))
-        for j1 in range(-1,2,1):
-            for j2 in range(-1,2,1):
-                es = j1*e[0,:] + j2*e[1,:]
-                for i in range(S.shape[0]):
-                    ss = es + S[i,:]
-                    if cdw[i] > 0: ax.plot(ss[0], ss[1], 'bo', ms=fac*cdw[i])
-                    else: ax.plot(ss[0], ss[1], 'ro', ms=-fac*cdw[i])
-                    ax.plot(ss[0], ss[1], 'k.', ms=1)
+        if neighbors:
+            for j1 in range(-1,2,1):
+                for j2 in range(-1,2,1):
+                    es = j1*e[0,:] + j2*e[1,:]
+                    for i in range(S.shape[0]):
+                        ss = es + S[i,:]
+                        if cdw[i] > 0: ax.plot(ss[0], ss[1], 'bo', ms=fac*cdw[i])
+                        else: ax.plot(ss[0], ss[1], 'ro', ms=-fac*cdw[i])
+                        ax.plot(ss[0], ss[1], 'k.', ms=1)
+        else:
+            for i in range(S.shape[0]):
+                ss = S[i,:]
+                if cdw[i] > 0: ax.plot(ss[0], ss[1], 'bo', ms=fac*cdw[i])
+                else: ax.plot(ss[0], ss[1], 'ro', ms=-fac*cdw[i])
+                ax.plot(ss[0], ss[1], 'k.', ms=1)
+        if(labels==True):
+            eps = 0.1
+            for i in range(S.shape[0]):
+                plt.text(S[i,0]+eps, S[i,1]-eps, '{:d}'.format(i+1), fontsize=8, ha='left', va='top')
         if plt_ax is None:
-            plt.show()
+                plt.show()
 
 
     #-----------------------------------------------------------------------------------------------
-    def cdw_eigenstates(self, _V, plt_ax=None, basis=np.eye(3), file=None, silent=False):
+    def cdw_eigenstates(self, _V, plt_ax=None, basis=np.eye(3), file=None, silent=False, neighbors=True):
         """
         Computes the possible CDW states of the cluster, to be used with the Hartree approximation
 
-        :param cluster C: periodic cluster
-        :param [([int], float)] V: density-density interactions
+        :param [([int], float)] _V: density-density interactions
         :return ([float], [float,float], [float,float]): the array of eigenvalues, the matrix of eigenvectors, and the inter-cluster interaction matrix
 
         """
@@ -288,7 +310,7 @@ class superlattice:
 
             for i in range(self.N):
                 print('\neigenvalue ', w[i], ' :\n', v[:, i])
-                self.draw_cdw(v[:, i], basis=basis, plt_ax = ax[i])
+                self.draw_cdw(v[:, i], basis=basis, plt_ax = ax[i], neighbors=neighbors)
                 ax[i].set_title(r'No ${:d}, \lambda = {:f}$'.format(i, w[i]), fontsize=9)
                 ax[i].tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
 

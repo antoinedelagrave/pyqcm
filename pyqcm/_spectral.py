@@ -58,25 +58,22 @@ def __frequency_array(wmax=6.0, eta=0.05, imaginary=False):
 
 
 #---------------------------------------------------------------------------------------------------
-def __kgrid(ax, nk, quadrant=False, k_perp=0.0, plane='xy', size=1.0):
+def __kgrid(ax, nk, zone=((0,0),1), k_perp=0.0, plane='xy'):
 
-    if quadrant:
-        orig = np.array([0.5*(1-size), 0.5*(1-size), 0.0])
-        k = pyqcm.wavevector_grid(nk, orig, size, k_perp, plane)
-        ax.set_xticks((0, 0.5/size, 1/size))
-        ax.set_yticks((0, 0.5/size, 1/size))
-        ax.set_xticklabels(('$0$', '$\pi/2$', '$\pi$'))
-        ax.set_yticklabels(('$0$', '$\pi/2$', '$\pi$'))
-        x = np.linspace(0, 1, nk)
-    else:
-        orig = np.array([-size, -size, 0])
-        k = pyqcm.wavevector_grid(nk, orig, size*2, k_perp, plane)
-        ax.set_xticks((-1/size, 0, 1/size))
-        ax.set_yticks((-1/size, 0, 1/size))
-        ax.set_xticklabels(('$-\pi$', '$0$', '$\pi$'))
-        ax.set_yticklabels(('$-\pi$', '$0$', '$\pi$'))
-        x = np.linspace(-1, 1, nk)
-    return k, x
+    size = zone[1]
+    x1 = zone[0][0]-size
+    x2 = zone[0][0]+size
+    y1 = zone[0][1]-size
+    y2 = zone[0][1]+size
+    orig = np.array([x1, y1, 0])
+    k = pyqcm.wavevector_grid(nk, orig, size*2, k_perp, plane)
+    ax.set_xticks((x1, x2))
+    ax.set_yticks((y1, y2))
+    ax.set_xticklabels(('${:1.4g}\pi$'.format(x1), '${:1.4g}\pi$'.format(x2)))
+    ax.set_yticklabels(('${:1.4g}\pi$'.format(y1), '${:1.4g}\pi$'.format(y2)))
+    x = np.linspace(x1, x2, nk)
+    y = np.linspace(y1, y2, nk)
+    return k, x, y
 
 
 ####################################################################################################
@@ -608,14 +605,14 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
 
 
 #---------------------------------------------------------------------------------------------------
-def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='GF', k_perp = 0, freq = 0.0, max=None, plane = 'xy', size=1.0, band_basis=False, sym=None, file=None, plt_ax=None, **kwargs):
+def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='GF', k_perp = 0, freq = 0.0, max=None, plane = 'xy', band_basis=False, sym=None, file=None, plt_ax=None, data_file=None, **kwargs):
     """Plots the spectral weight at zero frequency in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param float eta: Lorentzian broadening
     :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param boolean spin_down: true is the spin down sector is to be computed (applies if mixing = 4)
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param str opt: The quantity to plot. 'GF' = Green function, 'self' = self-energy, 'Z' = quasi-particle weight
     :param float k_perp: momentum component in the third direction (in multiple of pi)
     :param float freq: frequency at which the spectral function is computed (0 by default)
@@ -623,9 +620,9 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param boolean band_basis: uses the band basis instead of the orbital basis (for multiband models)
     :param str sym: symmetrization option for the mdc
-    :param float size: size of the plot, in multiple of the default (2 pi on the side)
     :param str file: if not None, saves the plot in a file with that name
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
+    :param data_file: file to save the data being plotted
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :return: the contour plot object
     
@@ -640,7 +637,7 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
         ax = plt_ax
     ax.set_aspect(1)
 
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane, size=size)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     # reserves space for the spectral function
     A = np.zeros(nk * nk)
@@ -671,8 +668,6 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
 
     # acting with symmetries
     if sym != None:
-        if quadrant:
-            raise RuntimeError('quadrant option must be False is symmetrization is done in mdc()')
         if 'R' in sym:
             A = 0.5*(A + A.T)
         if 'X' in sym:
@@ -712,7 +707,7 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
     else:
         print('maximum level = ', A.max()/max)
     # plot per se
-    CS = ax.contourf(x, x, A, np.linspace(0, max, 40), extend="max", cmap='jet', **kwargs)
+    CS = ax.contourf(x, y, A, np.linspace(0, max, 40), extend="max", cmap='jet', **kwargs)
 
     if plt_ax is None:
         title = _set_legend_mdc(plane, k_perp)
@@ -723,6 +718,10 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
         ax.set_ylabel('$k_'+ax2+'$')
         plt.colorbar(CS, shrink=0.8)
         plt.tight_layout()
+
+    if data_file is not None:
+        np.savetxt(data_file, A, delimiter='\t', fmt='%1.6g')
+
 
     if file is not None:
         plt.savefig(file)
@@ -735,13 +734,13 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, quadrant=False, opt='G
 
 
 #---------------------------------------------------------------------------------------------------
-def spin_mdc(self, nk=200, eta=0.1, orb=None, quadrant=False, opt='spin', freq = 0.0, max=None, k_perp = 0, plane = 'xy', band_basis=False, file=None, plt_ax=None, **kwargs):
+def spin_mdc(self, nk=200, eta=0.1, orb=None, zone=((0,0),1), opt='spin', freq = 0.0, max=None, k_perp = 0, plane = 'xy', band_basis=False, file=None, plt_ax=None, **kwargs):
     """Plots the spin spectral weight at zero frequency in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param float eta: Lorentzian broadening
     :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param str opt: The quantity to plot. 'spin' = spin texture, 'spins' = spin texture (saturated), 'sz' = z-component, 'spinp' = modulus of xy-component
     :param float freq: frequency at which the spectral function is computed (0 by default)
     :param float max: maximum value of the plotting range (if None, maximum of the data)
@@ -767,7 +766,7 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, quadrant=False, opt='spin', freq =
     if mix != 2 and mix != 3:
         raise RuntimeError('spin_mdc() makes sense only if spin-flip terms are present')
     
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     # reserves space for the spectral function
     A = np.zeros(nk * nk)
@@ -817,20 +816,20 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, quadrant=False, opt='spin', freq =
 
     #...............................................................................................
     if opt == 'spins':
-        X, Y = np.meshgrid(x, x)
+        X, Y = np.meshgrid(x, y)
         CS = ax.quiver(X, Y, Sx, Sy, pivot='mid', angles='xy', scale_units='xy', scale=10, width=0.003, headlength = 4.5, **kwargs)
     elif opt == 'sz':
         A = np.reshape(A, (nk, nk))
         if max is None:
             max = np.abs(A).max()*1.2
-        CS = ax.contourf(x, x, A, np.linspace(-max, max, 40), extend="max", cmap='bwr', **kwargs)
+        CS = ax.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr', **kwargs)
     elif opt == 'spinp':
         A = np.reshape(A, (nk, nk))
         if max is None:
             max = A.max()*1.2
         else:
             print('maximum level (spin) = ', A.max()*1.2/max)
-        CS = ax.contourf(x, x, A, np.linspace(0, max, 40), extend="max", cmap='jet', **kwargs)
+        CS = ax.contourf(x, y, A, np.linspace(0, max, 40), extend="max", cmap='jet', **kwargs)
 
     #...............................................................................................
 
@@ -855,7 +854,7 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, quadrant=False, opt='spin', freq =
 
 
 #---------------------------------------------------------------------------------------------------
-def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_part=False, quadrant=False, k_perp=0.0, plane='xy', file=None, plt_ax=None, **kwargs):
+def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_part=False, zone=((0,0),1), k_perp=0.0, plane='xy', file=None, plt_ax=None, **kwargs):
     """Plots the anomalous Green function or self-energy (2D)
 
     :param int nk: number of wavevectors on each side of the grid
@@ -863,7 +862,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
     :param int orbitals: shows the weight for orbitals (b1,b2) (starts at 1), or numpy array of spin-Nambu projection
     :param boolean self: if True, plots the anomalous self-energy instead of the spectral function
     :param boolean im_part: if True, plots the imaginary part instead of the real part
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param float k_perp: for 3D models, value of the component of k perpendicular to the plane
     :param str plane: for 3D models, plane of the plot ('z'='xy', 'y'='xz', 'x='yz')
     :param str file: if not None, saves the plot in a file with that name
@@ -890,7 +889,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
         assert (orbitals[0] > 0 and orbitals[0] <= self.model.nband), 'orbitals is out of range in mdc_anomalous()'
         assert (orbitals[1] > 0 and orbitals[1] <= self.model.nband), 'orbitals is out of range in mdc_anomalous()'
 
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     # reserves space for the spectral function
     A = np.zeros(nk * nk)
@@ -922,7 +921,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
 
 
     # plot per se
-    CS = plt.contourf(x, x, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
+    CS = plt.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
     plt.colorbar(CS, shrink=0.8)
 
     if file is not None:
@@ -932,7 +931,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, datafile=None, quadrant=False, k_perp = 0, plane = 'xy', file=None, plt_ax=None, view_angle=None, **kwargs):
+def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, datafile=None, zone=((0,0),1), k_perp = 0, plane = 'xy', file=None, plt_ax=None, view_angle=None, **kwargs):
     """Plots the dispersion relation in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
@@ -940,7 +939,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param boolean contour: True if a contour plot is produced instead of a 3D plot.
     :param str datafile: if given, name of the data file (no extension please) in which the data is printed, for plotting with an external program. Does not plot. Will produce one file per orbital, with the .tsv extension.
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param float k_perp: momentum component in the third direction (in multiple of pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str file: if not None, saves the plot in a file with that name
@@ -966,7 +965,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     if view_angle is not None:
         ax.view_init(*view_angle) # adjusts viewing angle if specified
 
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     d = self.model.dimGF_red
     e = self.dispersion(k, spin_down=spin_down)
@@ -986,7 +985,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
         CS = plt.contour(x, x, e[:, :, orbs[0]], linewidths=0.5)
         ax.clabel(CS, inline=True, fontsize=6)
     else:
-        x, y = np.meshgrid(x, x)
+        x, y = np.meshgrid(x, y)
         for j in orbs:
             ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
             
@@ -1057,12 +1056,12 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def Fermi_surface(self, nk=64, orb=None, quadrant=False, plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
+def Fermi_surface(self, nk=64, orb=None, zone=((0,0),1), plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
     """Plots the Fermi surface of the non-interacting model (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param int orb: if None, plots all the orbitals. Otherwise just plots the FS for that orbital (starts at 1)
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param float k_perp: momentum component in the third direction (in multiple of :math:`\pi`)
     :param str file: if not None, saves the plot in a file with that name
@@ -1080,7 +1079,7 @@ def Fermi_surface(self, nk=64, orb=None, quadrant=False, plane='xy', k_perp=0.0,
         ax = plt_ax
     ax.set_aspect(1)
     
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     d = self.model.dimGF_red
     e = self.dispersion(k)
@@ -1089,7 +1088,7 @@ def Fermi_surface(self, nk=64, orb=None, quadrant=False, plane='xy', k_perp=0.0,
     e.shape = (nk, nk, d)
 
     for j in orbs:
-        plt.contour(x, x, e[:, :, j], levels=[0.0], **kwargs)
+        plt.contour(x, y, e[:, :, j], levels=[0.0], **kwargs)
 
     if plt_ax is None:
         axis = _set_legend_mdc('xy', 0.0)
@@ -1102,7 +1101,7 @@ def Fermi_surface(self, nk=64, orb=None, quadrant=False, plane='xy', k_perp=0.0,
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, quadrant=False, datafile=None, max=None, k_perp = 0.0, plane = 'xy', file=None, plt_ax=None, **kwargs):
+def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, zone=((0,0),1), datafile=None, max=None, k_perp = 0.0, plane = 'xy', file=None, plt_ax=None, **kwargs):
     """Plots the eigenvalues of the inverse Green function at zero frequency
 
     :param int nk: number of wavevectors on each side of the grid
@@ -1110,7 +1109,7 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
     :param str period: periodization scheme ('G', 'M')
     :param boolean contour: True for a contour plot; otherwise a 3D plot.
     :param boolean inv: True if the inverse eigenvalues (inverse energies) are plotted instead
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param str datafile: if different from None, just writes the data in a file and does not plot
     :param float max: energy range (from -max to max) 
     :param float k_perp: momentum component in the third direction (in multiple of :math:`pi`)
@@ -1137,7 +1136,7 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
 
     freq = 0.1j
 
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     pyqcm.set_global_parameter('periodization', period)
     if period == 'None':
@@ -1167,18 +1166,12 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
         if len(orbs) >1:
             print('Contour plots of the dispersion with more than one orbital make no sense visually! first value used')
         A = e[:, :, orbs[0]]
-        CS = plt.contour(x, x, A, **kwargs)
+        CS = plt.contour(x, y, A, **kwargs)
         ax.clabel(CS, inline=True, fontsize=6)
     else:    
-        x, y = np.meshgrid(x, x)
+        x, y = np.meshgrid(x, y)
         if max != None:
             ax.set_zlim3d(-max,max)
-        if quadrant:
-            plt.xticks((0, 0.5, 1), ('$0$', '$\pi/2$', '$\pi$'))
-            plt.yticks((0, 0.5, 1), ('$0$', '$\pi/2$', '$\pi$'))
-        else:
-            plt.xticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
-            plt.yticks((-1, 0, 1), ('$-\pi$', '$0$', '$\pi$'))
         for j in orbs:
             ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
 
@@ -1190,12 +1183,12 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
 
 
 #---------------------------------------------------------------------------------------------------
-def Luttinger_surface(self, nk=200, orb=1, quadrant=False, k_perp = 0, plane = 'xy',  file=None, plt_ax=None, **kwargs):
+def Luttinger_surface(self, nk=200, orb=1, zone=((0,0),1), k_perp = 0, plane = 'xy',  file=None, plt_ax=None, **kwargs):
     """Plots the Luttinger surface (zeros of the Green function) in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param int orb: orbital number (starts at 1)
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param float k_perp: for 3D models, value of the component of k perpendicular to the plane
     :param str plane: for 3D models, plane of the plot ('z'='xy', 'y'='xz', 'x='yz')
     :param str file: if not None, saves the plot in a file with that name
@@ -1214,13 +1207,13 @@ def Luttinger_surface(self, nk=200, orb=1, quadrant=False, k_perp = 0, plane = '
         ax = plt_ax
     ax.set_aspect(1)
 
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
     
     g = self.periodized_Green_function(0.0, k)
     A = g[:,orb-1,orb-1].real
     A = np.reshape(A, (nk, nk))
     A = 1.0/A
-    CS = plt.contour(x, x, A, levels=[0], **kwargs)
+    CS = plt.contour(x, y, A, levels=[0], **kwargs)
 
     if file is not None:
         plt.savefig(file)
@@ -1232,12 +1225,12 @@ def Luttinger_surface(self, nk=200, orb=1, quadrant=False, k_perp = 0, plane = '
 
 
 #---------------------------------------------------------------------------------------------------
-def plot_momentum_profile(self, op, nk=50, quadrant=False, k_perp=0.0, plane='xy', file=None, plt_ax=None, **kwargs):
+def plot_momentum_profile(self, op, nk=50, zone=((0,0),1), k_perp=0.0, plane='xy', file=None, plt_ax=None, **kwargs):
     """Plots the momentum-resolved average of operator op in the Brillouin zone (2D)
 
     :param str op: name of the lattice operator
     :param int nk: number of wavevectors on each side of the grid
-    :param boolean quadrant: if True, plots the first quadrant of a square Brillouin zone only
+    :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param float k_perp: momentum component in the third direction (in multiple of pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str file: if not None, saves the plot in a file with that name
@@ -1256,7 +1249,7 @@ def plot_momentum_profile(self, op, nk=50, quadrant=False, k_perp=0.0, plane='xy
         ax = plt_ax
     ax.set_aspect(1)
 
-    k, x = __kgrid(ax, nk, quadrant=quadrant, k_perp=k_perp, plane=plane)
+    k, x, y = __kgrid(ax, nk, zone=zone, k_perp=k_perp, plane=plane)
 
     # reserves space for the average
     A = self.momentum_profile(op, k)
@@ -1264,7 +1257,7 @@ def plot_momentum_profile(self, op, nk=50, quadrant=False, k_perp=0.0, plane='xy
     max = np.abs(A).max()
 
     # plot per se
-    CS = plt.contourf(x, x, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
+    CS = plt.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
     plt.colorbar(CS, shrink=0.8)
 
     if file is not None:
@@ -1318,7 +1311,7 @@ def plot_host_hybrid(self, w, e, clus=0, file=None, plt_ax=None, **kwargs):
 
 
 #---------------------------------------------------------------------------------------------------
-def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, subdivide=False, plane='xy', k_perp=0.0, file=None, plt_ax=None, **kwargs):
+def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, subdivide=False, plane='xy', k_perp=0.0, file=None, data_file=None, plt_ax=None, **kwargs):
     """Draws a 2D density plot of the Berry curvature as a function of wavevector, on a square grid going from -pi to pi in each direction.
     
     :param int nk: number of wavevectors on the side of the grid
@@ -1330,6 +1323,7 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
     :param float k_perp: momentum component in the third direction (x pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str file: Name of the file to save the plot. If None, shows the plot on screen.
+    :param str data_file: Name of the file to save the data.
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :return: the contourplot object of matplotlib
@@ -1391,6 +1385,10 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
         axis = _set_legend_mdc(plane, k_perp)
         plt.colorbar(CS, shrink=0.8, extend='neither')
         ax.set_title(axis, fontsize=6)
+
+    if data_file is not None:
+        np.savetxt(data_file, B, delimiter='\t', fmt='%1.9g')
+
 
     if file is not None:
         plt.savefig(file)

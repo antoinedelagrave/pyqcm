@@ -7,6 +7,7 @@ pipelines:
           name: Deploy
           deployment: Production
           script:
+            - pip install setuptools==78.1.0
             - pip install scikit-build==0.17.6 twine==4.0.2
             - python setup.py sdist
             - python -m twine upload dist/*

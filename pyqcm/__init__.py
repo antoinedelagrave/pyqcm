@@ -230,6 +230,9 @@ class lattice_model:
         self.dim = len(superlattice)
         self.nsites = 0
         self.descrpt = {}
+        self.current_dir = None # flag to define or not current operators. To be set manually. value: 'x', 'y', or 'z'
+        self.hoppings = set() # set of hopping terms
+        self.currents = set() # set of currents
         for i,x in enumerate(self.clus):
             if isinstance(x, cluster) == False:
                 raise ValueError("The argument 'clus' of 'model' should be of type 'cluster' or a sequence thereof")
@@ -273,6 +276,16 @@ class lattice_model:
         for orb_no1 in orb1:
             for orb_no2 in orb2:
                 qcm.hopping_operator(name, link, amplitude, orb1=orb_no1, orb2=orb_no2, **kwargs)
+        
+        if ('tau' in kwargs and kwargs['tau']==1) or 'tau' not in kwargs:
+            self.hoppings.add(name)
+            dir = {'x':0, 'y':1, 'z':2}
+            if self.current_dir in dir:
+                for orb_no1 in orb1:
+                    for orb_no2 in orb2:
+                        qcm.current_operator('I' + name, link, amplitude, orb1=orb_no1, orb2=orb_no2, dir = dir[self.current_dir])
+                self.currents.add('I' + name)
+            
 
     #-----------------------------------------------------------------------------------------------
     def anomalous_operator(self, name, link, amplitude, orbitals=None, **kwargs):

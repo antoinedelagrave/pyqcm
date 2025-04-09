@@ -892,6 +892,62 @@ void lattice_model::hopping_operator(const string &name, vector3D<int64_t> &link
 
 
 
+//===============================================================================
+/**
+ Defines a lattice current operator
+ @param name [in] name of the operator
+ @param link [in] bond vector
+ @param amplitude [in] overall multiplier
+ @param b1 [in] lattice orbital label of the first electron
+ @param b2 [in] lattice orbital label of the second electron
+ @param dir [in] direction of the current (0,1,2) for (x,y,z)
+ */
+void lattice_model::current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int b1, int b2, int dir)
+{
+  shared_ptr<lattice_operator> tmp_op;
+  auto it_op = term.find(name);
+  if(it_op == term.end()){
+    check_name(name);
+    tmp_op = make_shared<lattice_operator>(*this, name, latt_op_type::one_body);
+    term[name] = tmp_op;
+  }
+  else{
+    tmp_op = it_op->second;
+  }
+  // previous_name = name;
+  
+  // looping over sites of the super unit cell
+  for(int s1=0; s1 < (int)sites.size(); s1++){
+    if(sites[s1].orb != b1) continue;
+    int s2, ni, ni_opp;
+    find_second_site(s1, link, s2, ni, ni_opp);
+    if(s2<0) continue;
+    if(sites[s2].orb != b2) continue; // wrong orbital. skip.
+    int V;
+    switch(dir){
+      case 0: V = sites[s1].position.x-sites[s2].position.x; break;
+      case 1: V = sites[s1].position.y-sites[s2].position.y; break;
+      case 2: V = sites[s1].position.z-sites[s2].position.z; break;
+    }
+    for(int i=0; i<2; i++){
+      int si = s1+i*(s2-s1);
+      for(int j=0; j<2; j++){
+        int sj = s1+j*(s2-s1);
+        for(int alpha=0; alpha<2; alpha++){
+          for(int beta=0; beta<2; beta++){
+            Complex ec = pauli[2][i][j]*pauli[0][alpha][beta]*amplitude;
+            ec *= V;
+            if(ec.imag() == 0.0 and ec.real() == 0.0) continue;
+            if(j<i) tmp_op->elements.push_back({si,alpha,sj,beta,ni_opp,ec});
+            else tmp_op->elements.push_back({si,alpha,sj,beta,ni,ec});
+          }
+        }
+      }
+    }
+  }
+}
+
+
 
 //===============================================================================
 /**

@@ -1985,6 +1985,47 @@ static PyObject *hopping_operator_python(PyObject *self, PyObject *args,
 }
 
 //==============================================================================
+const char *current_operator_help =
+    R"{(
+Defines a current operator
+arguments:
+1. name of operator
+2. link (3 component integer array)
+3. amplitude (real number)
+kwargs:
+  4. 'orb1' : int. lattice orbital label of first index (1 by default)
+  5. 'orb2' : int. lattice orbital label of first index (1 by default)
+  6. 'dir' : int. specifies the direction (0,1,2)
+  
+returns: None
+){";
+//------------------------------------------------------------------------------
+static PyObject *current_operator_python(PyObject *self, PyObject *args, PyObject *keywds) {
+  char *name = nullptr;
+  double amplitude = 1.0;
+  int orb1 = 1;
+  int orb2 = 1;
+  int dir = 0;
+  PyArrayObject *link_pyobj = nullptr;
+
+  const char *kwlist[] = {"", "", "", "orb1", "orb2", "dir", NULL};
+  try {
+    if (!PyArg_ParseTupleAndKeywords(
+            args, keywds, "sOd|iii", const_cast<char **>(kwlist), &name,
+            &link_pyobj, &amplitude, &orb1, &orb2, &dir))
+      qcm_throw(
+          "failed to read parameters in call to current_operator (python)");
+
+    vector3D<int64_t> link = intvector_from_Py(link_pyobj);
+
+    QCM::current_operator(string(name), link, amplitude, orb1, orb2, dir);
+  } catch (const string &s) {
+    qcm_catch(s);
+  }
+  return Py_BuildValue("");
+}
+
+//==============================================================================
 const char *anomalous_operator_help =
     R"{(
 Defines an anomalous operator

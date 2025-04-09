@@ -88,6 +88,7 @@ struct lattice_model{
 	void explicit_operator(const string &name, const string &type, const vector<tuple<vector3D<int64_t>, vector3D<int64_t>, complex<double>>> &elem, int tau, int sigma);
 	void find_second_site(int s1, const vector3D<int64_t>& link, int& s2, int& ni, int& ni_opp);
 	void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int tau, int sigma);
+	void current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int b1, int b2, int dir);
 	void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, const string &type);
 	void one_body_matrix(lattice_operator& op);
 	void post_parameter_consolidate(size_t label);

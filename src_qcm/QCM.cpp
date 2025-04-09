@@ -840,6 +840,29 @@ check_instance(label);
   }
   
   
+    /**
+   * Defines a current operator on the lattice.
+   * The operator, given two sites labelled 1 and 2, is defined as: 
+   * $(r_1-r_2)c^\dagger_{is}\tau^2_{ij}c_{js}$
+   * @param name name given to the operator
+   * @param link bond vector on which the operator is defined
+   * @param amplitude default amplitude of the operator, that multiplies all matrix elements and its given value
+   * @param orb1 index of the first orbital (from 1 to nband)
+   * @param orb2 index of the second orbital (from 1 to nband)
+   * @param dir component of the current (0,1,2) standing for (x,y,z)
+   */
+  void current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int dir)
+  {
+    if(qcm_model->is_closed){
+      qcm_warning("model already created and closed. Ignoring operator creation.");
+      return;
+    }
+    try{
+      qcm_model->current_operator(name, link, amplitude, orb1-1, orb2-1, dir);
+    } catch(const string& s) {qcm_catch(s);}
+  }
+
+
   /**
    * Defines an anomalous operator on the lattice.
    * @param name name given to the operator

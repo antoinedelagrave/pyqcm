@@ -365,8 +365,14 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 }
 
 vector<vector<matrix<Complex>>> lattice_model_instance::get_CDMFT_host(bool spin_down){
-	if(spin_down) return G_host_down;
-	else return G_host;
+	if(spin_down){
+		if(G_host_down.size() == 0) qcm_throw("G_host_down has not been computed for this instance");
+		return G_host_down;
+	}
+	else {
+		if(G_host.size() == 0) qcm_throw("G_host has not been computed for this instance");
+		return G_host;
+	}
 }
 
 //==============================================================================

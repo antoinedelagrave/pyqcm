@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'pyqcm'
-copyright = '2023, David Sénéchal'
+copyright = '2025, David Sénéchal'
 author = 'David Sénéchal'
 
 # The version info for the project you're documenting, acts as replacement for

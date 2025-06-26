@@ -597,22 +597,16 @@ class lattice_model:
         except:
             raise ValueError("The file containing the solutions could not be read!")
         data = {}
-        if len(D.shape) == 0:
-            for x in par:
-                if par[x][1] != None:
-                    continue
-                if x in D.dtype.names:
-                    self.set_parameter(x,D[x],pr=True)
+        if len(D.shape) == 0 : D = np.expand_dims(D, axis=0)
+        if n >= D.shape[0]:
+            raise ValueError("The data set has only {:d} solutions (<= {:d})".format(D.shape[0], n))
+        for x in par:
+            if par[x][1] != None:
+                continue
+            if x in D.dtype.names:
+                self.set_parameter(x,D[x][n],pr=True)
             for x in D.dtype.names:
-                data[x] = D[x]
-        else:
-            for x in par:
-                if par[x][1] != None:
-                    continue
-                if x in D.dtype.names:
-                    self.set_parameter(x,D[x][n],pr=True)
-                for x in D.dtype.names:
-                    data[x] = D[x][n]
+                data[x] = D[x][n]
         return data
 
 

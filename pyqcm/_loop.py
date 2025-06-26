@@ -43,6 +43,9 @@ def loop_from_file(self, task, file):
 	"""
 	param = self.parameter_set()
 	data = np.genfromtxt(file, names=True, dtype=None, encoding='utf8')
+
+	if len(data.shape) == 0 : data = np.expand_dims(data, axis=0)
+
 	print('number of data sets: ', len(data))
 
 	independent_params = []

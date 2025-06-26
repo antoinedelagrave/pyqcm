@@ -361,7 +361,7 @@ def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, s
     # find the cluster description
 
     L = ''
-    while clus_name+' ' not in L:
+    while '  cluster ' + clus_name+'  ' not in L:
         L = fin.readline()
         if not L:
             raise ValueError('file ended without finding cluster {:s}'.format(clus_name))

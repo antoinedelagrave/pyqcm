@@ -130,15 +130,13 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
     while True:
         L = fin.readline()
         if L == '\n' or 'elements' in L: break
-        X = re.split("[,\;): ]+", L)
-        if len(X) == 6:
+        X = re.split("[(,)\;:\t ]+", L.rstrip())
+        X = [x for x in X if x]
+        if len(X) == 5:
             complex = True
-            X[3] = X[3][1:]
             v = float(X[3]) + float(X[4])*1j
         else:
-            X[-1] = X[-1][0:-1]
             v = float(X[3])
-        X[0] = X[0][1:]
 
         I = int(X[0][0:-1])
         J = int(X[1][0:-1])
@@ -179,10 +177,7 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
 
         if 'singlet' in op_type or 'dz' in op_type:
             if (X[0][-1] == '+' and X[1][-1] == '-') or (X[0][-1] == '-' and X[1][-1] == '+'):
-                if K in anom:
-                    anom[K] += v
-                else:
-                    anom[K] = v
+                anom[K] = np.round(v,6)
 
         tmp = {}
         for s in spin:
@@ -208,8 +203,8 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
             plt.plot([S[s1,0]], [S[s1,1]], 'o', ms = 18, c='w', mec='r', mew=2, alpha = alpha)
         else:
             plt.plot([S[s1,0], S[s2,0]], [S[s1,1], S[s2,1]], pf, mew=2, alpha = alpha)
-            if values:
-                plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='center', c='r')
+            if values and s1>s2:
+                plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='left', c='r', fontsize=8)
 
     for e in spin:
         if ';0' not in e: continue
@@ -236,6 +231,8 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
         else:
             pf = 'r-'
             plt.plot([S[s1,0], S[s2,0]], [S[s1,1], S[s2,1]], pf, mew=2, alpha = alpha)
+            if values and s1>s2:
+                plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(anom[e],5)}$', va='bottom', ha='left', c='r', fontsize=8)
 
 
     #...............................................................................................
@@ -379,10 +376,10 @@ def draw_cluster_operator(self, clus, op_name, show_labels=True, values=False, s
     while True:
         L = fin.readline()
         if L == '\n' or len(L) < 4 : break
-        X = re.split("[,\;)\t ]+", L.rstrip())
-        if len(X) == 4:
+        X = re.split("[,\;())\t ]+", L.rstrip())
+        print(X)
+        if len(X) > 3:
             complex = True
-            X[2] = X[2][1:]
             v = float(X[2]) + float(X[3])*1j
         else:
             v = float(X[2])

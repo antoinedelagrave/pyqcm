@@ -130,8 +130,10 @@ void lattice_model::build_cluster_operators(lattice_operator& op)
 			}
 		}
 		
-		if(elem.size() == 0 and global_bool("verb_warning")){
-			cout << "WARNING : operator " << op.name << " has no element in cluster " << c+1 << endl;
+		if(elem.size() == 0){
+			op.in_cluster[c] = false;
+			if(global_bool("verb_warning"))
+				cout << "WARNING : operator " << op.name << " has no element in cluster " << c+1 << endl;
 			continue;
 		}
 		else{

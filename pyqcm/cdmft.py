@@ -521,6 +521,7 @@ class CDMFT:
         for C in self.convergence_test:
             C.print()
 
+        if converged: pyqcm.banner('CDMFT has converged', '=')
         return converged
 
     #-----------------------------------------------------------------------------------------------
@@ -1218,7 +1219,7 @@ def check_bounds(x, B=100, v=None):
                 S = 'parameter {:s} = {:g} is out of bounds!'.format(v[i], x[i])
             else:
                 S = 'parameter no {:d}  = {:g} is out of bounds!'.format(i+1, x[i])
-            print('Try setting `self.max_value` to a bigger value within the CDMFT procedure!')
+            print('Try setting `max_value` to a bigger value within the CDMFT procedure!')
             raise pyqcm.OutOfBoundsError(S)
 
 #---------------------------------------------------------------------------------------------------

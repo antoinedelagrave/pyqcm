@@ -584,7 +584,7 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
             head += 'down_{:d}\t'.format(i+1)
     for i in range(nband):
         head += 'cumul_up_{:d}\t'.format(i+1)
-    if mix > 0:
+    if mix > 0 and spin_up==False:
         for i in range(nband):
             head += 'cumul_down_{:d}\t'.format(i+1)
     np.savetxt(data_file, np.hstack((np.reshape(np.real(w), (nw, 1)), A, accum)), header=head, delimiter='\t', fmt='%1.6g', comments='')
@@ -600,10 +600,7 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     plt.xlim(w[0].real, w[-1].real)
     for i in range(nband):
         plt.plot(np.real(w), A[:, i], '-', label=labels[i], linewidth=1.6, **kwargs)
-    if mix == 1:
-        for i in range(nband):
-            plt.plot(-np.real(w), A[:, i+nband], '-', label=labels[i], linewidth=0.8, **kwargs)
-    elif mix>0:
+    if mix>0 and spin_up==False:
         for i in range(nband):
             plt.plot(np.real(w), A[:, i+nband], '-', label=labels[i]+'$\\downarrow$', linewidth=0.8, **kwargs)
     if sum:

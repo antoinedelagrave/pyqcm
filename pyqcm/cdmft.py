@@ -303,7 +303,7 @@ class CDMFT:
         V = model.parameters(vartot)
         self.CDMFT_params[0:self.nvar] = self.to_varia_array(V[0:self.nvar_comp])
         for i,x in enumerate(self.hartree):
-            self.CDMFT_params[self.nvar+i] = model.parameters()[x]
+            self.CDMFT_params[self.nvar+i] = model.parameters()[x.Vm]
 
         #------------------------------- CDMFT main iteration loop ------------------------
         self.niter = 0

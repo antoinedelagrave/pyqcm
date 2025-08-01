@@ -963,7 +963,10 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     :return: None
 
     """
-    orbs = pyqcm.orbital_manager(orb, from_zero=True)
+    if self.model.mixing != 4 and spin_down:
+        raise ValueError("cannot use spin_down=True in 'plot_dispersion()' when mixing not equal to 4")
+        
+    orbs = pyqcm.orbital_manager(orb, from_zero=False)
 
     if plt_ax is None:
         plt.figure()

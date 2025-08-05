@@ -277,15 +277,17 @@ class lattice_model:
             for orb_no2 in orb2:
                 qcm.hopping_operator(name, link, amplitude, orb1=orb_no1, orb2=orb_no2, **kwargs)
         
-        if ('tau' in kwargs and kwargs['tau']==1) or 'tau' not in kwargs:
+        dir = {'x':0, 'y':1, 'z':2}
+        if ('tau' in kwargs and (kwargs['tau']==1 or kwargs['tau']==2)) or 'tau' not in kwargs:
+            if ('sigma' in kwargs and kwargs['sigma']!=0) : return
+            pau = True
+            if ('tau' in kwargs and kwargs['tau']==2) : pau = False 
             self.hoppings.add(name)
-            dir = {'x':0, 'y':1, 'z':2}
             if self.current_dir in dir:
                 for orb_no1 in orb1:
                     for orb_no2 in orb2:
-                        qcm.current_operator('I' + name, link, amplitude, orb1=orb_no1, orb2=orb_no2, dir = dir[self.current_dir])
+                        qcm.current_operator('I' + name, link, amplitude, orb1=orb_no1, orb2=orb_no2, dir = dir[self.current_dir], real = pau)
                 self.currents.add('I' + name)
-            
 
     #-----------------------------------------------------------------------------------------------
     def anomalous_operator(self, name, link, amplitude, orbitals=None, **kwargs):

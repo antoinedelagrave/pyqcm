@@ -852,15 +852,16 @@ check_instance(label);
    * @param orb1 index of the first orbital (from 1 to nband)
    * @param orb2 index of the second orbital (from 1 to nband)
    * @param dir component of the current (0,1,2) standing for (x,y,z)
+   * @param pau true if from real hopping, false if from imaginary hopping
    */
-  void current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int dir)
+  void current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int dir, bool pau)
   {
     if(qcm_model->is_closed){
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
     try{
-      qcm_model->current_operator(name, link, amplitude, orb1-1, orb2-1, dir);
+      qcm_model->current_operator(name, link, amplitude, orb1-1, orb2-1, dir, pau);
     } catch(const string& s) {qcm_catch(s);}
   }
 

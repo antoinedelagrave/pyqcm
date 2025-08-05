@@ -2006,19 +2006,20 @@ static PyObject *current_operator_python(PyObject *self, PyObject *args, PyObjec
   int orb1 = 1;
   int orb2 = 1;
   int dir = 0;
+  int pau = 1;
   PyArrayObject *link_pyobj = nullptr;
 
-  const char *kwlist[] = {"", "", "", "orb1", "orb2", "dir", NULL};
+  const char *kwlist[] = {"", "", "", "orb1", "orb2", "dir", "real", NULL};
   try {
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywds, "sOd|iii", const_cast<char **>(kwlist), &name,
-            &link_pyobj, &amplitude, &orb1, &orb2, &dir))
+            args, keywds, "sOd|iiii", const_cast<char **>(kwlist), &name,
+            &link_pyobj, &amplitude, &orb1, &orb2, &dir, &pau))
       qcm_throw(
           "failed to read parameters in call to current_operator (python)");
 
     vector3D<int64_t> link = intvector_from_Py(link_pyobj);
 
-    QCM::current_operator(string(name), link, amplitude, orb1, orb2, dir);
+    QCM::current_operator(string(name), link, amplitude, orb1, orb2, dir, pau);
   } catch (const string &s) {
     qcm_catch(s);
   }

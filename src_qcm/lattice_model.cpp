@@ -901,9 +901,17 @@ void lattice_model::hopping_operator(const string &name, vector3D<int64_t> &link
  @param b1 [in] lattice orbital label of the first electron
  @param b2 [in] lattice orbital label of the second electron
  @param dir [in] direction of the current (0,1,2) for (x,y,z)
+ @param pau [in] = true for current from real hopping, false for current from imaginary hopping
  */
-void lattice_model::current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int b1, int b2, int dir)
+void lattice_model::current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int b1, int b2, int dir, bool pau)
 {
+  int pau_index = 2;
+  double pau_mult = 1.0;
+  if(!pau){
+    pau_index = 1;
+    pau_mult = -1.0;
+  }
+
   shared_ptr<lattice_operator> tmp_op;
   auto it_op = term.find(name);
   if(it_op == term.end()){
@@ -925,9 +933,12 @@ void lattice_model::current_operator(const string &name, vector3D<int64_t> &link
     if(sites[s2].orb != b2) continue; // wrong orbital. skip.
     int V;
     switch(dir){
-      case 0: V = sites[s1].position.x-sites[s2].position.x; break;
-      case 1: V = sites[s1].position.y-sites[s2].position.y; break;
-      case 2: V = sites[s1].position.z-sites[s2].position.z; break;
+      case 0: V = link.x; break;
+      case 1: V = link.y; break;
+      case 2: V = link.z; break;
+    //   case 0: V = sites[s1].position.x-sites[s2].position.x; break;
+    //   case 1: V = sites[s1].position.y-sites[s2].position.y; break;
+    //   case 2: V = sites[s1].position.z-sites[s2].position.z; break;
     }
     for(int i=0; i<2; i++){
       int si = s1+i*(s2-s1);
@@ -935,7 +946,7 @@ void lattice_model::current_operator(const string &name, vector3D<int64_t> &link
         int sj = s1+j*(s2-s1);
         for(int alpha=0; alpha<2; alpha++){
           for(int beta=0; beta<2; beta++){
-            Complex ec = pauli[2][i][j]*pauli[0][alpha][beta]*amplitude;
+            Complex ec = pauli[pau_index][i][j]*pauli[0][alpha][beta]*amplitude*pau_mult;
             ec *= V;
             if(ec.imag() == 0.0 and ec.real() == 0.0) continue;
             if(j<i) tmp_op->elements.push_back({si,alpha,sj,beta,ni_opp,ec});

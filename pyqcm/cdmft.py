@@ -361,7 +361,7 @@ class CDMFT:
         self.I = pyqcm.model_instance(self.model)  # a last instance with the converged parameters
 
         # check consistency
-        GS_cons = self.I.GS_consistency(self.check_ground_state)
+        self.I.GS_consistency(self.check_ground_state)
         var_val = pyqcm.varia_table(self.var,self.expand_varia_array(self.CDMFT_params))
         pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
         print(var_val)
@@ -374,7 +374,6 @@ class CDMFT:
 
         if file != None:
             self.I.props['opt_method'] = method
-            self.I.props['GS_consistency'] = GS_cons
             self.I.props['CDMFT_method'] = actual_method
             self.I.props['CDMFT_iterations'] = self.niter
             self.I.props['dist_function'] = self.grid.dist_function

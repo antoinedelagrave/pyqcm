@@ -413,6 +413,15 @@ class lattice_model:
 
         """
         if is_sequence(sec) == False: sec = (sec,)
+
+        # sanity check on the sector strings before sending it to qcm
+        for i,s in enumerate(sec):
+            if type(s) != str:
+                print("Target sector ", i, " has type ", type(s), ", which is not a string !")
+                raise ValueError("Target sector {:d} is is not a string".format(i))
+            elif set(s).issubset(set("RSN:-/0123456789")) is False:
+                raise ValueError("String {:s} does not represent a valid sector".format(s))
+            
         qcm.set_target_sectors(sec)
 
     #-----------------------------------------------------------------------------------------------
@@ -1297,8 +1306,7 @@ class model_instance:
 
         """
         OM = qcm.Potthoff_functional(self.label)
-        C = ''
-        if consistency_check: C = self.GS_consistency(True)
+        if consistency_check: self.GS_consistency(True)
 
         if symmetrized_operator is not None:
             try:
@@ -1318,8 +1326,6 @@ class model_instance:
             for C in hartree:
                 OM += C.omega_var()/L
         self.props['omega'] = OM
-        if consistency_check: 
-            self.props['GS_consistency'] = C
         self.write_summary(file)
         return OM
 
@@ -1554,21 +1560,17 @@ class model_instance:
         """
 
         self.Green_function_solve()
-        GS_cons = ''
         for i in range(self.model.nclus):
             if self.model.clus[i].ref != None: continue
             ave = self.cluster_averages(i)
             ng = self.Green_function_density(i)
-            print('consistency for cluster ', i+1, ' : GF = ', ave['mu'][0], '\tGS = ', ng) # TEMPO
-            diffGS = np.abs(ave['mu'][0] - ng)
-            if diffGS > threshold:
-                GS_cons += 'N'
+            diffGS = ave['mu'][0] - ng
+            # print('consistency check for cluster ', i+1, ' : n(GF) - n(GS) = ', diffGS)
+            if np.abs(diffGS) > threshold:
                 banner("GROUND STATE INCONSISTENCY FOR CLUSTER {:d}: {:1.7g} (WF) vs {:1.7g} (GF) [diff = {:1.7g} > {:1.7g}]".format(i+1,ave['mu'][0], ng, diffGS, threshold), '+', skip=1)
                 if check_ground_state:
                     raise ValueError("failed GS consistency for cluster {:d}".format(i+1))
-            else: GS_cons += 'Y'
-        self.props['GS_consistency'] = GS_cons
-        return GS_cons
+            self.props['ConsistencyCheck_{:d}'.format(i+1)] = diffGS
 
     #-----------------------------------------------------------------------------------------------
     # methods from _spectral.py

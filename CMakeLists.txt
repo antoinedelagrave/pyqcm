@@ -59,8 +59,8 @@ option(
   "Automatically detect host processor AVX2 capabilities (i.e. Intel processors after 2014 and AMD processors after 2015) and compile the optimized kernel (5 times quicker) for Green function evaluation"
   OFF)
 option(QCM_DEBUG "Enable extra verbose information for debug purpose" OFF)
-option(APPLE_LIBOMP_PREFIX
-       "Custom path to the OpenMP library libomp on Apple computer")
+#option(APPLE_LIBOMP_PREFIX
+#       "Custom path to the OpenMP library libomp on Apple computer")
 option(USE_OPENMP "Enable parallelization using OpenMP" ON)
 option(
   GENERIC_BUILD
@@ -93,7 +93,7 @@ message(STATUS "Host processor : ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CXX_FLAGS_DEBUG "-g ")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 # ---------------------------------
 # Compilation option (optimisation)

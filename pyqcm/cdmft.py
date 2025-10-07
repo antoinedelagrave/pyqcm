@@ -221,7 +221,7 @@ class CDMFT:
         miniter=0,
         convergence='parameters',
         depth=2,
-        accur_bath=1e-3,
+        accur_bath=1e-6,
         accur=1e-4,
         accur_dist=1e-8,
         converge_with_stdev = False,

@@ -239,6 +239,7 @@ class lattice_model:
         self.current_dir = None # flag to define or not current operators. To be set manually. value: 'x', 'y', or 'z'
         self.hoppings = set() # set of hopping terms
         self.currents = set() # set of currents
+        self.has_bath = False
         for i,x in enumerate(self.clus):
             if isinstance(x, cluster) == False:
                 raise ValueError("The argument 'clus' of 'model' should be of type 'cluster' or a sequence thereof")
@@ -246,6 +247,7 @@ class lattice_model:
             self.nsites += x.nsites
             if x.ref != None: ref = x.ref.index
             else: ref = 0
+            if x.cluster_model.n_bath > 0: self.has_bath = True
             qcm.add_cluster(x.cluster_model.name, x.pos, x.sites, ref)
 
         qcm.lattice_model(name, superlattice, lattice)
@@ -1135,9 +1137,12 @@ class model_instance:
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param int orb: orbital index (starts at 1)
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
-        :return: a list of pairs {poles, residues}, each of poles and residues being itself a list.
+        :return: a pair {poles, residues}, each of poles and residues being itself a list.
 
         """
+
+        if self.model.has_bath:
+            raise ValueError('The lattice model contains clusters with bath orbitals. The Lehmann representation of the lattice Green function cannot be obtained.')
         return qcm.Lehmann_Green_function(k, orb, spin_down, self.label)
 
     #-----------------------------------------------------------------------------------------------
@@ -2344,6 +2349,7 @@ def fixed_point_iteration(F, x0, xtol=1e-6, convergence_test=None, maxiter=32,  
     iter = 0
     while True:
         print('\nfixed_point iteration {:d}'.format(iter+1))
+        if iter > 16 and alpha==0 : alpha=0.3  # mix with previous solution if convergence is slow
         x = (alpha-1)*F(x0) + x0
         data[:, iter] = np.copy(x0)
         delta_x = x - x0
@@ -2483,6 +2489,7 @@ def reset_model():
     Resets the lattice model. In other words, all cluster models, clusters and the content of the lattice_model object (including the parameter_set) are reset to void. Useful if one wants to conduct simulations with a new model without
     quitting Python.
     """
+    global cluster_model_names
     banner("RESETTING THE MODEL", c='#', skip=1)
     lattice_model.defined = False
     cluster_model_names = set()

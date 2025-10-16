@@ -281,7 +281,7 @@ class CDMFT:
             raise ValueError("The argument 'varia' of CDMFT has the wrong type")
 
         qcm.CDMFT_variational_set(self.varia.bath_var)
-        self.varia.var_data = np.empty((self.varia.nvar, maxiter+1))
+        self.varia.var_data = np.empty((self.varia.nvar, maxiter+2))
 
         #------------------------- convergence test initialization ------------------------
         if pyqcm.is_sequence(convergence) == False:

@@ -56,7 +56,7 @@ def __kgrid(ax, nk, zone=((0,0),1), k_perp=0.0, plane='xy'):
 # Additional methods of the model_instance class
 
 #---------------------------------------------------------------------------------------------------
-def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', orb=None, opt='A', Nambu_redress=True, inverse_path=False):
+def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', orb=None, opt='A', Nambu_redress=True, inverse_path=False, verb=False):
     r"""Computes the spectral function :math:`A(\mathbf{k},\omega)` along a wavevector path in the Brillouin zone.
     This version plots the spin-down part with the correct sign of the frequency in the Nambu formalism.
     This is a shared-memory implementation. The arrays A and A_down are shared across multiple processes.
@@ -73,9 +73,12 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wm
     :param str opt: 'A' : spectral function, 'self' : self-energy
     :param boolean Nambu_redress: if True, evaluates the Nambu component at the opposite frequency
     :param boolean inverse_path: if True, inverts the path (k --> -k)
+    :param boolean verb: if True, print progress report
     :return: None
 
     """
+
+    from os import getpid
 
     if pyqcm.is_sequence(orb) and pyqcm.is_sequence(orb[0]):
         n_orbs = len(orb)
@@ -92,10 +95,11 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wm
     norb=self.model.nband
 
     mix = self.model.mixing
+    nmixed = self.model.nmixed
 
     for os in orbs:
         for o in os:
-            assert (o < self.model.nband and o > -1), 'The orbital index in spectral_function() must vary from 1 to {:d}'.format(self.model.nband)
+            assert (o < nmixed*self.model.nband and o > -1), 'The orbital index in spectral_function() must vary from 1 to {:d}'.format(nmixed*self.model.nband)
 
     w = pyqcm.frequency_array(wmax, eta)
 
@@ -113,6 +117,7 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wm
 
     plot_down = False
     for i in range(irange[0], irange[1]):
+        if verb: print(getpid(), " : {:2.1f}%".format(100*(i-irange[0])/(irange[1]-irange[0])))
         if opt=='self':
             g = self.self_energy(w[i], k, False)
         elif opt=='A':
@@ -132,6 +137,7 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wm
         if Nambu_redress:
             k *= -1
         for i in range(irange[0], irange[1]):
+            if verb: print(getpid(), " : {:2.1f}%".format(100*(i-irange[0])/(irange[1]-irange[0])))
             if Nambu_redress:
                 W = -np.conj(w[i])
             else:
@@ -1279,7 +1285,7 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
 def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, file=None, data_file=None, plt_ax=None, scale=1, **kwargs):
     """Plots the dispersion relation in the Brillouin zone along a wavevector path
 
-    :param orb: orbital (or sequence of orbitals) to plot.
+    :param orb: orbital (or sequence of orbitals) to plot. Starts at 1.
     :param boolean width: if True, plots the fat bands with variable width (otherwise uses a gray scale)
     :param str path: wavevector path, as used by the function wavevector_path()
     :param int nk: number of wavevectors on each side of the grid
@@ -1309,6 +1315,8 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, file=None, d
 
     if type(orb) is int:
         orb = (orb,)
+    for o in orb: assert(o > 0 and o <= self.model.nband)
+    orb = np.array(orb) - 1  # now starts at 0
     
     k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
     nk = k.shape[0]
@@ -1321,8 +1329,7 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, file=None, d
     max_e = -1e6
     for i in range(nk):
         V, W = np.linalg.eigh(M[i,:,:])
-        for o in orb:
-            w[i,:] += np.abs(W[o,:])**2
+        w[i,:] += np.linalg.norm(W[orb,:], axis=0)**2
         e[i,:] = V
         min_e = np.min((min_e, np.min(e)))
         max_e = np.max((max_e, np.max(e)))
@@ -1348,7 +1355,7 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, file=None, d
 
     for i in range(d):
         if width:
-            ax.fill_between(X, e[:,i] - scale*w[:,i], e[:,i] + scale*w[:,i], color='b', lw=0)
+            ax.fill_between(X, e[:,i] - scale*w[:,i], e[:,i] + scale*w[:,i], lw=0, **kwargs)
         else:
             points = np.column_stack([np.arange(nk), e[:,i]])
             seg = np.stack([points[:-1], points[1:]], axis=1)

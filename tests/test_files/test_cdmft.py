@@ -9,7 +9,7 @@ M.model.set_target_sectors(['R0:N6:S0'])
 # Simulation parameters
 M.model.set_parameters("""
     U=4
-    mu=2
+    mu=0.5*U
     t=1
     tb1_1=0.5
     tb2_1=0.4

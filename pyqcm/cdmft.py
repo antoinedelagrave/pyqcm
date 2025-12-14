@@ -110,21 +110,20 @@ class convergence_manager:
         print(S, flush=True)
 
 
-
 class variational_set:
     """
-    class for the management of CDMFT variational parameters, when they are not directly a set of bath parameters with simple constraints.
-    For instance, the actual variational parameters could be  amplitudes of complex combinations of bath parameters with fixed phase, or 
-    a common amplitude ratio for different clusters, etc.
+    class for the management of CDMFT variational parameters, 
 
     :param [str] bath_var : list of bath parameters names
-    :param [str] var : a list of names of actal variational parameters (smaller than or equal to bath_var)
-    :param [float] x : current value of the variational parameters (including initial values when creating the class)
-    :param f : transformation that takes x into the (bigger) set y of bath parameter values
     :param [hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
     """
 
-    def __init__(self, bath_var, var=None, x=None, f=None, hartree=None):
+    def __init__(self, bath_var, hartree=None):
+
+        if len(set(varia)) != len(varia):
+            raise ValueError('There are duplicate variational parameters!')
+
+
         self.bath_var = bath_var
         self.var = var
         if var is None: 
@@ -152,34 +151,13 @@ class variational_set:
         self.vartot = list(self.var) + [x.Vm for x in self.hartree]
 
 
-    def set_from_file(self, in_file, n=0):
-        """
-        Sets the values of the variational parameters (x) from a file. The file must have the usual format for pyqcm output, 
-        with a unique header and the names of the variables being a subset of the column headers
-
-        :param str file: name of the input file
-        :param int n: row number (starts at 0 for the row that follows the header line. -1 is the last row.)
-        :returns None.
-        """
-
-        try:
-            D = np.genfromtxt(in_file, names=True, dtype=None, encoding='utf8')
-        except:
-            raise ValueError("The file containing the variational parameter values could not be read!")
-        if len(D.shape) == 0 : D = np.expand_dims(D, axis=0)
-        if n >= D.shape[0]:
-            raise ValueError("The data set has only {:d} solutions (<= {:d})".format(D.shape[0], n))
-        for i,x in enumerate(self.var):
-            if x not in D.dtype.names:
-                raise ValueError("The parameter {:s}  does not appear in the input file".format(x))
-            self.x[i] = D[x][n]
 
 
 class CDMFT:
     """
     class containing the elements of a CDMFT computation. The constructor executes the computation.
 
-    :param [str] varia: list of variational parameters. If not a list, then interpreted as an object of class variational_set.
+    :param [str] varia: list of variational parameters.
     :param float beta: inverse fictitious temperature (for the frequency grid)
     :param float wc: cutoff frequency (for the frequency grid)
     :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self', 'adapt'
@@ -189,6 +167,7 @@ class CDMFT:
     :param [str] convergence: the convergence tests (sequence of strings or single string)
     :param [float] accur: the tolerance for the various convergence tests (sequence of floats or single float)
     :param [float] accur_dist: relative tolerance of the distance function when minimizing it
+    :param [hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
     :param boolean converge_with_stdev: If True, checks convergence using the standard deviation of the convergence tests, not the difference
     :param str iteration: method of iteration of parameters ('fixed_point' or 'Broyden')
     :param float alpha: if iteration='fixed_point', damping parameter (fraction of the previous iteration in the new one). If iteration='Broyden', 1+alpha is the inverse initial Jacobian (or alpha can literally be a matrix, the inverse Jacobian from a previous run).
@@ -224,6 +203,7 @@ class CDMFT:
         accur_bath=1e-6,
         accur=1e-4,
         accur_dist=1e-8,
+        hartree = None,
         converge_with_stdev = False,
         iteration = 'Broyden', # or 'fixed_point'
         alpha = 0.0,
@@ -247,6 +227,7 @@ class CDMFT:
         self.beta = beta
         self.check_ground_state = check_ground_state
         self.dist = 1e6
+        self.hartree = hartree
         self.grid_type = grid_type
         self.host_function = host_function
         self.Hyb = None # internal : hybridization function
@@ -266,22 +247,35 @@ class CDMFT:
         if pyqcm.is_sequence(accur) == False:
             accur = (accur,)
 
+        if pyqcm.is_sequence(varia) == False:
+            raise ValueError("The argument 'varia' of CDMFT should be a list of variational parameters")
 
         if iteration not in ['Broyden', 'fixed_point']:
             raise ValueError("the argument 'iteration' of CDMFT() should be one of 'Broyden', 'fixed_point'")
 
-        if pyqcm.is_sequence(varia) == True:
-            if len(set(varia)) != len(varia):
-                raise ValueError('There are duplicate variational parameters!')
-            self.varia = variational_set(varia)
-        elif isinstance(varia, variational_set):
-            pass
-        else:
-            print(type(varia))
-            raise ValueError("The argument 'varia' of CDMFT has the wrong type")
+        #----------- Managing the variational parameters ---------
 
-        qcm.CDMFT_variational_set(self.varia.bath_var)
-        self.varia.var_data = np.empty((self.varia.nvar, maxiter+2))
+        var = [[] for i in range(model.nclus+1)]
+        for v in varia:
+            p = v.partition('_')
+            if len(p) == 1:
+                raise ValueError("{:s} cannot be a CDMFT variational parameter".format(v))
+            else: 
+                var[int(p[2])].append(v)
+        self.nvar = np.zeros(model.nclus+1, int)
+        for c in range(model.nclus+1): self.nvar[c] = len(var[c])
+
+        qcm.CDMFT_variational_set(var[1:])
+
+        self.varia = []
+        for v in var: self.varia += v
+        self.nvaria = len(self.varia)
+        self.x = np.empty(self.nvaria)
+        self.var_data = np.empty((self.nvaria, maxiter+1))
+
+        P = model.parameters()
+        for i,v in enumerate(self.varia): self.x[i] = P[v]
+
 
         #------------------------- convergence test initialization ------------------------
         if pyqcm.is_sequence(convergence) == False:
@@ -318,10 +312,10 @@ class CDMFT:
         
 
         #----------- Banner (depending on the presence of hartree parameters) -------------
-        if len(self.varia.hartree) == 0:
-            pyqcm.banner('CDMFT procedure', '*', skip=1)
-        else:
+        if hartree:
             pyqcm.banner('CDMFT procedure (combined with Hartree procedure)', '*', skip=1)
+        else:
+            pyqcm.banner('CDMFT procedure', '*', skip=1)
 
         #-------------- first define the frequency grid for the distance function ---------
         print('frequency grid type = ', grid_type)
@@ -330,32 +324,23 @@ class CDMFT:
         if alpha is float : print('damping factor = ', self.alpha)
         print('-'*100)
 
-        # ------------------ initializing the array of variational parameters -------------
-
-        if self.varia.transfo is False:
-            self.varia.x = model.parameters(self.varia.vartot)
-        else:
-            self.varia.x = np.concatenate([self.varia.x, model.parameters(self.varia.hartree)])
-
         #------------------------------- CDMFT main iteration loop ------------------------
         self.niter = 0
         self.iter = 0
         def F(x):
-            self.varia.x = np.copy(x)
+            self.x = np.copy(x)
             try:
                 self.CDMFT_step()
             except : raise
-            else: return x - self.varia.x
+            else: return x - self.x
 
         def G():
             return self.check_convergence()
 
-        x0 = self.varia.x
-
         if iteration == 'Broyden':
             try:
                 actual_method = 'Broyden'
-                self.varia.x, self.niter, self.alpha = pyqcm.broyden(F, self.varia.x, self.alpha, maxiter=maxiter, miniter=miniter, xtol=1e-6, convergence_test=G)
+                self.x, self.niter, self.alpha = pyqcm.broyden(F, self.x, self.alpha, maxiter=maxiter, miniter=miniter, xtol=1e-6, convergence_test=G)
             except Exception as E:
                 print(E)
                 raise pyqcm.SolverError('Failure of the CDMFT method (Broyden)')
@@ -363,7 +348,7 @@ class CDMFT:
         elif iteration == 'fixed_point':
             try:
                 actual_method = 'fixed_point'
-                self.varia.x, self.niter = pyqcm.fixed_point_iteration(F, self.varia.x, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=self.alpha, eps_algo=eps_algo)
+                self.x, self.niter = pyqcm.fixed_point_iteration(F, self.x, xtol=1e-6, convergence_test=G, maxiter=maxiter, miniter=miniter, alpha=self.alpha, eps_algo=eps_algo)
             except Exception as E:
                 print(E)
                 raise pyqcm.SolverError('Failure of the CDMFT method (fixed-point)')
@@ -373,13 +358,9 @@ class CDMFT:
         # Here we have converged
         self.I = pyqcm.model_instance(self.model)  # a last instance with the converged parameters
 
-        if self.varia.transfo:
-            for i,x in enumerate(varia.var):
-                self.I.props[x] = np.round(self.varia.x[i], 8)
-
         # check consistency
         self.I.GS_consistency(self.check_ground_state)
-        var_val = pyqcm.varia_table(self.varia.var ,self.varia.x[0:self.varia.nvar])
+        var_val = pyqcm.varia_table(self.varia ,self.x)
         pyqcm.banner('converged variational parameters ({:d} iterations)'.format(self.niter), '-')
         print(var_val)
 
@@ -387,7 +368,7 @@ class CDMFT:
         if compute_potential_energy :
             self.I.potential_energy()
         if SEF:
-            omega=self.I.Potthoff_functional(varia.hartree)
+            omega=self.I.Potthoff_functional(self.hartree)
 
         if file != None:
             self.I.props['opt_method'] = method
@@ -404,24 +385,22 @@ class CDMFT:
     #-----------------------------------------------------------------------------------------------
     def CDMFT_step(self):
         """
-        Performs a CDMFT step that brings the system from the current values (self.varia.x) of the bath and Hartree
+        Performs a CDMFT step that brings the system from the current values (self.x) of the bath and Hartree
         parameters and updates it to the next set of values
         """
 
         try:
-            check_bounds(self.varia.x, self.max_value, v=self.varia.var)
+            check_bounds(self.x, self.max_value, v=self.varia)
         except pyqcm.OutOfBoundsError as error:
             raise error
         except:
             raise ValueError
 
-        y = self.varia.f(self.varia.x[0:self.varia.nvar])
-        self.model.set_parameter(self.varia.bath_var, y)
+        self.model.set_parameter(self.varia, self.x)
         self.I = pyqcm.model_instance(self.model)
 
         if self.grid_type == 'adapt':  # find the maximum value of variational (bath) parameters
-            m = 2.0
-            self.wc = max([2.0, max(self.varia.x[0:self.varia.nvar])])
+            self.wc = max([2.0, max(self.x[self.nvar[0]:])])
 
         self.grid = frequency_grid(self.I, self.grid_type, self.beta, self.wc)
 
@@ -448,68 +427,72 @@ class CDMFT:
         time_ED = t2 - t1
 
         # updates the Hartree mean-field parameters
-        for C in self.varia.hartree:
-            C.update(self.I, pr=True)
-        P = self.model.parameters()
-        for i,h in enumerate(self.varia.hartree):
-            self.varia.x[self.varia.nvar + i] = P[h.Vm]
+        if self.nvar[0]:
+            for C in self.hartree:
+                C.update(self.I, pr=True)
+            P = self.model.parameters()
+            for i,h in enumerate(self.hartree):
+                self.x[i] = P[h.Vm]
 
         gs = self.I.ground_state()
 
-        # optimization of the bath parameters
-        def DIST(y, grad=None):
-            d = qcm.CDMFT_distance(self.varia.f(y), self.I.label)
-            return d
-        
-        x0 = self.varia.x[0:self.varia.nvar]
-        sol = optimize(DIST, x0, self.method, self.initial_step, self.accur_bath, self.accur_dist, self.max_function_eval)
-        opt_x, opt_iter_done, opt_success, opt_fun = sol
+        #--------------------------------------------------------------------------------
+        # optimization of the bath parameters, one cluster at a time
 
-        self.dist = opt_fun
+        self.dist = 0.0
+        ic = self.nvar[0]
+        for c in range(1, self.model.nclus+1):
+            if self.nvar[c] == 0: continue
+            x0 = self.x[ic : ic + self.nvar[c]]
+            DISTANCE = lambda x, grad=None : qcm.CDMFT_distance(x, c-1, self.I.label) 
+            sol = optimize(DISTANCE, x0, self.method, self.initial_step, self.accur_bath, self.accur_dist, self.max_function_eval)
+            opt_x, opt_iter_done, opt_success, opt_fun = sol
+
+            self.dist += opt_fun
+
+            if self.method != 'ANNEAL' and not opt_success:
+                print(sol)
+                pyqcm.banner('Error in the scipy minimization procedure within CDMFT ', '!')
+                raise pyqcm.MinimizationError()
+
+            if opt_iter_done > self.max_function_eval:
+                print(sol)
+                pyqcm.banner('number of function evaluations exceeds preset maximum of {:d}'.format(self.max_function_eval), '!')
+                raise pyqcm.MinimizationError()
+
+            if np.any(np.isnan(opt_x)):
+                print(sol)
+                pyqcm.banner('NaN found in optimization of bath parameters', '!')
+                raise pyqcm.MinimizationError('NaN found in optimization of bath parameters')
+
+            # push back into array
+            self.x[ic : ic + self.nvar[c]] = np.copy(opt_x)
+            self.var_data[ic : ic + self.nvar[c], self.iter] = np.copy(opt_x)
+
+            try:
+                check_bounds(opt_x, self.max_value, v=self.varia[ic:ic+self.nvar[c]])
+            except pyqcm.OutOfBoundsError as error:
+                raise error
+            except:
+                raise ValueError
+
+            ic += self.nvar[c]
+
         t3 = timeit.default_timer()
         time_MIN = t3 - t2
 
-        if self.method != 'ANNEAL' and not opt_success:
-            print(sol)
-            pyqcm.banner('Error in the scipy minimization procedure within CDMFT ', '!')
-            raise pyqcm.MinimizationError()
-
-        if opt_iter_done > self.max_function_eval:
-            print(sol)
-            pyqcm.banner('number of function evaluations exceeds preset maximum of {:d}'.format(self.max_function_eval), '!')
-            raise pyqcm.MinimizationError()
-
-        if np.any(np.isnan(opt_x)):
-            print(sol)
-            pyqcm.banner('NaN found in optimization of bath parameters', '!')
-            raise pyqcm.MinimizationError('NaN found in optimization of bath parameters')
-
-        # push back into array
-        self.varia.x[0:self.varia.nvar] = np.copy(opt_x)
-        self.varia.var_data[0:self.varia.nvar, self.iter] = np.copy(opt_x)
-
-        try:
-            check_bounds(self.varia.x[0:self.varia.nvar], self.max_value, v=self.varia.var)
-        except pyqcm.OutOfBoundsError as error:
-            raise error
-        except:
-            raise ValueError
 
         # writing the parameters in a progress file
         self.I.props['opt_method'] = self.method
         self.I.props['dist_function'] = self.grid.dist_function
         self.I.props['min_dist'] = self.dist
-        if self.varia.transfo:
-            for i,x in enumerate(self.varia.var):
-                self.I.props[x] = np.round(self.varia.x[i], 8)
-
         self.I.write_summary(self.iter_file)
 
         print('GS sector : ', [X[1] for X in gs])
         print('{:d} minimization steps, time(MIN)/time(ED)={:.3g}, distance = {:1.4g}'.format(opt_iter_done, time_MIN/time_ED, opt_fun), flush=True)
 
-        var_val = pyqcm.varia_table(self.varia.var, self.varia.x[0:self.varia.nvar])
-        print('updated bath parameters:\n{:s}'.format(var_val))
+        var_val = pyqcm.varia_table(self.varia, self.x)
+        print('updated variational parameters:\n{:s}'.format(var_val))
         self.iter += 1
 
         return
@@ -548,7 +531,7 @@ class CDMFT:
                     converged = converged and T
 
             elif C.name == 'parameters':
-                T = C.test(np.copy(self.varia.x))
+                T = C.test(np.copy(self.x))
                 converged = converged and T
 
             elif C.name == 'distance':
@@ -674,7 +657,7 @@ class CDMFT:
         """
 
         ncols = 3
-        nrows = 1+(self.varia.nvar-1)//ncols
+        nrows = 1+(self.varia.nvar_tot-1)//ncols
         fig, ax = plt.subplots(nrows, ncols, sharex=True)
         fig.set_size_inches(24/2.54, nrows*6/2.54)
         niter = self.var_data.shape[1]
@@ -682,7 +665,7 @@ class CDMFT:
             if nrows==1: plt.sca(ax[i])
             else: plt.sca(ax[i//ncols,i%ncols])
             plt.plot(range(self.niter), self.var_data[i,0:niter], 'o-', ms=3, lw=0.5)
-            plt.title(self.var[i])
+            plt.title(self.varia[i])
         plt.savefig('iterations.pdf')
 
 ####################################################################################################
@@ -1264,7 +1247,7 @@ def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_d
             initial_simplex[i, :] = x
         for i in range(nvar):
             initial_simplex[i + 1, i] += initial_step
-        sol = scipy.optimize.minimize(F, x, method='Nelder-Mead', options={'disp':displaymin, 'maxfev':maxfev, 'xatol': accur, 'fatol': accur_dist, 'initial_simplex': initial_simplex, 'adaptive':True, 'disp': True})
+        sol = scipy.optimize.minimize(F, x, method='Nelder-Mead', options={'disp':displaymin, 'maxfev':maxfev, 'xatol': accur, 'fatol': accur_dist, 'initial_simplex': initial_simplex, 'adaptive':True, 'disp': False})
         opt_x, iter_done, success, fun = sol.x, sol.nfev, sol.success, sol.fun
 
     elif method == 'Powell':

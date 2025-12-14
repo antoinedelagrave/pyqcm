@@ -368,7 +368,7 @@ static PyObject *CDMFT_variational_set_python(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &v))
       qcm_throw("failed to read parameters in call to CDMFT_variational_set "
                 "(python)");
-    qcm_model->param_set->CDMFT_variational_set(strings_from_PyList(v));
+    qcm_model->param_set->CDMFT_variational_set(strings_from_DoublePyList(v));
   } catch (const string &s) {
     qcm_catch(s);
   }
@@ -495,13 +495,15 @@ returns : a float
 static PyObject *CDMFT_distance_python(PyObject *self, PyObject *args) {
   PyObject *val = nullptr;
   int label = 0;
+  int clus = 0;
   double d;
+
   try {
-    if (!PyArg_ParseTuple(args, "O|i", &val, &label))
+    if (!PyArg_ParseTuple(args, "Oi|i", &val, &clus, &label))
       qcm_throw(
           "failed to read parameters in call to CPT_Green_function (python)");
     vector<double> _val = doubles_from_Py(val);
-    d = QCM::CDMFT_distance(_val, label);
+    d = QCM::CDMFT_distance(_val, clus, label);
   } catch (const string &s) {
     qcm_catch(s);
   }

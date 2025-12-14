@@ -33,7 +33,7 @@ struct parameter{
 struct parameter_set{
   shared_ptr<lattice_model> model; //!< backtrace to the model
   map<string,shared_ptr<parameter>> param; //!< map of strings to parameters
-  vector<string> CDMFT_variational; //!< list of CDMFT variational parameters
+  vector<vector<string>> CDMFT_variational; //!< list of CDMFT variational parameters (per cluster)
 
   parameter_set();
   parameter_set(shared_ptr<lattice_model> _model, vector<pair<string, double>> values, vector<tuple<string, double, string>> equiv);
@@ -46,7 +46,7 @@ struct parameter_set{
   void copy_from(const vector<double> &x);
   void print(ostream& out);
   bool is_dependent(const string &S);
-  void CDMFT_variational_set(const vector<string>& vars);
+  void CDMFT_variational_set(const vector<vector<string>>& vars);
 
   static bool parameter_set_defined;
 };

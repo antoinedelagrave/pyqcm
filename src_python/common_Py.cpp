@@ -259,6 +259,18 @@ vector<string> strings_from_PyList(PyObject *lst) {
   return out;
 }
 //------------------------------------------------------------------------------
+vector<vector<string>> strings_from_DoublePyList(PyObject *lst) {
+  if (!PySequence_Check(lst))
+    qcm_throw("expected a sequence of sequences of strings");
+  size_t n = PySequence_Size(lst);
+  vector<vector<string>> out(n);
+  for (size_t i = 0; i < n; i++) {
+    PyObject *pkey = PySequence_GetItem(lst, i);
+    out[i] = strings_from_PyList(pkey);
+  }
+  return out;
+}
+//------------------------------------------------------------------------------
 vector<double> doubles_from_Py(PyObject *lst) {
   vector<double> out;
   if (PyArray_Check(lst)) {

@@ -2,6 +2,8 @@ import pyqcm
 import numpy as np
 from model_1D_4 import model
 
+model.complex_pairs = {'t':('t', 'ti')}
+
 pyqcm.set_global_parameter('accur_OP', 1e-8)
 sec = 'R0:S0'
 
@@ -18,8 +20,12 @@ D = 0.5
 It = 0
 Iti = 0
 """.format(np.cos(phase), np.sin(phase)))
-I = pyqcm.model_instance(model)
-ave = I.averages(pr=True)
+
+model.set_parameter('MODt', 2)
 P = model.parameters()
-print('current = ', ave['It']*P['t'] + ave['Iti']*P['ti'] )
+print(P)
+
+I = pyqcm.model_instance(model)
+# ave = I.averages(pr=True)
+# print('current = ', ave['It']*P['t'] + ave['Iti']*P['ti'] )
 

@@ -450,15 +450,16 @@ class lattice_model:
             for p in re.split('[,;\n]', params):
                 if len(p.strip()) == 0:
                     continue
-                if p[0] == '#':
-                    continue
-                s = p.split('=')
+                if p[0] == '#': continue
+                s = p.split('#')
+                s = s[0].split('=')
                 if len(s) != 2:
                     raise ParseError(p)
                 s2 = s[1].split('*')
                 param_name = s[0].strip()
                 if param_name in param_set:
                     raise ParseError('parameter '+param_name+' has already been assigned!')
+                
                 if len(s2)==1:  # no dependence
                     elem = (param_name, float(s[1].strip()))       
                 elif len(s2)==2:
@@ -466,7 +467,8 @@ class lattice_model:
                 else:
                     raise ParseError(p)
                 elems.append(tuple(elem))
-            qcm.set_parameters(elems)
+            try: qcm.set_parameters(elems)
+            except : raise ValueError("cannot set parameters in qcm")
         else:	
             qcm.set_parameters(params)
         
@@ -486,7 +488,6 @@ class lattice_model:
             print('-----> ', name, ' = ', value)
         try:
             if is_sequence(name):
-            # if type(name) == list:
                 assert len(name) == len(value), 'The length of "name" and "value" must be the same in "set_parameter"'
                 for i,x in enumerate(name):
                     qcm.set_parameter(x, value[i])
@@ -688,6 +689,8 @@ class model_instance:
 
     """
     count = 0
+    gen_props = {}
+    print_dependent = False
 
     def __init__(self, model):
         self.label = model_instance.count
@@ -701,8 +704,11 @@ class model_instance:
         self.props['model'] = model.name
         P = model.parameters()
         Pset = model.parameter_set()
-        for x in P:
-            if Pset[x][1] == None: self.props[x] = P[x]
+        if self.print_dependent:
+            for x in P: self.props[x] = P[x]
+        else:
+            for x in P:
+                if Pset[x][1] == None: self.props[x] = P[x]
         self.props['script'] = script_file()
 
         # special solver (the function solver(...) must use I.read() at the end)
@@ -1534,7 +1540,14 @@ class model_instance:
                 val += '{:1.10g}\t'.format(self.props[x])
             else: 
                 val += str(self.props[x]) + '\t'
-        
+
+        for x in sorted(self.gen_props.keys()):
+            des += x + '\t'
+            if type(self.gen_props[x]) == float:
+                val += '{:1.10g}\t'.format(self.gen_props[x])
+            else: 
+                val += str(self.gen_props[x]) + '\t'
+
         first = False
         if f not in self.model.descrpt:
             self.model.descrpt[f] = ''

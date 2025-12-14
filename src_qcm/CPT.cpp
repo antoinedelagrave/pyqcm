@@ -447,40 +447,32 @@ void lattice_model_instance::set_CDMFT_host(const vector<double>& freqs, const i
  @param p values of the variational parameters
  @returns the distance function
  */
-double lattice_model_instance::CDMFT_distance(const vector<double>& p)
+double lattice_model_instance::CDMFT_distance(const vector<double>& p, int clus)
 {
 	double dist = 0.0;
-	for(int i=0; i<model->param_set->CDMFT_variational.size(); i++){
-		model->param_set->set_value(model->param_set->CDMFT_variational[i], p[i]);
+	for(int i=0; i<model->param_set->CDMFT_variational[clus].size(); i++){
+		model->param_set->set_value(model->param_set->CDMFT_variational[clus][i], p[i]);
 	}
 	auto I = lattice_model_instance(model, label+999);
 
 	double dw = CDMFT_freqs[1]-CDMFT_freqs[0];
 	int dim = G_host[0][0].r;
 	
-	#pragma omp parallel for reduction (+:dist)
+	#pragma omp parallel for
 	for(int i=0; i<CDMFT_freqs.size(); i++){
-		double distw = 0.0;
 		Complex w(0.0, CDMFT_freqs[i]);
-		for(int c=0; c<n_clus; c++){
-			auto gamma = I.hybridization_function(c, w, false);
-			gamma.v += G_host[i][c].v;
-			distw += norm2(gamma.v);
-		}
-		dist += distw*CDMFT_weights[i];
+		auto gamma = I.hybridization_function(clus, w, false);
+		gamma.v += G_host[i][clus].v;
+		dist += norm2(gamma.v)*CDMFT_weights[i];
 	}
 
 	if(model->mixing & HS_mixing::up_down){
-		#pragma omp parallel for reduction (+:dist)
+		#pragma omp parallel for
 		for(int i=0; i<CDMFT_freqs.size(); i++){
-			double distw = 0.0;
 			Complex w(0.0, CDMFT_freqs[i]);
-			for(int c=0; c<n_clus; c++){
-				auto gamma = I.hybridization_function(c, w, true);
-				gamma.v += G_host_down[i][c].v;
-				distw += norm(gamma.v);
-			}
-			dist += distw*CDMFT_weights[i];
+			auto gamma = I.hybridization_function(clus, w, true);
+			gamma.v += G_host_down[i][clus].v;
+			dist += norm2(gamma.v)*CDMFT_weights[i];
 		}
 	}
 

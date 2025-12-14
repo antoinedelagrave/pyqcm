@@ -171,6 +171,24 @@ void parameter_set::set_multiplier(const string& name, const double &v)
 }
 
 
+// /**
+//  make the dependent parameter name independent, and its master dependent 
+//  @param name [in] name of parameter
+//  */
+// void parameter_set::switch_dependence(const string& name)
+// {
+//   if(param.find(name) == param.end()) qcm_throw("parameter "+name+" does not exist!");
+//   if(param[name]->ref == nullptr) qcm_throw("parameter "+name+" is already independent!");
+//   param[name]->ref->ref = param[name];
+//   param[name]->ref->multiplier = 1.0/param[name]->multiplier;
+//   param[name]->deref = param[name]->ref->deref;
+//   param[name]->deref.add(param[name]->ref);
+//   param[name]->ref = nullptr;
+//   param[name]->multiplier = 0.0;
+// }
+
+
+
 
 /**
  checks the existence of a parameter name in the parameter_set
@@ -252,11 +270,13 @@ bool parameter_set::is_dependent(const string &S)
 sets the CDMFT variational parameters to vars
 @param vars [in] array of parameter names
 */
-void parameter_set::CDMFT_variational_set(const vector<string>& vars) {
-  for(auto& s : vars){
-    if(param.find(s)==param.end())
-      qcm_throw(s + " is not in the set of parameters: it cannot be a variational parameter.");
-    if(is_dependent(s)) qcm_throw("parameter "+s+" is dependent. Cannot be a variational parameter.");
+void parameter_set::CDMFT_variational_set(const vector<vector<string>>& vars) {
+  for(int c=0; c<vars.size(); c++){
+    for(auto& s : vars[c]){
+      if(param.find(s)==param.end())
+        qcm_throw(s + " is not in the set of parameters: it cannot be a variational parameter.");
+      if(is_dependent(s)) qcm_throw("parameter "+s+" is dependent. Cannot be a variational parameter.");
+    }
   }
   CDMFT_variational = vars;
 }

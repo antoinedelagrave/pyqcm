@@ -32,6 +32,7 @@ vector<complex<double>> complex_array1_from_Py(PyArrayObject *k_pyobj);
 matrix<complex<double>> complex_array2_from_Py(PyArrayObject *k_pyobj);
 vector<matrix<complex<double>>> complex_array3_from_Py(PyArrayObject *k_pyobj);
 vector<string> strings_from_PyList(PyObject *lst);
+vector<vector<string>> strings_from_DoublePyList(PyObject *lst);
 vector<double> doubles_from_Py(PyObject *lst);
 
 map<string, double> py_dict_to_map(PyObject *D);

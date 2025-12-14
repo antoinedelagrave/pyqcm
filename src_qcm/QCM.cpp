@@ -981,7 +981,7 @@ check_instance(label);
     lattice_model_instances.at(label)->Green_function_solve();  
   }
 
-  void CDMFT_variational_set(vector<string>& varia){
+  void CDMFT_variational_set(vector<vector<string>>& varia){
     if(qcm_model->param_set == nullptr) qcm_throw("The parameters have not been specified yet.");
     qcm_model->param_set->CDMFT_variational_set(varia);
   }
@@ -1011,12 +1011,12 @@ check_instance(label);
     return lattice_model_instances.at(label)->get_CDMFT_host(spin_down); 
   }
 
-  double CDMFT_distance(const vector<double>& p, int label)
+  double CDMFT_distance(const vector<double>& p, int clus, int label)
   {
     #ifdef QCM_DEBUG
     check_instance(label);
     #endif
-    return lattice_model_instances.at(label)->CDMFT_distance(p); 
+    return lattice_model_instances.at(label)->CDMFT_distance(p, clus); 
   }
 
   double monopole(vector3D<double>& k, double a, int nk, int orb, bool rec, int label)

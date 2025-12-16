@@ -21,7 +21,6 @@ It = 0
 Iti = 0
 """.format(np.cos(phase), np.sin(phase)))
 
-model.set_parameter('MODt', 2)
 P = model.parameters()
 print(P)
 

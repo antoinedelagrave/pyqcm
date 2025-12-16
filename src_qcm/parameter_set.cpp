@@ -171,24 +171,6 @@ void parameter_set::set_multiplier(const string& name, const double &v)
 }
 
 
-// /**
-//  make the dependent parameter name independent, and its master dependent 
-//  @param name [in] name of parameter
-//  */
-// void parameter_set::switch_dependence(const string& name)
-// {
-//   if(param.find(name) == param.end()) qcm_throw("parameter "+name+" does not exist!");
-//   if(param[name]->ref == nullptr) qcm_throw("parameter "+name+" is already independent!");
-//   param[name]->ref->ref = param[name];
-//   param[name]->ref->multiplier = 1.0/param[name]->multiplier;
-//   param[name]->deref = param[name]->ref->deref;
-//   param[name]->deref.add(param[name]->ref);
-//   param[name]->ref = nullptr;
-//   param[name]->multiplier = 0.0;
-// }
-
-
-
 
 /**
  checks the existence of a parameter name in the parameter_set

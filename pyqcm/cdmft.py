@@ -115,10 +115,9 @@ class variational_set:
     class for the management of CDMFT variational parameters, 
 
     :param [str] bath_var : list of bath parameters names
-    :param [hartree] hartree: mean-field hartree couplings to incorportate in the convergence procedure
     """
 
-    def __init__(self, bath_var, hartree=None):
+    def __init__(self, bath_var):
 
         if len(set(varia)) != len(varia):
             raise ValueError('There are duplicate variational parameters!')
@@ -141,15 +140,6 @@ class variational_set:
             self.transfo = False
             def f(x): return x
         self.f = f
-
-        if pyqcm.is_sequence(hartree) == False and hartree is not None:
-            self.hartree = (hartree,)
-        else: self.hartree = hartree
-        if self.hartree is None:
-            self.hartree = []
-        self.nhartree = len(self.hartree)
-        self.vartot = list(self.var) + [x.Vm for x in self.hartree]
-
 
 
 
@@ -255,6 +245,11 @@ class CDMFT:
 
         #----------- Managing the variational parameters ---------
 
+        if pyqcm.is_sequence(hartree) == False and hartree is not None: self.hartree = (hartree,)
+        else: self.hartree = hartree
+        if self.hartree is None: self.hartree = []
+
+
         var = [[] for i in range(model.nclus+1)]
         for v in varia:
             p = v.partition('_')
@@ -262,6 +257,7 @@ class CDMFT:
                 raise ValueError("{:s} cannot be a CDMFT variational parameter".format(v))
             else: 
                 var[int(p[2])].append(v)
+        var[0] = [h.Vm for h in self.hartree]
         self.nvar = np.zeros(model.nclus+1, int)
         for c in range(model.nclus+1): self.nvar[c] = len(var[c])
 

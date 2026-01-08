@@ -1227,7 +1227,7 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
     :param str file: if not None, saves the plot in a file with that name
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param orb: orbital (or sequence of orbitals) to plot. None for all.
-    :param [str] : colors of the different orbitals
+    :param [str] colors : colors of the different orbitals
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :return: None
 

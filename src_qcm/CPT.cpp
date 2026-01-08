@@ -458,7 +458,7 @@ double lattice_model_instance::CDMFT_distance(const vector<double>& p, int clus)
 	double dw = CDMFT_freqs[1]-CDMFT_freqs[0];
 	int dim = G_host[0][0].r;
 	
-	#pragma omp parallel for
+	#pragma omp parallel for reduction (+:dist)
 	for(int i=0; i<CDMFT_freqs.size(); i++){
 		Complex w(0.0, CDMFT_freqs[i]);
 		auto gamma = I.hybridization_function(clus, w, false);
@@ -467,7 +467,7 @@ double lattice_model_instance::CDMFT_distance(const vector<double>& p, int clus)
 	}
 
 	if(model->mixing & HS_mixing::up_down){
-		#pragma omp parallel for
+		#pragma omp parallel for reduction (+:dist)
 		for(int i=0; i<CDMFT_freqs.size(); i++){
 			Complex w(0.0, CDMFT_freqs[i]);
 			auto gamma = I.hybridization_function(clus, w, true);

@@ -855,8 +855,8 @@ vector<Complex> model_instance<HilbertField>::susceptibility(shared_ptr<Hermitia
       matrix<Complex> g(1);
       for(size_t j=0; j<w.size(); j++){
         g.zero();
-        Q.Green_function(Complex(-w[j].real(),w[j].imag()),g);
-        g.v *= -1.0;
+        // Q.Green_function(Complex(-w[j].real(),w[j].imag()),g);
+        // g.v *= -1.0;
         Q.Green_function(w[j],g);
         chi[j] += gs->weight*g(0,0);
       }

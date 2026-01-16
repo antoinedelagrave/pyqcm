@@ -86,6 +86,7 @@ static PyMethodDef methods[] = {
     {"hybridization_function", hybridization_function_python, METH_VARARGS, hybridization_function_help},
     {"interaction_operator", (PyCFunction)interaction_operator_python, METH_VARARGS | METH_KEYWORDS, interaction_operator_help},
     {"kinetic_energy", kinetic_energy_python, METH_VARARGS, kinetic_energy_help},
+    {"Green_integral", Green_integral_python, METH_VARARGS, Green_integral_help},
     {"lattice_model", lattice_model_python, METH_VARARGS, lattice_model_help},
     {"Lehmann_Green_function", Lehmann_Green_function_python, METH_VARARGS, Lehmann_Green_function_help},
     {"mixing", mixing_python, METH_VARARGS, mixing_help},

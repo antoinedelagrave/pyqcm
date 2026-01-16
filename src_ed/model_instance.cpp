@@ -56,7 +56,7 @@ void model_instance<double>::build_cf(state<double> &Omega, bool spin_down)
         }
       }
 
-      #pragma omp parallel for schedule(dynamic,1)
+      //#pragma omp parallel for
       for(size_t s=0; s< sorb_pair.size(); s++){ // double loop over symmetric operators
         size_t o1 = sorb_pair[s].first;
         size_t o2 = sorb_pair[s].second;
@@ -138,7 +138,7 @@ void model_instance<Complex>::build_cf(state<Complex> &Omega, bool spin_down)
         }
       }
 
-      #pragma omp parallel for schedule(dynamic,1) // TEMPO
+      //#pragma omp parallel for 
       for(size_t s=0; s< sorb_pair.size(); s++){ // single loop over symmetric operators pairs
         size_t o1 = sorb_pair[s].first;
         size_t o2 = sorb_pair[s].second;

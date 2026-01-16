@@ -148,9 +148,8 @@ void continued_fraction_set::Green_function(const Complex &z, block_matrix<Compl
 
 
 /**
- constructs the cluster Green function matrix \a G at frequency \a z
- @param z complex frequency
- @param G Green function matrix (added to)
+ frequency-integrated Green function
+ @param [out] G integrated Green function (adds to previous value)
  */
 void continued_fraction_set::integrated_Green_function(block_matrix<Complex> &G)
 {

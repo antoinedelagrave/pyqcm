@@ -243,7 +243,25 @@ void erase_lattice_model_instance(size_t label){
   }
   
   
+
+
+    /**
+   returns the frequency integral of the local lattice Green function
+   * @param spin_down true if the spin-down sector is covered
+   */
+  matrix<complex<double>> Green_integral(bool spin_down, int clus, int label)
+  {
+    #ifdef QCM_DEBUG
+    check_instance(label);
+    #endif
+    return lattice_model_instances.at(label)->Green_integral(spin_down, clus);
+  }
   
+
+
+
+
+
   /**
    returns the CPT Green function at a given frequency and wavevector
    * @param spin_down true if the spin-down sector is covered

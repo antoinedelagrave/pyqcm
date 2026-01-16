@@ -51,6 +51,7 @@ struct lattice_model_instance{
 	matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down);
 	matrix<complex<double>> cluster_self_energy(size_t i, complex<double> w, bool spin_down);
 	matrix<complex<double>> hybridization_function(size_t i, complex<double> w, bool spin_down);
+	matrix<complex<double>> Green_integral(bool spin_down, int clus);
 	matrix<Complex> epsilon(Green_function_k &M);
 	matrix<Complex> projected_Green_function(Complex w, bool spin_down);
 	matrix<Complex> band_Green_function(Green_function_k &M);

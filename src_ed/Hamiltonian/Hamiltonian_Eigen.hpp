@@ -107,7 +107,7 @@ void Hamiltonian_Eigen<HilbertField>::HS_ops_map(const map<string, double> &valu
         keys.push_back(x.first);
     }
     //construct the Hamiltonian in parallel
-    // #pragma omp parallel for
+    #pragma omp parallel for
     for(size_t i = 0; i < keys.size(); ++i){
         Hermitian_operator& op = *this->the_model->term.at(keys[i]);
         if(op.HS_operator.find(this->sec) == op.HS_operator.end()){

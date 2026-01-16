@@ -358,3 +358,62 @@ matrix<Complex> to_complex_matrix(const matrix<double> &x) {
 	for (size_t i = 0; i < x.v.size(); i++) xc.v[i] = x.v[i];
 	return xc;
 }
+
+/*
+Builds a hermitian complex matrix from a real vector
+**/
+matrix<Complex> hermitian_matrix_from_real_vector(size_t d, const vector<double> &x){
+	matrix<Complex> M(d);
+	size_t k = 0;
+	for(int i = 0; i<d; i++){
+      M(i,i) = x[k++];
+      for(int j = 0; j<i; j++){
+	  	M(i,j) = Complex(x[k++], 0);
+		M(i,j) += Complex(0, x[k++]);
+		M(j,i) = conjugate(M(i,j));
+	  }
+    }
+	return M;
+}
+
+/*
+Populates a real vector from a hermitian complex matrix
+**/
+void hermitian_matrix_to_real_vector(const matrix<Complex> &M, double *x){
+	size_t k = 0;
+	for(int i = 0; i<M.r; i++){
+      x[k++] = M(i,i).real();
+      for(int j = 0; j<i; j++){
+        x[k++] = M(i,j).real();
+        x[k++] = M(i,j).imag();
+      }
+    }
+}
+
+/*
+Builds a complex matrix from a real vector
+**/
+matrix<Complex> matrix_from_real_vector(size_t d, const vector<double> &x){
+	matrix<Complex> M(d);
+	size_t k = 0;
+	for(int i = 0; i<d; i++){
+      for(int j = 0; j<d; j++){
+	  	M(i,j) = Complex(x[k++], 0);
+		M(i,j) += Complex(0, x[k++]);
+	  }
+    }
+	return M;
+}
+
+/*
+Populates a real vector from a complex matrix
+**/
+void matrix_to_real_vector(const matrix<Complex> &M, double *x){
+	size_t k = 0;
+	for(int i = 0; i<M.r; i++){
+      for(int j = 0; j<M.r; j++){
+        x[k++] = M(i,j).real();
+        x[k++] = M(i,j).imag();
+	  }
+    }
+}

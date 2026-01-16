@@ -695,6 +695,22 @@ template <typename T> struct matrix {
   }
 
 
+  /**
+   Replaces the current matrix by its hermitian (symmetric) part
+   */
+  void symmetrize() {
+    for (size_t i = 0; i < r; i++) {
+      for (size_t j = 0; j < i; j++) {
+        (*this)(i, j) = ((*this)(i, j) + conjugate((*this)(j, i))) * 0.5;
+        (*this)(j, i) = conjugate((*this)(i, j));
+      }
+      T z = (*this)(i, i);
+      (*this)(i, i) = 0.5 * (z + conjugate(z));
+    }
+  }
+
+
+
   friend std::istream &operator>>(std::istream &flux, matrix<T> &A) {
     for (size_t i = 0; i < A.r; i++) {
       for (size_t j = 0; j < A.c; j++) flux >> A(i, j);
@@ -727,6 +743,8 @@ template <typename T> struct matrix {
   bool is_orthogonal(double accuracy = 1e-6);
   bool cholesky(matrix<double> &A);
   bool triangular_inverse();
+
+  
   //------------------------------------------------------------------------------
 };
 
@@ -735,5 +753,10 @@ inline matrix<complex<double>> to_complex_matrix(const matrix<complex<double>> &
 {
   return v;
 }
+
+matrix<Complex> hermitian_matrix_from_real_vector(size_t d, const vector<double> &x);
+void hermitian_matrix_to_real_vector(const matrix<Complex> &M, double *x);
+matrix<Complex> matrix_from_real_vector(size_t d, const vector<double> &x);
+void matrix_to_real_vector(const matrix<Complex> &M, double *x);
 
 #endif

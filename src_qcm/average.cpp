@@ -466,3 +466,49 @@ void lattice_model_instance::potential_energy_integrand(Complex w, vector3D<doub
   I[0] = real<double>(e);
 }
 
+
+//==============================================================================
+/** calculates the frequency-integral of the local Green function
+ @param spin_down [in] true if the spin-down sector is desired (mixing = 4 only)
+ @returns an average complex-valued matrix 
+ */
+matrix<complex<double>> lattice_model_instance::Green_integral(bool spin_down, int clus)
+{
+  size_t dim;
+  if(clus) dim = model->GF_dims[clus-1];
+  else dim = model->dim_GF;
+  double accur_OP = global_double("accur_OP");
+  auto Fmp = [this, dim, spin_down] (Complex w, vector3D<double> &ki, const int *nv, double *I) mutable {
+    const double w_offset = 2.0;
+    Complex G_pole = 1.0/(w - w_offset);
+    G_pole += conjugate(G_pole);
+	  matrix<Complex> Gloc = projected_Green_function(w, spin_down);
+    Gloc.symmetrize();
+    Gloc.v *= 2.0;
+    Gloc.add(-G_pole);
+    for(size_t i = 0 ; i<*nv; i++) I[i] = 0.0;
+    // matrix_to_real_vector(Gloc, I);
+    hermitian_matrix_to_real_vector(Gloc, I);
+    // cout << "---> " << I[0] << '\t' << I[*nv-1] << endl; // TEMPO
+  };
+  auto Fmp_clus = [this, dim, spin_down] (Complex w, vector3D<double> &ki, const int *nv, double *I) mutable {
+    const double w_offset = 2.0;
+    Complex G_pole = 1.0/(w - w_offset);
+    G_pole += conjugate(G_pole);
+	  matrix<Complex> Gloc = cluster_Green_function(0, w, spin_down, false);
+    Gloc.symmetrize();
+    Gloc.v *= 2.0;
+    Gloc.add(-G_pole);
+    for(size_t i = 0 ; i<*nv; i++) I[i] = 0.0;
+    hermitian_matrix_to_real_vector(Gloc, I);
+    // cout << "---> " << I[0] << '\t' << I[*nv-1] << endl; // TEMPO
+  };
+
+  vector<double> A(dim*dim, 0.0);
+  if(clus) QCM::wk_integral(0, Fmp_clus, A, accur_OP, global_bool("verb_integrals"));
+  else QCM::wk_integral(0, Fmp, A, accur_OP, global_bool("verb_integrals"));
+  if(model->mixing == HS_mixing::normal) A *= 2;
+  else if(model->mixing == HS_mixing::full) {A *= 0.5;}
+  return hermitian_matrix_from_real_vector(dim, A);
+}
+

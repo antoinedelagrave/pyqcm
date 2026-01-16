@@ -1032,6 +1032,19 @@ class model_instance:
         return qcm.CPT_Green_function_inverse(z, k, spin_down, self.label)
 
     #-----------------------------------------------------------------------------------------------
+    def Green_integral(self, spin_down=False, clus=0):
+        """
+        Computes the frequency-integrated Green function
+
+        :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
+        :param int clus: label of the cluster (starts at 1). If clus > 0, integrates the cluster Green function for cluster 'clus'. If clus = 0, then computes the integral over frequencies of the momentum-integrated CPT Green function. The momentum integration is done on the same regular grid as in CDMFT, as set by the global parameter "kgrid_side".
+        :return: a complex-valued matrix
+        
+        """
+        
+        return qcm.Green_integral(spin_down, clus, self.label)
+
+    #-----------------------------------------------------------------------------------------------
     def dispersion(self, k, spin_down=False, label=0):
         """
         Computes the dispersion relation for a single or an array of wavevectors

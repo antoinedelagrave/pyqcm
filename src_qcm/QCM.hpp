@@ -47,6 +47,7 @@ namespace QCM{
   matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down, int label);
   matrix<complex<double>> CPT_Green_function(const complex<double> w, const vector3D<double> &k, bool spin_down, int label);
   matrix<complex<double>> hybridization_function(complex<double> w, bool spin_down, size_t i, int label);
+  matrix<complex<double>> Green_integral(bool spin_down, int clus, int label);
   matrix<complex<double>> periodized_Green_function(const complex<double> w, const vector3D<double> &k, bool spin_down, int label);
   matrix<complex<double>> band_Green_function(const complex<double> w, const vector3D<double> &k, bool spin_down, int label);
   matrix<complex<double>> projected_Green_function(const complex<double> w, bool spin_down, int label);

@@ -555,7 +555,7 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
   auto LKUP = &look_up_table;
   if(spin_down) LKUP = &look_up_table_down;
   matrix<Complex> G_recycled;
-  #pragma omp critical (looking_up)
+  //#pragma omp critical (looking_up)
   for(auto &x: *LKUP){
     if(abs(z - x.first) < MIDDLE_VALUE){
       // cout << "recycling G for z = " << z << " and x.first = " << x.first << "  G(0,0) = " << x.second(0,0) << endl;
@@ -570,7 +570,7 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
 #endif 
   STATS.n_GF_computed += 1;
 
-  #pragma omp master
+  //#pragma omp master
   {
     if(spin_down and !(mixing&HS_mixing::up_down or mixing==0))
       qcm_ED_throw("spin_down=True impossible with Hilbert space mixing "+to_string(mixing));
@@ -609,7 +609,7 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
   }
   
 #ifdef LOOK_UP
-  #pragma omp critical (looking_up)
+  //#pragma omp critical (looking_up)
   {
     pair<Complex, matrix<Complex>> P(z,G);
     LKUP->push_front(P);
@@ -710,7 +710,7 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
   int ns = 2*sym_orb.size();
   if(global_bool("parallel_sectors")){
     if(global_bool("verb_ED")) cout << "openMP parallelization of Green function computation..." << endl;
-    #pragma omp parallel for schedule(dynamic,1) // TEMPO
+    #pragma omp parallel for
     for(int s=0; s< ns; s++){
       int r = s/2;
       int pm = 2*(s%2)-1;

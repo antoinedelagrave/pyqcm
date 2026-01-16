@@ -329,6 +329,45 @@ static PyObject *cluster_hopping_matrix_python(PyObject *self, PyObject *args) {
   return out;
 }
 
+
+//==============================================================================
+const char *Green_integral_help =
+    R"{(
+returns the frequency integral of the local lattice Green function
+arguments:
+1. spin_down (optional): true is the spin down sector is to be computed (applies if mixing = 4)
+2. label (optional) :  label of the model instance (default 0)
+returns: a complex-valued matrix
+){";
+//------------------------------------------------------------------------------
+static PyObject *Green_integral_python(PyObject *self, PyObject *args) {
+  int label = 0;
+  int spin_down = 0;
+  int clus = 0;
+  PyObject *out;
+
+  try {
+    if (!PyArg_ParseTuple(args, "|iii", &spin_down, &clus, &label))
+      qcm_throw("failed to read parameters in call to Green_integral "
+                "(python)");
+
+    auto g = QCM::Green_integral((bool)spin_down, clus, label);
+
+    size_t d = g.r;
+
+    npy_intp dims[2];
+    dims[0] = dims[1] = d;
+
+    out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
+    memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
+           g.size() * sizeof(complex<double>));
+    PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
+  } catch (const string &s) {
+    qcm_catch(s);
+  }
+  return out;
+}
+
 //==============================================================================
 const char *cluster_info_help =
     R"(

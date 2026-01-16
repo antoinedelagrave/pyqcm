@@ -112,7 +112,8 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 	int cuba_mineval, cuba_maxpoints;
   cuba_threads = omp_get_max_threads();
 	
-	if(verb) cout << "CUBA integration (" << cuba_threads << " threads)" << endl;
+	if(verb && ndim>1) cout << "CUBA integration (" << cuba_threads << " threads)" << endl;
+	if(verb && ndim==1) cout << "Gauss-Kronrod integration" << endl;
 
 	int ncomp = (int)Iv.size();
 	vector<double> value(ncomp,0);
@@ -121,6 +122,8 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 	
 	wk_integrand = f; // sets the file-wide pointer to the integrand
 
+	cuba_mineval=128;
+	cuba_maxpoints=10000;
 	if(ndim==2){
 		cuba_mineval=(int)global_int("cuba2D_mineval");
 		cuba_maxpoints=100000;
@@ -150,11 +153,13 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 	double fac = w_domain*M_1_PI;
 	auto t1 = std::chrono::high_resolution_clock::now();
 	if(ndim==1){
-		gauss_kronrod(ncomp, low_freq_cuba_integrand, 0, 1, accur, value.data(), false, neval);
+		gauss_kronrod(ncomp, low_freq_cuba_integrand, 0, 1, accur, value.data(), true, neval);
 	}
 	else{
 		Cuhre(ndim, ncomp, (integrand_t)low_freq_cuba_integrand, nullptr, MAX_EVAL_PER_CORE*cuba_threads, 1e-10, accur, CUBA_FLAG, cuba_mineval, cuba_maxpoints, 0, "", nullptr, &nregions, &neval, &fail, value.data(), err.data(), prob.data());
+		if(fail) qcm_throw("error in Cuhre integral : fail = "+to_string<int>(fail));
 	}
+
 	auto t2 = std::chrono::high_resolution_clock::now();
 	double seconds = (double) std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() / 1000;
 	if(verb) cout << "region 1 : " << neval << " evaluations in " << seconds << " seconds" << endl;
@@ -172,10 +177,11 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 
 	t1 = std::chrono::high_resolution_clock::now();
 	if(ndim==1){
-		gauss_kronrod(ncomp, mid_freq_cuba_integrand, 0, 1, accur, value.data(), false, neval);
+		gauss_kronrod(ncomp, mid_freq_cuba_integrand, 0, 1, accur, value.data(), true, neval);
 	}
 	else{
 		Cuhre(ndim, ncomp, (integrand_t)mid_freq_cuba_integrand, nullptr, MAX_EVAL_PER_CORE*cuba_threads, 1e-10, accur, CUBA_FLAG, cuba_mineval, cuba_maxpoints, 0, "", nullptr, &nregions, &neval, &fail, value.data(), err.data(), prob.data());
+		if(fail) qcm_throw("error in Cuhre integral : fail = "+to_string<int>(fail));
 	}
 	t2 = std::chrono::high_resolution_clock::now();
 	seconds = (double) std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() / 1000;
@@ -187,23 +193,24 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 	// third region : inverse frequencies below 1/large_scale
   
 	neval=0;
-  w_domain = 1.0/large_scale;
-  accur = accuracy*M_PI/w_domain;
-  fac = w_domain*M_1_PI;
-  to_zero(value);
+	w_domain = 1.0/large_scale;
+	accur = accuracy*M_PI/w_domain;
+	fac = w_domain*M_1_PI;
+	to_zero(value);
   
 	t1 = std::chrono::high_resolution_clock::now();
   if(ndim==1){
-    gauss_kronrod(ncomp, high_freq_cuba_integrand, 0, 1, accur, value.data(), false, neval);
+    gauss_kronrod(ncomp, high_freq_cuba_integrand, 0, 1, accur, value.data(), true, neval);
   }
   else{
     Cuhre(ndim, ncomp, (integrand_t)high_freq_cuba_integrand, nullptr, MAX_EVAL_PER_CORE*cuba_threads, 1e-10, accur, CUBA_FLAG, cuba_mineval, cuba_maxpoints, 0, "", nullptr, &nregions, &neval, &fail, value.data(), err.data(), prob.data());
+	if(fail) qcm_throw("error in Cuhre integral : fail = "+to_string<int>(fail));
   }
 	t2 = std::chrono::high_resolution_clock::now();
 	seconds = (double) std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() / 1000;
-  if(verb) cout << "region 3 : " << neval << " evaluations in " << seconds << " seconds" << endl;
+    if(verb) cout << "region 3 : " << neval << " evaluations in " << seconds << " seconds" << endl;
 
-  for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
+    for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
 }
 
 
@@ -235,8 +242,11 @@ void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv,
   
   k_integrand = f;
   
-	auto t1 = std::chrono::high_resolution_clock::now();
-  if(dim==1) gauss_kronrod(ncomp, k_cuba_integrand, 0.0, 1.0, accur, value.data(), true, neval);
+  auto t1 = std::chrono::high_resolution_clock::now();
+  if(dim==1){
+  	gauss_kronrod(ncomp, k_cuba_integrand, 0.0, 1.0, accur, value.data(), true, neval);
+	if(verb) cout << "gauss_kronrod  : " << neval << " points" << endl;
+  }
   else{
     vector<double> prob(ncomp,0);
     if(dim==2){
@@ -255,69 +265,6 @@ void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv,
   for(int i=0; i<ncomp; ++i) Iv[i] += value[i];
 }
 
-
-/**
- Performs an integral over frequencies and wavevectors
- Uses the CUBA library
- Actually computes $\int {dw\over\pi}_0^\infty  \int {d^3k\over (2\pi)^3} f(iw)
- @param dim spatial dimension (1 to 3)
- @param f		function to integrate (may be multi-component)
- @param Iv	value of the integral (adds to previous value: must be properlyl initialized)
- @param accuracy		required absolute accuracy of the integral
- */
-void ED::w_integral(function<void (Complex w, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb)
-{
-	int ncomp = (int)Iv.size();
-	vector<double> value(ncomp,0);
-	vector<double> err(ncomp,0);
-	vector<double> prob(ncomp,0);
-	
-	w_integrand = f; // sets the file-wide pointer to the integrand
-
-	int nregions, fail;
-  
-  small_scale = global_double("small_scale");
-  large_scale = global_double("large_scale");
-  double cutoff_scale = global_double("cutoff_scale");
-  iw_cutoff = 1.0/cutoff_scale;
-
-	//------------------------------------------------------------------------------
-	// first region : frequencies below small_scale
-	
-	w_domain = small_scale;
-	double accur = accuracy*M_PI/w_domain;
-	double fac = w_domain*M_1_PI;
-  int neval=0;
-	gauss_kronrod(ncomp, low_freq_w_integrand, 0, 1, accur, value.data(), false, neval);
-	if(verb) cout << "region 1 : " << neval << " evaluations" << endl;
-	for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
-	
-	//------------------------------------------------------------------------------
-	// second region : frequencies between small_scale and large_scale
-	
-	w_domain = large_scale-small_scale;
-	accur = accuracy*M_PI/w_domain;
-	fac = w_domain*M_1_PI;
-  to_zero(value);
-  neval=0;
-
-	gauss_kronrod(ncomp, mid_freq_w_integrand, 0, 1, accur, value.data(), false, neval);
-	if(verb) cout << "region 2 : " << neval << " evaluations" << endl;
-	for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
-	
-	//------------------------------------------------------------------------------
-	// third region : inverse frequencies below 1/large_scale
-  
-  neval=0;
-  w_domain = 1.0/large_scale;
-  accur = accuracy*M_PI/w_domain;
-  fac = w_domain*M_1_PI;
-  to_zero(value);
-  
-  gauss_kronrod(ncomp, high_freq_w_integrand, 0, 1, accur, value.data(), false, neval);
-  if(verb) cout << "region 3 : " << neval << " evaluations" << endl;
-  for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
-}
 
 //******************************************************************************
 // THE ROUTINES BELOW THIS LINE ARE FOR INTERNAL USE TO THIS FILE ONLY
@@ -672,7 +619,6 @@ struct GK_region{
 			k = j+7;
 			for(int i=0; i<ncomp; ++i) integral_K[i] +=  GK_w[j]*v[i+k*ncomp];
 		}
-		
 		for(int i=0; i<ncomp; ++i){
 			integral_G[i] *= (b-a)*0.5;
 			integral_K[i] *= (b-a)*0.5;
@@ -732,6 +678,7 @@ void gauss_kronrod(const int ncomp, integrand_t_vec integrand, double a, double 
 	double L = (b-a)/min_regions;
 	for(size_t i=0; i<min_regions; i++){
 		regions.insert(GK_region(a+i*L,a+(i+1)*L, integrand));
+		neval+=15;
 	}
 	
 	// then iterate until the total error fits into the bounds
@@ -740,7 +687,6 @@ void gauss_kronrod(const int ncomp, integrand_t_vec integrand, double a, double 
 		double total_error = 0.0;
 		for(auto& x : regions) total_error += x.err*x.err;
 		total_error = sqrt(total_error);
-		
 		if(total_error < accur or regions.size() > max_regions) break;
 		
 		// subdivide the regions with the largest error
@@ -748,8 +694,8 @@ void gauss_kronrod(const int ncomp, integrand_t_vec integrand, double a, double 
 		double ap = it->a;
 		double bp = it->b;
 		regions.erase(it);
-		regions.insert(GK_region(ap, 0.5*(ap+bp), integrand)); neval++;
-		regions.insert(GK_region(0.5*(ap+bp), bp, integrand)); neval++;
+		regions.insert(GK_region(ap, 0.5*(ap+bp), integrand)); neval+=15;
+		regions.insert(GK_region(0.5*(ap+bp), bp, integrand)); neval+=15;
 	}
 	
 	for(auto& x : regions){

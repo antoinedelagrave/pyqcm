@@ -169,7 +169,7 @@ void Q_matrix<HilbertField>::Green_function(const Complex &z, matrix<Complex> &G
 
 
 /**
- integrated Green function evaluation
+ frequency-integrated Green function
  @param [out] G integrated Green function (adds to previous value)
  */
 template<typename HilbertField>

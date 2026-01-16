@@ -298,7 +298,6 @@ namespace ED{
   pair<vector<double>, vector<complex<double>>> hybridization(bool spin_down, const size_t label);
 
 
-  void w_integral(function<void (Complex w, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb=false);
 
   /**
   writes a string (output) of the ground state wavefunction, is dimension is small enough

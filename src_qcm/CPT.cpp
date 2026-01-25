@@ -321,6 +321,7 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 			}
 		}
 	}
+	else return;
 
 	// #pragma omp parallel for
 	if(global_bool("verb_ED")) cout << "Building host function" << endl;

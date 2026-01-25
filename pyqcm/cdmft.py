@@ -110,38 +110,6 @@ class convergence_manager:
         print(S, flush=True)
 
 
-class variational_set:
-    """
-    class for the management of CDMFT variational parameters, 
-
-    :param [str] bath_var : list of bath parameters names
-    """
-
-    def __init__(self, bath_var):
-
-        if len(set(varia)) != len(varia):
-            raise ValueError('There are duplicate variational parameters!')
-
-
-        self.bath_var = bath_var
-        self.var = var
-        if var is None: 
-            self.var = bath_var
-        else:
-            intersec = set(bath_var).intersection(set(var))
-            if len(intersec) > 0 :
-                print('\nWARNING : the set of variational parameters has a non empty intersection with the set of bath parameters. Please check names to make sure this is the desired behavior.\nIntersection : ', intersec)
-        self.nvar = len(self.var)
-        if self.nvar > len(self.bath_var):
-            raise ValueError("The number of variational parameters cannot be greater than the number of independent bath parameters")
-        self.x = x
-        self.transfo = True
-        if f is None:
-            self.transfo = False
-            def f(x): return x
-        self.f = f
-
-
 
 class CDMFT:
     """

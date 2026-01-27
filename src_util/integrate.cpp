@@ -287,7 +287,7 @@ int low_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
   //wk_integrand = (function<void (Complex w, vector3D<double> &k, const int *nv, double I[])>) userdata;
   
   if(*dim==1){
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
     for(int i=0; i< *nvec; i++){
       Complex w(0,x[i]*w_domain);
       vector3D<double> k(0.0,0.0,0.0);
@@ -296,7 +296,7 @@ int low_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
   }
 
   else if(*dim==2){
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
 		for(int i=0; i< *nvec; i++){
 			Complex w(0,x[2*i]*w_domain);
 			vector3D<double> k(x[2*i+1],0.0,0.0);
@@ -305,7 +305,7 @@ int low_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
 	}
 	
 	else if(*dim==3){
-    #pragma omp parallel for
+    //#pragma omp parallel for
 		for(int i=0; i< *nvec; i++){
 			Complex w(0,x[3*i]*w_domain);
 			vector3D<double> k(x[3*i+1],x[3*i+2],0.0);
@@ -314,7 +314,7 @@ int low_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
 	}
 	
 	else if(*dim==4){
-    #pragma omp parallel for
+    //#pragma omp parallel for
 		for(int i=0; i< *nvec; i++){
 			Complex w(0,x[4*i]*w_domain);
 			vector3D<double> k(x[4*i+1],x[4*i+2],x[4*i+3]);
@@ -336,7 +336,7 @@ int low_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
 int mid_freq_cuba_integrand(const int *dim, const double x[], const int *nv, double I[],void *userdata, const int *nvec, const int *core)
 {
   if(*dim==1){
-  #pragma omp parallel for
+  //#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       Complex w(0,x[i]*w_domain+small_scale);
       vector3D<double> k(0.0,0.0,0.0);
@@ -345,7 +345,7 @@ int mid_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
   }
 
   else if(*dim==2){
-    #pragma omp parallel for
+    //#pragma omp parallel for
 		for(int i=0; i< *nvec; i++){
 			Complex w(0,x[2*i]*w_domain+small_scale);
 			vector3D<double> k(x[2*i+1],0.0,0.0);
@@ -354,7 +354,7 @@ int mid_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
 	}
 	
 	else if(*dim==3){
-    #pragma omp parallel for
+    //#pragma omp parallel for
 		for(int i=0; i< *nvec; i++){
 			Complex w(0,x[3*i]*w_domain+small_scale);
 			vector3D<double> k(x[3*i+1],x[3*i+2],0.0);
@@ -363,7 +363,7 @@ int mid_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
 	}
 	
 	else if(*dim==4){
-    #pragma omp parallel for
+    //#pragma omp parallel for
 		for(int i=0; i< *nvec; i++){
 			Complex w(0,x[4*i]*w_domain+small_scale);
 			vector3D<double> k(x[4*i+1],x[4*i+2],x[4*i+3]);
@@ -386,7 +386,7 @@ int mid_freq_cuba_integrand(const int *dim, const double x[], const int *nv, dou
 int high_freq_cuba_integrand(const int *dim, const double x[], const int *nv, double I[], void *userdata, const int *nvec, const int *core){
   
   if(*dim==1){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       double iw = x[i]*w_domain;
       if(iw < iw_cutoff){
@@ -402,7 +402,7 @@ int high_freq_cuba_integrand(const int *dim, const double x[], const int *nv, do
   }
   
   else if(*dim==2){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       double iw = x[2*i]*w_domain;
       if(iw < iw_cutoff){
@@ -418,7 +418,7 @@ int high_freq_cuba_integrand(const int *dim, const double x[], const int *nv, do
   }
   
   else if(*dim==3){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       double iw = x[3*i]*w_domain;
       if(iw < iw_cutoff){
@@ -434,7 +434,7 @@ int high_freq_cuba_integrand(const int *dim, const double x[], const int *nv, do
   }
   
   else if(*dim==4){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       double iw = x[4*i]*w_domain;
       if(iw < iw_cutoff){
@@ -459,21 +459,21 @@ int high_freq_cuba_integrand(const int *dim, const double x[], const int *nv, do
 int k_cuba_integrand(const int *dim, const double x[], const int *nv, double I[], void *userdata, const int *nvec, const int *core){
   
   if(*dim==1){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       vector3D<double> k(x[i],0.0,0.0);
       k_integrand(k,nv,&I[(*nv)*i]);
     }
   }
   else if(*dim==2){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       vector3D<double> k(x[2*i],x[2*i+1],0.0);
       k_integrand(k,nv,&I[(*nv)*i]);
     }
   }
   else if(*dim==3){
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i< *nvec; i++){
       vector3D<double> k(x[3*i],x[3*i+1],x[3*i+2]);
       k_integrand(k,nv,&I[(*nv)*i]);
@@ -496,7 +496,7 @@ int k_cuba_integrand(const int *dim, const double x[], const int *nv, double I[]
 
 int low_freq_w_integrand(const int *dim, const double x[], const int *nv, double I[],void *userdata, const int *nvec, const int *core)
 {
-	#pragma omp parallel for
+	//#pragma omp parallel for
 	for(int i=0; i< *nvec; i++){
 		Complex w(0,x[i]*w_domain);
 		w_integrand(w,nv,&I[(*nv)*i]);
@@ -512,7 +512,7 @@ int low_freq_w_integrand(const int *dim, const double x[], const int *nv, double
  */
 int mid_freq_w_integrand(const int *dim, const double x[], const int *nv, double I[],void *userdata, const int *nvec, const int *core)
 {
-  #pragma omp parallel for
+  //#pragma omp parallel for
 	for(int i=0; i< *nvec; i++){
 		Complex w(0,x[i]*w_domain+small_scale);
 		w_integrand(w,nv,&I[(*nv)*i]);
@@ -530,7 +530,7 @@ int mid_freq_w_integrand(const int *dim, const double x[], const int *nv, double
  */
 int high_freq_w_integrand(const int *dim, const double x[], const int *nv, double I[], void *userdata, const int *nvec, const int *core){
   
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i=0; i< *nvec; i++){
 		double iw = x[i]*w_domain;
 		if(iw < iw_cutoff){

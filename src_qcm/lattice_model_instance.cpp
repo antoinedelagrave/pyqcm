@@ -215,12 +215,12 @@ matrix<complex<double>> lattice_model_instance::cluster_Green_function(size_t i,
   if(i >= model->clusters.size()) qcm_throw("cluster label out of range");
   if(!gf_solved) Green_function_solve();
   int I = n_clus*label+model->clusters[i].ref;
+  if(model->clusters[i].conj) w = conjugate(w);
   matrix<Complex> g = ED::Green_function(w, spin_down, I, blocks);
+  if(model->clusters[i].conj) g.cconjugate();
   matrix<Complex> G;
   int mix = model->clusters[i].mixing;
-  if(model->mixing == mix){
-    return g;
-  }
+  if(model->mixing == mix) return g;
 
   // combinaisons 0:2, 0:4, 1:3, 1:5
   else if(((model->mixing&1) == 0 and (mix&1) == 0) or ((model->mixing&1)==1 and (mix&1)==1)) {
@@ -229,6 +229,7 @@ matrix<complex<double>> lattice_model_instance::cluster_Green_function(size_t i,
   // combinaisons 0:1, 0:3, 0:5, 2:3
   else if((model->mixing&1) == 1 and (mix&1) == 0){
     auto gm = ED::Green_function(-w, false, I, false);
+    if(model->clusters[i].conj) gm.cconjugate();
     G = upgrade_cluster_matrix_anomalous(model->mixing, mix, g, gm);
   }
   else{
@@ -250,7 +251,9 @@ matrix<complex<double>> lattice_model_instance::cluster_self_energy(size_t i, co
   if(i >= model->clusters.size()) qcm_throw("cluster label out of range");
   if(!gf_solved) Green_function_solve();
   int I = n_clus*label+model->clusters[i].ref;
+  if(model->clusters[i].conj) w = conjugate(w);
   matrix<Complex> g = ED::self_energy(w, spin_down, I);
+  if(model->clusters[i].conj) g.cconjugate();
   int mix = model->clusters[i].mixing;
   if(model->mixing == mix) return g;
 
@@ -261,6 +264,7 @@ matrix<complex<double>> lattice_model_instance::cluster_self_energy(size_t i, co
   // combinaisons 0:1, 0:3, 0:5, 2:3
   else if((model->mixing&1) == 1 and (mix&1) == 0){
     auto gm = ED::self_energy(-w, false, I);
+    if(model->clusters[i].conj) gm.cconjugate();
     return upgrade_cluster_matrix_anomalous(model->mixing, mix, g, gm);
   }
   else{
@@ -282,7 +286,9 @@ matrix<complex<double>> lattice_model_instance::hybridization_function(size_t i,
 {
   if(i >= model->clusters.size()) qcm_throw("cluster label out of range");
   int I = n_clus*label+model->clusters[i].ref;
+  if(model->clusters[i].conj) w = conjugate(w);
   matrix<Complex> g = ED::hybridization_function(w, spin_down, I);
+  if(model->clusters[i].conj) g.cconjugate();
   int mix = model->clusters[i].mixing;
   if(model->mixing == mix) return g;
 
@@ -293,6 +299,7 @@ matrix<complex<double>> lattice_model_instance::hybridization_function(size_t i,
   // combinaisons 0:1, 0:3, 0:5, 2:3
   else if((model->mixing&1) == 1 and (mix&1) == 0){
     auto gm = ED::hybridization_function(-w, false, I);
+    if(model->clusters[i].conj) gm.cconjugate();
     return upgrade_cluster_matrix_anomalous(model->mixing, mix, g, gm);
   }
   else{
@@ -315,6 +322,7 @@ matrix<complex<double>> lattice_model_instance::cluster_hopping_matrix(size_t i,
   if(i >= model->clusters.size()) qcm_throw("cluster label out of range");
   int I = n_clus*label+model->clusters[i].ref;
   matrix<Complex> g = ED::hopping_matrix(spin_down, I);
+  if(model->clusters[i].conj) g.cconjugate();
   int mix = model->clusters[i].mixing;
 
   if(model->mixing == mix) return g;
@@ -345,8 +353,7 @@ void lattice_model_instance::cluster_self_energy(Green_function& G)
   if(!gf_solved) Green_function_solve();
 	G.sigma.block.assign(n_clus, matrix<Complex>());
   for(size_t i = 0; i<n_clus; i++){
-    auto I = model->clusters[i].ref;
-    auto S =  cluster_self_energy(I, G.w, G.spin_down);
+    auto S = cluster_self_energy(i, G.w, G.spin_down);
     G.sigma.block[i].assign(S);
   }
   G.sigma.set_size();
@@ -370,15 +377,13 @@ Green_function lattice_model_instance::cluster_Green_function(Complex w, bool si
 	G.G.block.resize(n_clus);
 
   for(size_t i = 0; i<n_clus; i++){
-    auto I = model->clusters[i].ref;
-    G.G.block[i].assign(cluster_Green_function(I, w, spin_down, false));
+    G.G.block[i].assign(cluster_Green_function(i, w, spin_down, false));
   }
   G.G.set_size();
   if(sig){
     G.sigma.block.resize(n_clus);
     for(size_t i = 0; i<n_clus; i++){
-      auto I = model->clusters[i].ref;
-      G.sigma.block[i].assign(cluster_self_energy(I, w, spin_down));
+      G.sigma.block[i].assign(cluster_self_energy(i, w, spin_down));
     }
     G.sigma.set_size();
   }
@@ -386,8 +391,7 @@ Green_function lattice_model_instance::cluster_Green_function(Complex w, bool si
   if(model->bath_exists){
     G.gamma.block.resize(n_clus);
     for(size_t i = 0; i<n_clus; i++){
-      auto I = model->clusters[i].ref;
-      G.gamma.block[i].assign(hybridization_function(I, w, spin_down));
+      G.gamma.block[i].assign(hybridization_function(i, w, spin_down));
     }
     G.gamma.set_size();
   }
@@ -442,9 +446,6 @@ double lattice_model_instance::Potthoff_functional()
     omega_trace *= 0.5;
   }
   omega = omega_trace - omega_diag + omega_clus;
-  // cout << "omega_trace = " << omega_trace << endl;
-  // cout << "omega_diag = " << omega_diag << endl;
-  // cout << "omega_clus = " << omega_clus << endl;
 
   //-------------------------------------------------------------------------------
 	// We want the energy density (or per atom), so we divide by the number of cluster orbitals

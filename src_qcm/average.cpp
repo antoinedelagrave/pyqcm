@@ -260,7 +260,12 @@ double lattice_model_instance::spectral_average(const string& name, const comple
     G_down.spin_down = true;
     G_down.G.block.assign(n_clus, matrix<Complex>());
     for(size_t i = 0; i<n_clus; i++){
-      G_down.G.block[i] = matrix<Complex>(model->GF_dims[i], ED::Green_function(w, true, n_clus*label+model->clusters[i].ref, false));
+      if(model->clusters[i].conj){
+        G_down.G.block[i] = matrix<Complex>(model->GF_dims[i], ED::Green_function(conjugate(w), true, n_clus*label+model->clusters[i].ref, false));
+        G_down.G.block[i].cconjugate();
+      }
+      else
+        G_down.G.block[i] = matrix<Complex>(model->GF_dims[i], ED::Green_function(w, true, n_clus*label+model->clusters[i].ref, false));
     }
     G_down.G.set_size();
     

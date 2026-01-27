@@ -53,13 +53,13 @@ static PyObject *add_cluster_python(PyObject *self, PyObject *args) {
   PyArrayObject *pos_pyobj = nullptr;
   PyArrayObject *cpos_pyobj = nullptr;
   int ref = 0;
+  int conj = 0;
 
   try {
-    if (!PyArg_ParseTuple(args, "sOO|i", &s1, &cpos_pyobj, &pos_pyobj, &ref))
-      qcm_throw("failed to read parameters in call to lattice_model (python)");
+    if (!PyArg_ParseTuple(args, "sOO|ii", &s1, &cpos_pyobj, &pos_pyobj, &ref, &conj))
+      qcm_throw("failed to read parameters in call to add_cluster (python)");
 
-    QCM::add_cluster(string(s1), intvector_from_Py(cpos_pyobj),
-                     many_intvectors_from_Py(pos_pyobj), ref);
+    QCM::add_cluster(string(s1), intvector_from_Py(cpos_pyobj), many_intvectors_from_Py(pos_pyobj), ref, conj);
   } catch (const string &s) {
     qcm_catch(s);
   }
@@ -1054,14 +1054,16 @@ static PyObject *model_size_python(PyObject *self, PyObject *args) {
   PyObject *elem = PyTuple_New(qcm_model->clusters.size());
   PyObject *bath = PyTuple_New(qcm_model->clusters.size());
   PyObject *ref = PyTuple_New(qcm_model->clusters.size());
+  PyObject *conj = PyTuple_New(qcm_model->clusters.size());
   for (int i = 0; i < qcm_model->clusters.size(); i++) {
     auto s = ED::model_size(qcm_model->clusters[i].name);
     PyTuple_SetItem(elem, i, Py_BuildValue("i", get<0>(s)));
     PyTuple_SetItem(bath, i, Py_BuildValue("i", get<1>(s)));
     PyTuple_SetItem(ref, i, Py_BuildValue("i", qcm_model->clusters[i].ref));
+    PyTuple_SetItem(ref, i, Py_BuildValue("i", qcm_model->clusters[i].conj));
   }
-  return Py_BuildValue("iiOOO", qcm_model->sites.size(), qcm_model->n_band,
-                       elem, bath, ref);
+  return Py_BuildValue("iiOOOO", qcm_model->sites.size(), qcm_model->n_band,
+                       elem, bath, ref, conj);
 }
 
 //==============================================================================
@@ -1921,7 +1923,7 @@ static PyObject *set_basis_python(PyObject *self, PyObject *args) {
 
   try {
     if (!PyArg_ParseTuple(args, "O", &basis_pyobj))
-      qcm_throw("failed to read parameters in call to lattice_model (python)");
+      qcm_throw("failed to read parameters in call to set_basis (python)");
 
     vector<double> basis = vectors_from_Py(basis_pyobj);
     QCM::set_basis(basis);

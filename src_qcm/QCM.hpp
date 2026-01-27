@@ -72,7 +72,7 @@ namespace QCM{
   vector<tuple<string, int, int, int, int>> cluster_info();
   vector<vector<double>> dispersion(const vector<vector3D<double>> &k, bool spin_down, int label);
   vector<matrix<Complex>> epsilon(const vector<vector3D<double>> &k, bool spin_down, int label);
-  void add_cluster(const string &name, const vector3D<int64_t> &cpos, const vector<vector3D<int64_t>> &pos, int ref=0);
+  void add_cluster(const string &name, const vector3D<int64_t> &cpos, const vector<vector3D<int64_t>> &pos, int ref=0, bool conj=false);
   void anomalous_operator(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb1, int orb2, const string& type);
   void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb, vector3D<double> Q, double phase, const string& type);
   void explicit_operator(const string &name, const string &type, const vector<tuple<vector3D<int64_t>, vector3D<int64_t>, complex<double>>> &elem, int tau=1, int sigma=0);

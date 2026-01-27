@@ -210,6 +210,7 @@ class cluster:
         self.pos = pos
         self.sites = sites
         self.index = 0
+        self.conj = False # if True, then the Green function must be complex conjugated from its reference
         self.nsites = len(sites)
 
 
@@ -251,7 +252,7 @@ class lattice_model:
             if x.ref != None: ref = x.ref.index
             else: ref = 0
             if x.cluster_model.n_bath > 0: self.has_bath = True
-            qcm.add_cluster(x.cluster_model.name, x.pos, x.sites, ref)
+            qcm.add_cluster(x.cluster_model.name, x.pos, x.sites, ref, x.conj)
 
         qcm.lattice_model(name, superlattice, lattice)
 

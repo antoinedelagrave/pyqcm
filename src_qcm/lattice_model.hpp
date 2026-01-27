@@ -30,6 +30,7 @@ struct cluster{
 	int ref; //!< label of reference (or equivalent) cluster, from 0 to N_clus - 1
 	int mixing; //!< mixing state of the cluster
 	size_t n_sym; //!< number of point group symmetry operations in the cluster model
+	bool conj; //!< true if one must take the complex conjugated Green function of the reference cluster, if any
 };
 
 

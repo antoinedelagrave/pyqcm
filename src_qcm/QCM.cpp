@@ -753,7 +753,7 @@ check_instance(label);
    * @param cpos base position of the cluster
    * @param pos array of the positions of the different sites of the cluster, with respect to the base position of the cluster
    */
-  void add_cluster(const string &name, const vector3D<int64_t> &cpos, const vector<vector3D<int64_t>> &pos, int ref)
+  void add_cluster(const string &name, const vector3D<int64_t> &cpos, const vector<vector3D<int64_t>> &pos, int ref, bool conj)
   {
     if(qcm_model->is_closed){
       qcm_warning("model already created. Ignoring.");
@@ -771,7 +771,7 @@ check_instance(label);
       ref = qcm_model->clusters.size()+1;
       qcm_model->inequiv.push_back(qcm_model->clusters.size());
     }
-    qcm_model->clusters.push_back({get<0>(tmp), get<1>(tmp), qcm_model->sites.size(), name, cpos, ref-1, 0, get<2>(tmp)});
+    qcm_model->clusters.push_back({get<0>(tmp), get<1>(tmp), qcm_model->sites.size(), name, cpos, ref-1, 0, get<2>(tmp), conj});
     // n_sites, n_bath, offset, name, position, ref, mixing, n_sym
 
   }

@@ -646,7 +646,7 @@ void lattice_model::print(ostream &fout, bool asy_operators, bool asy_labels, bo
   fout << "No\tmodel\tn_sites\tposition\tref.\n";
   for(int i=0; i<clusters.size(); i++){
     cluster& s = clusters[i];
-    fout << i+1 << '\t' << s.name << '\t' << s.n_sites << '\t' << s.position << '\t' << s.ref << endl;
+    fout << i+1 << '\t' << s.name << '\t' << s.n_sites << '\t' << s.position << '\t' << s.ref << '\t' << s.conj << endl;
   }
   banner('=', "sites", fout);
   fout << "No\tcluster\tNo in cluster\torbital\tposition\n";

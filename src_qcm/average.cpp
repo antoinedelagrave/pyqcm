@@ -8,6 +8,9 @@ double tr_sigma_inf(0.0);
 
 vector<shared_ptr<lattice_operator>> ops = {};
 
+extern vector<double> grid_freqs; // optional imaginary frequency grid for discrete integrals
+extern vector<double> grid_weights; // weights associated with grid_freqs
+
 //==============================================================================
 /**
  Calculates the lattice expectation value of all operators in the model
@@ -29,17 +32,38 @@ vector<pair<string,double>> lattice_model_instance::averages(const vector<string
   double accur_OP = global_double("accur_OP");
   bool periodized_averages = global_bool("periodized_averages");
 
-	// frequency integral
+
 	vector<double> Iv(ops.size());
-  // lambda function
-  if(periodized_averages){
-    auto F = [this] (Complex w, vector3D<double> &k, const int *nv, double *I) mutable {average_integrand_per(w, k, nv, I);};
-    QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
+  vector<double> Iw(ops.size());
+
+  if(model->hybrid != nullptr){ // frequency-momentum sum
+	  vector<double> I(ops.size());
+    for(int iw=0; iw < model->hybrid->nw; iw++){
+      to_zero(Iw);
+      for(int ik=0; ik < model->hybrid->nk; ik++){
+        average_integrand(iw, ik, I);
+        Iw += I;
+      }
+      Iw *= model->hybrid->weight[iw]/model->hybrid->nk;
+      Iv += Iw;
+    }
   }
-  else{
-    auto F = [this] (Complex w, vector3D<double> &k, const int *nv, double *I) mutable {average_integrand(w, k, nv, I);};
-    QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
+	else{ // frequency-momentum integral
+    // lambda function
+    if(periodized_averages){
+      auto F = [this] (Complex w, vector3D<double> &k, const int *nv, double *I) mutable {average_integrand_per(w, k, nv, I);};
+      QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
+    }
+    else{
+      auto F = [this] (Complex w, vector3D<double> &k, const int *nv, double *I) mutable {average_integrand(w, k, nv, I);};
+      if(grid_freqs.size() > 0){
+        int nk_side = global_int("kgrid_side");
+        QCM::wk_integral_grid(grid_freqs, grid_weights, model->spatial_dimension, nk_side, F, Iv);
+      }
+      else QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
+    }
   }
+  
 	  
   size_t i = 0;
   ave.resize(ops.size());
@@ -80,7 +104,6 @@ vector<pair<string,double>> lattice_model_instance::averages(const vector<string
  */
 void lattice_model_instance::average_integrand(Complex w, vector3D<double> &k, const int *nv, double *I)
 {
-	
   check_signals();
 
   const double w_offset = 2.0;
@@ -116,6 +139,51 @@ void lattice_model_instance::average_integrand(Complex w, vector3D<double> &k, c
 }
 
 
+
+//==============================================================================
+/**
+ integrands in the calculation of lattice averages (using a frequency-momentum grid)
+ @param iw label of frequency
+ @param ik label of wavevector
+ @param nv number of components
+ @param I values of the components of the integrand
+ */
+void lattice_model_instance::average_integrand(int iw, int ik, vector<double> &I)
+{
+	
+  Complex w(0,model->hybrid->w[iw]);
+  const double w_offset = 2.0;
+  Complex G_pole = 1.0/(w - w_offset);
+
+  Green_function G = cluster_Green_function(w, false, false);
+  G.iw = iw;
+	Green_function_k K(G, model->hybrid->k[ik], ik);
+	set_Gcpt(K);
+	K.Gcpt.add(-G_pole); // regulates the Green function at high frequency (subtracts G_pole times the identity matrix)
+	
+	size_t i = 0;
+	for(auto& op : ops){
+		Complex z(0.0);
+		for(auto &x : op->GF_elem) z += K.Gcpt(x.c,x.r)*x.v;
+		for(auto &x : op->IGF_elem) z += K.Gcpt(x.c,x.r)*x.v*K.phase[x.n];
+
+		I[i++] = real<double>(z);
+	}
+	i = 0;
+	if(model->mixing == HS_mixing::up_down){
+    Green_function G = cluster_Green_function(w, false, true);
+    Green_function_k K(G, model->hybrid->k[ik], ik);
+    set_Gcpt(K);
+    K.Gcpt.add(-G_pole); // regulates the Green function at high frequency (subtracts G_pole times the identity matrix)
+		for(auto& op : ops){
+			Complex z(0.0);
+			for(auto &x : op->GF_elem_down) z += K.Gcpt(x.c,x.r)*x.v;
+			for(auto &x : op->IGF_elem_down) z += K.Gcpt(x.c,x.r)*x.v*K.phase[x.n];
+			I[i++] += real<double>(z);
+		}
+	}
+  if(model->mixing == HS_mixing::normal) for(size_t i=0; i<ops.size(); i++) I[i] *= 2;
+}
 
 //==============================================================================
 /**
@@ -494,7 +562,6 @@ matrix<complex<double>> lattice_model_instance::Green_integral(bool spin_down, i
     for(size_t i = 0 ; i<*nv; i++) I[i] = 0.0;
     // matrix_to_real_vector(Gloc, I);
     hermitian_matrix_to_real_vector(Gloc, I);
-    // cout << "---> " << I[0] << '\t' << I[*nv-1] << endl; // TEMPO
   };
   auto Fmp_clus = [this, dim, spin_down] (Complex w, vector3D<double> &ki, const int *nv, double *I) mutable {
     const double w_offset = 2.0;
@@ -506,7 +573,6 @@ matrix<complex<double>> lattice_model_instance::Green_integral(bool spin_down, i
     Gloc.add(-G_pole);
     for(size_t i = 0 ; i<*nv; i++) I[i] = 0.0;
     hermitian_matrix_to_real_vector(Gloc, I);
-    // cout << "---> " << I[0] << '\t' << I[*nv-1] << endl; // TEMPO
   };
 
   vector<double> A(dim*dim, 0.0);

@@ -128,6 +128,7 @@ add_library(
   src_qcm/QCM.cpp
   src_qcm/average.cpp
   src_qcm/basis3D.cpp
+  src_qcm/lattice_hybrid.cpp
   src_qcm/lattice3D.cpp
   src_qcm/lattice_model.cpp
   src_qcm/lattice_model_instance.cpp
@@ -265,6 +266,14 @@ endif()
 
 include(FindLAPACK REQUIRED)
 message(STATUS "LAPACK lib: ${LAPACK_LIBRARIES}")
+
+
+# ------------
+# HDF5
+# ------------
+
+find_package(HDF5 REQUIRED COMPONENTS CXX)
+target_link_libraries(qcm PRIVATE HDF5::HDF5)
 
 # ------------
 # Cuba library

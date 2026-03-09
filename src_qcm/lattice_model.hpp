@@ -11,6 +11,7 @@
 #include "lattice_operator.hpp"
 #include "Green_function.hpp"
 #include "parameter_set.hpp"
+#include "lattice_hybrid.hpp"
 
 //! site of a repeated unit
 struct site{
@@ -70,6 +71,9 @@ struct lattice_model{
 	vector<vector3D<int64_t>> neighbor; //!< list of neighboring superclusters
 	shared_ptr<parameter_set> param_set; //!< parameter set structure
 	vector<string> sector_strings; //!< Hilbert space sectors to explore in the different clusters
+	string hybrid_file; //!< name of HDF5 file containing the external hybridization
+	shared_ptr<lattice_hybrid> hybrid; //!< external hybridization
+
 
 	static bool model_consolidated;
 	
@@ -95,6 +99,7 @@ struct lattice_model{
 	void post_parameter_consolidate(size_t label);
 	void pre_operator_consolidate();
 	void print(ostream& fout, bool asy_operators=false, bool asy_labels=false, bool asy_orb=false, bool asy_neighbors=false, bool asy_working_basis=false);
+	matrix<Complex> lattice_hybridization(int iw, int ik); //!< extracts a particular hybridization matrix
 };
 
 

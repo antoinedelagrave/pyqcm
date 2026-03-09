@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <fstream>
+
 #include "lattice_model.hpp"
 #include "qcm_ED.hpp"
 #include "QCM.hpp"
@@ -415,8 +416,16 @@ void lattice_model::post_parameter_consolidate(size_t label)
 				break;
 		}
 	}
-}
 
+
+  //..............................................................................
+	// reading the external hybridization, if applicable
+
+  if(hybrid_file.empty() == false){
+    hybrid = make_shared<lattice_hybrid>(hybrid_file);
+    if(n_mixed*hybrid->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
+  }
+}
 
 //===============================================================================
 /**
@@ -1157,7 +1166,40 @@ void lattice_model::explicit_operator(const string &name, const string &type, co
 
 
 
+//===============================================================================
+/**
+ extracts a particular lattice hybridization matrix
+*/
+matrix<Complex> lattice_model::lattice_hybridization(int iw, int ik){
+  
+  if(hybrid == nullptr) qcm_throw("Lattice hybridization has not been defined");
+  lattice_hybrid& H = *hybrid;
+  matrix<Complex> gamma(H.d);
+  int r = H.d*(ik+H.nk*iw);
+  for(int i=0; i<H.d; i++){
+    for(int j=0; j<H.d; j++){
+      gamma(j,i) = complex<double>(H.R[j+H.d*(i+r)], H.I[j+H.d*(i+r)]); // note the reverse order (row order)
+    }
+  }
 
+  // upgrade depending on mixing state
+  if(mixing == 0) return gamma;
+  else if(mixing==1){
+    matrix<Complex> h(2*H.d);
+    gamma.move_sub_matrix(H.d, H.d, 0, 0, 0, 0, h);
+    gamma.move_sub_matrix(H.d, H.d, 0, 0, H.d, H.d, h, -1.0);
+    return h;
+  }
+  else if(mixing==2){
+    matrix<Complex> h(2*H.d);
+    gamma.move_sub_matrix(H.d, H.d, 0, 0, 0, 0, h);
+    gamma.move_sub_matrix(H.d, H.d, 0, 0, H.d, H.d, h);
+    return h;
+  }
+  else qcm_throw("This mixing case is not currently covered in the treatment of lattice hybridizations");
+}
 
-
-
+  //! extracts a rectangular submatrix of size (R,C), starting at (i,j) of this, and copies it to position (I, J) of A
+  // move_sub_matrix_HC(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0)
+  // template <typename S>
+  // void move_sub_matrix(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0)

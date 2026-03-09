@@ -31,4 +31,5 @@ struct run_statistics{
     size_t n_GF_computed = 0L; // number of times the GF is computed
 };
 
+
 #endif /* types_h */

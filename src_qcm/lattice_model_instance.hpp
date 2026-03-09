@@ -35,7 +35,6 @@ struct lattice_model_instance{
 	vector<double> CDMFT_weights; //!< weights of the different frequencies in CDMFT
 
 	complex<double> TrSigmaG(Complex w, vector3D<double> &k, bool spin_down);
-	complex<double> CDMFT_host_part(Complex w, bool spin_down);
 	double Berry_flux(const vector<vector3D<double>> &k, int orb, bool spin_down);
 	double Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int orb);
 	double CDMFT_distance(const vector<double>& p, int clus);
@@ -70,9 +69,11 @@ struct lattice_model_instance{
 	void set_CDMFT_host(const vector<double>& freqs, const int clus, const vector<matrix<Complex>>& H, const bool spin_down);
 	void average_integrand_per(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void average_integrand(Complex w, vector3D<double> &k, const int *nv, double *I);
+	void average_integrand(int iw, int ik, vector<double> &I);
 	void build_cluster_H();
 	void build_H();
 	void CDMFT_host(const vector<double>& freqs, const vector<double>& weights);
+	void CDMFT_host();
 	void cluster_self_energy(Green_function& G);
 	void Green_eigensystem(Green_function &G, const vector3D<double> &k, vector<double> &e, matrix<Complex> &U, int opt);
 	void Green_function_solve(); //!< calls the Green_function solver for all clusters

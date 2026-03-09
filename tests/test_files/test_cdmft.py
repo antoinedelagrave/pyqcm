@@ -1,5 +1,6 @@
 import pyqcm
 from pyqcm.cdmft import CDMFT
+import numpy as np
 
 import model_graphene_bath as M
 
@@ -31,6 +32,10 @@ varia = ['eb1_1', 'eb2_1', 'tb1_1', 'tb2_1']
 # convergence=['self-energy', 'E0']; accur=[1e-4, 1e-7]
 convergence=['self-energy', 'distance']; accur=[1e-4, 1e-7]
 
+
+
+X = CDMFT(M.model, varia=varia, wc=[0.5,5,5], grid_type='legendre', accur=1e-3, convergence='self-energy', miniter=1, maxiter=64, depth=1, iteration='fixed_point')
+# X.I.plot_host_hybrid(np.linspace(0.01, 10, 100), (0,0)); exit()
 
 # Defining a function that will run a cdmft procedure within controlled_loop()
 def run_cdmft():

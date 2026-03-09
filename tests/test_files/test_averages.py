@@ -1,5 +1,5 @@
 import pyqcm
-import model_1D_4_C2 as M
+import model_1D_4 as M
 
 sec = 'R0:S0'
 M.model.set_target_sectors([sec])
@@ -15,6 +15,16 @@ print("\ntesting lattice averages (all operators, also with Potthoff functional 
 print('Potthoff functional = ', I.Potthoff_functional())
 print('potential energy = ', I.potential_energy())
 I.averages(pr=True)
+
+print("\ntesting cluster averages from a grid:\n")
+wr, weight = pyqcm.legendre_frequency_grid(1,10,10)
+# wr, weight = pyqcm.regular_frequency_grid(20, 200, 10)
+pyqcm.qcm.frequency_grid(wr, weight)
+pyqcm.set_global_parameter('kgrid_side', 128)
+I = pyqcm.model_instance(M.model)
+I.averages(pr=True)
+
+I.cluster_averages(pr=True)
 
 print("\ntesting cluster averages from the wavefunction:\n")
 I.cluster_averages(pr=True)

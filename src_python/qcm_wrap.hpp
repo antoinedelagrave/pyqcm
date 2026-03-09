@@ -32,6 +32,9 @@ extern run_statistics STATS;
 extern map<string, global_parameter<bool>> GP_bool;
 void qcm_catch(const string &s);
 
+extern vector<double> grid_freqs; // optional imaginary frequency grid for discrete integrals
+extern vector<double> grid_weights; // weights associated with grid_freqs
+
 static PyObject *qcm_Error;
 
 //******************************************************************************
@@ -987,15 +990,17 @@ arguments:
 2. superlattice : array of integers of shape (d,3), d being the dimension
 3. lattice : array of integers of shape (d,3), d being the dimension
 returns: None
+4. lattice_hybridization (optional) : name of HDF5 file containing lattice hybridization
 ){";
 //------------------------------------------------------------------------------
 static PyObject *lattice_model_python(PyObject *self, PyObject *args) {
   char *s1 = nullptr;
   PyArrayObject *super_pyobj = nullptr;
   PyArrayObject *unit_pyobj = nullptr;
+  char *s2 = nullptr;
 
   try {
-    if (!PyArg_ParseTuple(args, "sO|O", &s1, &super_pyobj, &unit_pyobj))
+    if (!PyArg_ParseTuple(args, "sO|Os", &s1, &super_pyobj, &unit_pyobj, &s2))
       qcm_throw("failed to read parameters in call to lattice_model (python)");
     if (qcm_model == nullptr)
       qcm_throw("no cluster has been added to the model!");
@@ -1010,7 +1015,8 @@ static PyObject *lattice_model_python(PyObject *self, PyObject *args) {
     } else
       unit_cell = intvectors_from_Py(unit_pyobj);
 
-    QCM::new_lattice_model(string(s1), superlattice, unit_cell);
+    if(s2==nullptr) QCM::new_lattice_model(string(s1), superlattice, unit_cell);
+    else QCM::new_lattice_model(string(s1), superlattice, unit_cell, string(s2));
   } catch (const string &s) {
     qcm_catch(s);
   }
@@ -2510,5 +2516,32 @@ static PyObject *print_statistics_python(PyObject *self, PyObject *args) {
        << STATS.n_GF_computed << endl;
   return Py_BuildValue("");
 }
+
+
+
+//==============================================================================
+const char *frequency_grid_help =
+    R"{(
+computes the CDMFT host function
+arguments:
+1. a vector of double : frequencies
+2. a vector of double : weights
+3. int : label of instance
+){";
+//------------------------------------------------------------------------------
+static PyObject *frequency_grid_python(PyObject *self, PyObject *args) {
+  PyObject *freqs = nullptr;
+  PyObject *weights = nullptr;
+  try {
+    if (!PyArg_ParseTuple(args, "OO", &freqs, &weights))
+      qcm_throw("failed to read parameters in call to frequency_grid (python)");
+    grid_freqs = doubles_from_Py(freqs);
+    grid_weights = doubles_from_Py(weights);
+  } catch (const string &s) {
+    qcm_catch(s);
+  }
+  return Py_BuildValue("");
+}
+
 
 #endif

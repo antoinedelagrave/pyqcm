@@ -646,6 +646,7 @@ class frequency_grid:
     :ivar float wc: cutoff frequency (for the frequency grid)
     :ivar str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
     :ivar wr: array of frequencies (real array, i.e., imaginary part of the frequencies)
+    :ivar w: array of complex frequencies (= wr * 1j)
     :ivar [float] weight: array of weights for the different frequencies of the grid
     :ivar int nw: number of frequencies in the grid
     """
@@ -655,29 +656,36 @@ class frequency_grid:
         self.wc = wc
         self.grid_type = grid_type
 
-        self.wr = np.arange((np.pi / self.beta), self.wc + 1e-6, 2 * np.pi / self.beta)
-        self.w = np.ones(len(self.wr), dtype=np.complex128)
-        self.w = self.w * 1j
-        self.w *= self.wr
-        self.nw = len(self.w)
-        if self.grid_type == 'sharp' or self.grid_type == 'adapt':
-            self.weight = np.ones(self.nw)
-            self.weight *= 1.0 /self.nw
-            self.dist_function = '{:s}_wc_{:.3g}_b_{:d}'.format(self.grid_type, self.wc, int(self.beta))
-        elif self.grid_type == 'ifreq':
-            self.weight = 1.0/self.wr
-            self.weight *= 1.0 / self.weight.sum()
-            self.dist_function = 'ifreq_wc_{0:.1f}_b_{1:d}'.format(self.wc, int(self.beta))
-        elif self.grid_type == 'self':
-            self.weight = np.zeros(self.nw)
-            Sig_inf = I.cluster_self_energy(1.0e6j)
-            for i, x in enumerate(self.w):
-                Sig = I.cluster_self_energy(x) - Sig_inf
-                self.weight[i] = np.linalg.norm(Sig)
-            self.weight *= 1.0 / self.weight.sum()
-            self.dist_function = 'self_wc_{0:.1f}_b_{1:d}'.format(self.wc, int(self.beta))
+        if grid_type == 'legendre':
+            assert (type(wc) == list)
+            self.wr, self.weight = pyqcm.legendre_frequency_grid(wc[0], wc[1], wc[2])
+            self.w = self.wr*1j
+            self.dist_function = 'legendre/{:.1f}/{:.1f}/{:d}'.format(wc[0], wc[1], wc[2])
         else:
-            raise ValueError(f"unknown frequency grid type `{grid_type}`")
+            self.wr = np.arange((np.pi / self.beta), self.wc + 1e-6, 2 * np.pi / self.beta)
+            self.w = np.ones(len(self.wr), dtype=np.complex128)
+            self.w = self.w * 1j
+            self.w *= self.wr
+            if self.grid_type == 'sharp' or self.grid_type == 'adapt':
+                self.weight = np.ones(self.nw)
+                self.weight *= 1.0 /self.nw
+                self.dist_function = '{:s}_wc_{:.3g}_b_{:d}'.format(self.grid_type, self.wc, int(self.beta))
+            elif self.grid_type == 'ifreq':
+                self.weight = 1.0/self.wr
+                self.weight *= 1.0 / self.weight.sum()
+                self.dist_function = 'ifreq_wc_{0:.1f}_b_{1:d}'.format(self.wc, int(self.beta))
+            elif self.grid_type == 'self':
+                self.weight = np.zeros(self.nw)
+                Sig_inf = I.cluster_self_energy(1.0e6j)
+                for i, x in enumerate(self.w):
+                    Sig = I.cluster_self_energy(x) - Sig_inf
+                    self.weight[i] = np.linalg.norm(Sig)
+                self.weight *= 1.0 / self.weight.sum()
+                self.dist_function = 'self_wc_{0:.1f}_b_{1:d}'.format(self.wc, int(self.beta))
+            else:
+                raise ValueError(f"unknown frequency grid type `{grid_type}`")
+        self.nw = len(self.wr)
+
 
 ####################################################################################################
 class general_bath:

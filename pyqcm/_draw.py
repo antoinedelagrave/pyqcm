@@ -202,9 +202,13 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
         if np.linalg.norm(S[s1,0:2] -  S[s2,0:2]) < 0.0001 :
             plt.plot([S[s1,0]], [S[s1,1]], 'o', ms = 18, c='w', mec='r', mew=2, alpha = alpha)
         else:
-            plt.plot([S[s1,0], S[s2,0]], [S[s1,1], S[s2,1]], pf, mew=2, alpha = alpha)
+            if s1 > s2:
+                plt.arrow(S[s1,0], S[s1,1], S[s2,0]-S[s1,0], S[s2,1]-S[s1,1], color='r', width=0.003, head_width=0)
+                plt.arrow(S[s1,0], S[s1,1], 0.5*(S[s2,0]-S[s1,0]), 0.5*(S[s2,1]-S[s1,1]), color='r', width=0.003, head_width=0.05)
+            # plt.plot([S[s1,0], S[s2,0]], [S[s1,1], S[s2,1]], pf, mew=2, alpha = alpha)
             if values and s1>s2:
-                plt.text(0.5*(S[s1,0]+S[s2,0]), 0.5*(S[s1,1]+S[s2,1]), f'${np.round(hop[e],5)}$', va='bottom', ha='left', c='r', fontsize=8)
+            # if values:
+                plt.text(0.5*S[s1,0]+0.5*S[s2,0], 0.5*S[s1,1]+0.5*S[s2,1], f'${np.round(hop[e],3)}$', va='bottom', ha='left', c='b', fontsize=8)
 
     for e in spin:
         if ';0' not in e: continue

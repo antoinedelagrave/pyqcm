@@ -30,9 +30,13 @@ map<int, unique_ptr<lattice_model_instance>> lattice_model_instances; // list of
 extern map<string, shared_ptr<model>> models;
 extern map<size_t, shared_ptr<model_instance_base>> model_instances;
 
+vector<double> grid_freqs; // optional imaginary frequency grid for discrete integrals
+vector<double> grid_weights; // weights associated with grid_freqs
+
 //==============================================================================
 namespace QCM{
-  
+
+
 /**
 resets all the models and global variables
 */
@@ -306,6 +310,8 @@ void erase_lattice_model_instance(size_t label){
   /**
    returns the V matrix at a given frequency and wavevector
    * @param spin_down true if the spin-down sector is covered
+   * @param w complex frequency
+   * @param k wavevector in the physdual basis
    */
   matrix<complex<double>> V_matrix(const complex<double> w, const vector3D<double> &k, bool spin_down, int label)
   {
@@ -783,8 +789,9 @@ check_instance(label);
    * @param name name of the model (for reference purposes)
    * @param superlattice array of D superlattice vectors, defining the superlattice of the model and the spatial dimension D
    * @param unit_cell array of D lattice vectors, defining the unit cell of the model (determines the number of bands)
+   * @param latt_hybrid name of HDF5 file containing the lattice hybridization data
    */
-  void new_lattice_model(const string &name, vector<int64_t> &superlattice, vector<int64_t> &unit_cell)
+  void new_lattice_model(const string &name, vector<int64_t> &superlattice, vector<int64_t> &unit_cell, const string &latt_hybrid)
   {
     try{
       if(qcm_model==nullptr) qcm_throw("no cluster has been added to the model!");
@@ -797,6 +804,8 @@ check_instance(label);
     qcm_model->superlattice = lattice3D(superlattice);
     qcm_model->unit_cell = lattice3D(unit_cell);
     qcm_model->phys.trivial();
+    qcm_model->hybrid_file = latt_hybrid;
+    qcm_model->hybrid = nullptr;
     qcm_model->pre_operator_consolidate();
   }
   

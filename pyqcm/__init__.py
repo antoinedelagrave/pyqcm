@@ -229,7 +229,7 @@ class lattice_model:
     defined = False
     is_closed = False
 
-    def __init__(self, name, clus, superlattice, lattice=None):
+    def __init__(self, name, clus, superlattice, lattice=None, hybrid_file=''):
         if lattice_model.defined:
             raise ValueError("Only one lattice model can be defined at a time!")
         lattice_model.defined = True
@@ -254,7 +254,7 @@ class lattice_model:
             if x.cluster_model.n_bath > 0: self.has_bath = True
             qcm.add_cluster(x.cluster_model.name, x.pos, x.sites, ref, x.conj)
 
-        qcm.lattice_model(name, superlattice, lattice)
+        qcm.lattice_model(name, superlattice, lattice, hybrid_file)
 
     #-----------------------------------------------------------------------------------------------
     def hopping_operator(self, name, link, amplitude, orbitals=None, **kwargs):
@@ -1050,7 +1050,7 @@ class model_instance:
         """
         Computes the dispersion relation for a single or an array of wavevectors
 
-        :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`\pi`
+        :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a single (ndarray(d)) or an array (ndarray(N,d)) of real values (energies). d is the reduced GF dimension.
 
@@ -1062,7 +1062,7 @@ class model_instance:
         """
         Computes the hopping matrix (orbital basis) for a single or an array of wavevectors
 
-        :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`\pi`
+        :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a single (ndarray(d,d)) or an array (ndarray(N,d,d)) of complex values. d is the reduced GF dimension.
 
@@ -2000,7 +2000,7 @@ def wavevector_path(n=32, shape='triangle'):
     Builds a wavevector path and associated tick marks
     
     :param int n: number of wavevectors per segment
-    :param str shape: the geometry of the path, one of: line, halfline, triangle, diagonal, graphene, graphene2, tri, cubic, cubic2, tetragonal, tetragonal2  OR a tuple with two wavevectors for a straight path between the two OR a filename ending with ".tsv". In the latter case, the file contains a tab-separated list of wavevectors (in units of pi) and tick marks: the first three columns are the x,y,z components of the wavevectors, and the last columns the strings (possibly latex) for the tick marks (write - in that column if you do not want a tick mark for a specific wavevector).
+    :param str shape: the geometry of the path, one of: line, halfline, triangle, diagonal, graphene, graphene2, tri, cubic, cubic2, tetragonal, tetragonal2  OR a tuple with two wavevectors for a straight path between the two OR a filename ending with ".tsv". In the latter case, the file contains a tab-separated list of wavevectors (in units of 2*pi) and tick marks: the first three columns are the x,y,z components of the wavevectors, and the last columns the strings (possibly latex) for the tick marks (write - in that column if you do not want a tick mark for a specific wavevector).
     :returns tuple: 1) a ndarray of wavevectors 2) a list of tick positions 3) a list of tick strings
 
     """
@@ -2196,7 +2196,7 @@ def wavevector_grid(n=100, orig=[-1.0, -1.0], side=2, k_perp = 0, plane='z'):
     :param float side: length of the side (in multiples of pi)
     :param float k_perp: momentum component in the third direction (in multiples of pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
-    :return: ndarray of wavevectors (n*n x 3)
+    :return: ndarray of wavevectors (n*n x 3), in units of 2*pi
     
     """
 
@@ -2544,4 +2544,92 @@ def print_statistics():
     """
     banner("RUN STATISTICS", c='#', skip=1)
     qcm.print_statistics()
+
+
+#---------------------------------------------------------------------------------------------------
+from scipy.optimize import linear_sum_assignment
+
+def track_bands_with_overlaps(E, psi, diff_coeff=0.0):
+    """
+    E[k, n]    energies
+    psi[k, n, :] eigenvectors (normalized)
+    """
+    Nk, Nb = E.shape
+    bands = np.zeros_like(E)
+    bands[0] = E[0]
+    order = np.arange(Nb)
+
+    for k in range(Nk - 1):
+        # overlap matrix
+        O = -np.abs(psi[k].conj().T @ psi[k+1])**2
+        D = np.outer(E[k], np.ones(Nb))
+        O += diff_coeff*(D-D.T)**2
+        # maximize overlap → minimize O
+        row, col = linear_sum_assignment(O)
+
+        # print(row); print(col); exit()
+
+        psi[k+1] = ((psi[k+1].T)[col]).T
+        E[k+1] = E[k+1][col]
+
+        bands[k+1] = E[k+1]
+
+    return bands, psi
+
+
+
+def track_bands(E, psi):
+    """
+    E[k, n]    energies
+    psi[k, n, :] eigenvectors (normalized)
+    """
+    Nk, Nb = E.shape
+    bands = np.zeros_like(E)
+    bands = -2*E + np.roll(E,1,0) + + np.roll(E,-1,0)
+    # bands = E - np.roll(E,1,1)
+    return bands
+
+
+
+def legendre_frequency_grid(w1, w2, n):
+    """
+    returns a frequency grid (along the positive imaginary axis) tailored for integration.
+    It is a Gauss-Legendre grid of n points in each of the intervals [0,w1], [w1,w2] and [w2,infinity]
+    param float w1 : low-frequency boundary
+    param float w2 : high-frequency boundary
+    param int n : number of points per interval
+    """
+
+    nodes, weights = np.polynomial.legendre.leggauss(n)
+    w = np.zeros(3*n)
+    p = np.zeros(3*n)
+    w[0:n] = w1*0.5*(nodes+1)
+    p[0:n] = weights*w1*0.5
+    w[n:2*n] = w1 + 0.5*(w2-w1)*(nodes+1)
+    p[n:2*n] = weights*(w2-w1)*0.5
+    w[2*n:3*n] = 1.0/((1/w2)*0.5*np.flip((nodes+1)))
+    p[2*n:3*n] = np.flip(weights)*(1/w2)*0.5*w[2*n:3*n]*w[2*n:3*n]
+    p = p/np.pi
+    return w, p
+
+
+def regular_frequency_grid(wc, n1, n2):
+    """
+    returns a frequency grid (along the positive imaginary axis) tailored for integration.
+    It is a uniform grid of n1 points in the interval [0,wc] and n2 points in the inverse interval [0,1/wc] for 1/w
+    Uses the trapezoidal rule.
+    param float wc : frequency boundary
+    param int n1 : number of points in the low-frequency interval
+    param int n2 : number of points in the high-frequency interval
+    """
+
+    w = np.zeros(n1+n2)
+    p = np.zeros(n1+n2)
+    dw = wc/n1
+    w[0:n1] = np.linspace(0.5*dw, wc-0.5*dw, n1)
+    p[0:n1] = dw/np.pi
+    dw = 1/(n2*wc)
+    w[n1:] = np.flip(1.0/np.linspace(0.5*dw, 1/wc-0.5*dw, n2))
+    p[n1:] = w[n1:]*w[n1:]*dw/np.pi
+    return w, p
 

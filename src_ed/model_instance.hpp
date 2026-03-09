@@ -613,7 +613,6 @@ matrix<complex<double>> model_instance<HilbertField>::Green_function(const Compl
   {
     pair<Complex, matrix<Complex>> P(z,G);
     LKUP->push_front(P);
-    // cout << "storing GF for z = " << z << "  G(0,0) = " << G(0,0)<< endl; // TEMPO
     if(LKUP->size() > look_up_size) LKUP->pop_back();
   }
 #endif

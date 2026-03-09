@@ -1219,7 +1219,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = None, colors=None, **kwargs):
+def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = None, band_assign = False, diff_coeff=0.0, colors=None, **kwargs):
     """Plots the dispersion relation in the Brillouin zone along a wavevector path
 
     :param str path: wavevector path, as used by the function wavevector_path()
@@ -1227,6 +1227,7 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
     :param str file: if not None, saves the plot in a file with that name
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param orb: orbital (or sequence of orbitals) to plot. None for all.
+    :param boolean band_assign: if True, assigns band by using the continuity of the eigenvectors
     :param [str] colors : colors of the different orbitals
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :return: None
@@ -1236,6 +1237,22 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
     if path==None:
         if self.model.dim == 1 : path = 'line'
         else : path = 'triangle'
+
+    k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
+    nk = len(k)
+    d = self.model.dimGF_red
+    e = self.dispersion(k)
+
+    if band_assign :
+        d = self.model.dimGF_red
+        vec = np.zeros((nk,d,d), dtype=complex)
+        M = self.epsilon(k)
+        for i in range(nk):
+            V, vec[i,:,:] = np.linalg.eigh(M[i,:,:])
+        e, vec = pyqcm.track_bands_with_overlaps(e, vec, diff_coeff)
+
+    if orb == None:
+        orb = range(1,d+1)
 
     if plt_ax is None:
         plt.figure()
@@ -1250,13 +1267,6 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
         colors = prop_cycle.by_key()['color'] 
     elif type(colors) is not list: colors = [colors]
     ncol = len(colors)
-
-    k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
-    d = self.model.dimGF_red
-    e = self.dispersion(k)
-
-    if orb == None:
-        orb = range(1,d+1)
 
     for i in orb:
         ax.plot(e[:,i-1], label=str(i+1), c=colors[i%ncol], **kwargs)
@@ -1282,7 +1292,7 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, file=None, data_file=None, plt_ax=None, scale=1, **kwargs):
+def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, band_assign = False, diff_coeff=0.0, file=None, data_file=None, plt_ax=None, scale=1, **kwargs):
     """Plots the dispersion relation in the Brillouin zone along a wavevector path
 
     :param orb: orbital (or sequence of orbitals) to plot. Starts at 1.
@@ -1324,16 +1334,25 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, file=None, d
     M = self.epsilon(k)
     e = np.zeros((nk,d))
     w = np.zeros((nk,d))
+    vec = np.zeros((nk,d,d), dtype=complex)
 
     min_e = 1e6
     max_e = -1e6
     for i in range(nk):
-        V, W = np.linalg.eigh(M[i,:,:])
-        w[i,:] += np.linalg.norm(W[orb,:], axis=0)**2
+        V, vec[i,:,:] = np.linalg.eigh(M[i,:,:])
         e[i,:] = V
+
+    if band_assign :
+        e, vec = pyqcm.track_bands_with_overlaps(e, vec)
+
+    for i in range(nk):
+        w[i,:] += np.linalg.norm(vec[i,orb,:], axis=0)**2
         min_e = np.min((min_e, np.min(e)))
         max_e = np.max((max_e, np.max(e)))
 
+    if band_assign :
+        e, vec = pyqcm.track_bands_with_overlaps(e, vec, diff_coeff)
+        
     ax.set_ylim(min_e,max_e)
     scale = (max_e-min_e)*scale/(50*np.max(w))
     X = np.arange(nk)

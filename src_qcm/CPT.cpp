@@ -16,6 +16,7 @@
  */
 void lattice_model_instance::set_V(Green_function_k &M, bool nohybrid){
 	
+	if(M.ik >=0 && model->hybrid == nullptr) qcm_throw("Cannot execute this task with a preset lattice hybridization!");
 	size_t nv = model->neighbor.size();
 	M.phase.assign(nv, 1.0);
 	// computing the phases
@@ -42,11 +43,13 @@ void lattice_model_instance::set_V(Green_function_k &M, bool nohybrid){
 		}
 	}
 
-	// computing V = tk - t' - Gamma
+	// computing V = tk - t' - Gamma_c + Gamma_k
 	M.V = M.t;
 	if(M.G.spin_down) Hc_down.add(M.V,-1.0);
 	else Hc.add(M.V,-1.0);
 	if(model->bath_exists and nohybrid==false) M.G.gamma.add(M.V,-1.0);
+	if(model->hybrid != nullptr) M.V.v += model->lattice_hybridization(M.G.iw, M.ik).v;
+
 }
 
 
@@ -322,6 +325,11 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 		}
 	}
 	else return;
+	if(model->hybrid != nullptr){
+		assert(model->hybrid->nw == freqs.size());
+		CDMFT_host();
+		return;
+	}
 
 	// #pragma omp parallel for
 	if(global_bool("verb_ED")) cout << "Building host function" << endl;
@@ -371,6 +379,50 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 	}
 }
 
+
+
+
+//==============================================================================
+/** 
+ Computes the CDMFT host from an external hybridization
+ */
+void lattice_model_instance::CDMFT_host()
+{
+	auto &H = *model->hybrid;
+
+	cout << "Building host function with an external hybridization" << endl;
+	for(int iw=0; iw<H.nw; iw++){
+		Complex w(0.0, H.w[iw]);
+		Green_function G = cluster_Green_function(w, false, false);
+		G.iw = iw;
+		matrix<Complex> Gproj(model->dim_GF);
+		for(int ik=0; ik<H.nk; ik++){
+			Green_function_k M(G,H.k[ik],ik);
+			set_Gcpt(M);
+			Gproj += M.Gcpt;
+		}
+		Gproj.v *= 1.0/H.nk;
+
+		for(int c=0; c<n_clus; c++){
+			int d = model->GF_dims[c];
+			int o = model->GF_offset[c];
+			Gproj.move_sub_matrix(d, d, o, o, 0, 0, G_host[iw][c]);
+			G_host[iw][c].inverse();
+			auto X = cluster_self_energy(c, w, false);
+			auto Y = cluster_hopping_matrix(c, false);
+			G_host[iw][c].v += X.v;
+			G_host[iw][c].v += Y.v;
+			G_host[iw][c].add(-w);
+		}
+	}
+	if(model->mixing & HS_mixing::up_down){
+		qcm_throw("mixing up_down not yet possible with external hybridization");
+	}
+}
+
+
+
+
 vector<vector<matrix<Complex>>> lattice_model_instance::get_CDMFT_host(bool spin_down){
 	if(spin_down){
 		if(G_host_down.size() == 0) qcm_throw("G_host_down has not been computed for this instance");
@@ -380,34 +432,6 @@ vector<vector<matrix<Complex>>> lattice_model_instance::get_CDMFT_host(bool spin
 		if(G_host.size() == 0) qcm_throw("G_host has not been computed for this instance");
 		return G_host;
 	}
-}
-
-//==============================================================================
-/** 
- Computes the integrated CDMFT host along the real frequency axis
- @param freqs [in] frequency array (along the real axis)
- @param spin_down [in] boolean : true if spin-down sector (mixing = 4) 
- */
-
-Complex lattice_model_instance::CDMFT_host_part(Complex w, bool spin_down)
-{
-	Complex gamma(0.,0.);
-	auto Gproj= projected_Green_function(w, spin_down);
-	for(int c=0; c<n_clus; c++){
-		int d = model->GF_dims[c];
-		int o = model->GF_offset[c];
-		matrix<Complex> G_host_tmp(d);
-		G_host_tmp.zero();
-		Gproj.move_sub_matrix(d, d, o, o, 0, 0, G_host_tmp);
-		G_host_tmp.inverse();
-		auto X = cluster_self_energy(c, w, false);
-		auto Y = cluster_hopping_matrix(c, false);
-		G_host_tmp.v += X.v;
-		G_host_tmp.v += Y.v;
-		G_host_tmp.add(-w);
-		gamma += G_host_tmp.trace();
-	}
-	return gamma;
 }
 
 

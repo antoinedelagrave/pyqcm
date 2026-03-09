@@ -87,7 +87,7 @@ template<> void matrix<double>::eigensystem(vector<double> &d, matrix<double> &U
 	if (!((int)INFO==0))
 	{
 		cout << "dimension : " << r << " x " << c << endl;
-		cout << *this << endl; // TEMPO
+		cout << *this << endl;
 		throw std::runtime_error(std::string
 			("bad INFO value from dsyev (eigensystem)")+std::to_string((int)INFO) );
 	}
@@ -205,7 +205,7 @@ template<> void matrix<Complex >::eigensystem(vector<double> &d, matrix<Complex 
 	if (!((int)INFO==0))
 	{
 		cout << "dimension : " << r << " x " << c << endl;
-		cout << *this << endl; // TEMPO
+		cout << *this << endl;
 		throw std::runtime_error(std::string
 			("bad INFO value from zheev (eigensystem<complex>)")+std::to_string((int)INFO) );
 	}
@@ -417,3 +417,4 @@ void matrix_to_real_vector(const matrix<Complex> &M, double *x){
 	  }
     }
 }
+

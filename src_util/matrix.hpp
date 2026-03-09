@@ -15,7 +15,6 @@ using namespace std;
 #define matrix_SMALL_VALUE 1e-10
 //#define BOUND_CHECK
 
-
 //! A general matrix class (of ints, double and Complex types).
 template <typename T> struct matrix {
   size_t r;    //!< number of rows

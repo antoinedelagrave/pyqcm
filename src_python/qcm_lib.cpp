@@ -76,6 +76,7 @@ static PyMethodDef methods[] = {
     {"epsilon", epsilon_python, METH_VARARGS, epsilon_help},
     {"erase_model_instance", erase_model_instance_python, METH_VARARGS, erase_model_instance_help},
     {"explicit_operator", (PyCFunction)explicit_operator_python, METH_VARARGS | METH_KEYWORDS, explicit_operator_help},
+    {"frequency_grid", (PyCFunction)frequency_grid_python, METH_VARARGS | METH_KEYWORDS, frequency_grid_help},
     {"get_global_parameter", get_global_parameter_python, METH_VARARGS, get_global_parameter_help},
     {"get_CDMFT_host", get_CDMFT_host_python, METH_VARARGS, get_CDMFT_host_help},
     {"great_reset", great_reset_python, METH_VARARGS, great_reset_help},

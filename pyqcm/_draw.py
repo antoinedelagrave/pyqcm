@@ -16,6 +16,8 @@ def draw_operator(self, op_name, show_labels=False, show_orb_labels=True, show_n
     :param float orb_offset: offset between sites and orbital labels
     :param float z_offset: offset between sites and labels for sites along the z axis 
     :param float alpha_inter: alpha value of the inter-cluster links
+    :param boolean show_orb_labels: if True, shows the orbital index labels next to each site
+    :param float spin_scale: scale factor for the arrows representing spin polarization
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     """
 

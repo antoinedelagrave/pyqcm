@@ -689,7 +689,8 @@ def gap(self, k, orb = 1, threshold=1e-3):
     :param k: set of wavevectors
     :param int orb: orbital number (starts at 1)
     :param float threshold: weight below which a Lehmann contribution is deemed zero
-    return: an array of gap values
+    :returns: an array of gap values (or a single float if only one wavevector was given)
+    :rtype: list or float
 
     """
 
@@ -1076,7 +1077,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
     :param int nk: number of wavevectors on each side of the grid
     :param complex w: complex frequency at which the Green function is computed
     :param int orbitals: shows the weight for orbitals (b1,b2) (starts at 1), or numpy array of spin-Nambu projection
-    :param boolean self: if True, plots the anomalous self-energy instead of the spectral function
+    :param boolean selfenergy: if True, plots the anomalous self-energy instead of the spectral function
     :param boolean im_part: if True, plots the imaginary part instead of the real part
     :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param float k_perp: for 3D models, value of the component of k perpendicular to the plane
@@ -1228,6 +1229,7 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param orb: orbital (or sequence of orbitals) to plot. None for all.
     :param boolean band_assign: if True, assigns band by using the continuity of the eigenvectors
+    :param float diff_coeff: coefficient used to weight velocity differences when tracking bands with overlaps (used only if band_assign is True)
     :param [str] colors : colors of the different orbitals
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :return: None
@@ -1622,6 +1624,7 @@ def plot_host_hybrid(self, w, e, clus=0, file=None, plt_ax=None, title=None, yli
     :param [float] w : array of frequencies used
     :param (int,int) e: matrix element to plot (zero based)
     :param int clus: cluster label (starts at 0)
+    :param str title: optional title for the plot, displayed when plt_ax is None
     :param str file: if not None, saves the plot in a file with that name
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
@@ -1760,7 +1763,7 @@ def Chern_number(self, nk=100, eta=0.0, period='G', offset=[0., 0., 0.], orb=Non
     :param int nk: number of wavevectors on the side of the grid
     :param float eta: imaginary part of the frequency at zero, i.e., w = eta*1j
     :param str period: type of periodization used (e.g. 'G', 'M', 'None')
-    :param wavevector offset: wavevector offset of the computation grid
+    :param [float] offset: wavevector offset of the computation grid (3-component list)
     :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all occupied bands.
     :param boolean subdivide: recursivity flag (wavevector grid subdivision)
     :returns float: The Chern number
@@ -1791,7 +1794,7 @@ def monopole(self, k, a=0.01, nk=20, orb=None, subdivide=False):
     :param float a: half-side of the cube surrounding the node 
     :param int nk: number of divisions along the side of the cube
     :param int orb: orbital to compute the charge of (if None, sums over all bands)
-    :param booleean subdivide: True if subdivision is allowed (False by default)
+    :param boolean subdivide: True if subdivision is allowed (False by default)
     :return: the monopole charge
     :rtype: float
 
@@ -1906,7 +1909,8 @@ def Berry_flux_map(self, nk=40, plane='z', dir='z', k_perp=0.0, orb=None, npoint
     :param str dir: direction of flux, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str k_perp: offset in wavevector in the direction perpendicular to the plane (x pi)
     :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
-    :param int npoints: nombre de points sur chaque boucle
+    :param int npoints: number of points on each Berry flux loop
+    :param float radius: radius of the loop used to compute Berry flux at each grid point; defaults to 0.8/nk if None
     :param str file: Name of the file to save the plot. If None, shows the plot on screen.
     :param plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
@@ -2250,6 +2254,14 @@ def plot_profile(self, n_scale=1, bond_scale=1, current_scale=1, spin_scale=1,
 
 #---------------------------------------------------------------------------------------------------
 def wavevector_path_2_str(self, k):
+    """
+    Converts an array of wavevectors to a tab-separated string representation,
+    formatted according to the spatial dimension of the model.
+
+    :param numpy.ndarray k: array of wavevectors, shape (N, 3), in units of 2*pi
+    :returns: a tab-separated string of wavevector coordinates
+    :rtype: str
+    """
     K = ''
     if self.model.dim==1:
         for x in k:

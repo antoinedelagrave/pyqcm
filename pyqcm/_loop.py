@@ -102,8 +102,9 @@ def linear_loop(self, N, task, varia=None, params = None, predict=True):
 	:param N: number of intervals within the loop
 	:param task: function called at each step of the loop
 	:param [str] varia: names of the variational parameters
-	:param {str (float,float)} P: dict of parameters to vary with a tuple of initial and final values 
+	:param dict params: dict mapping parameter names to 2-tuples of (initial, final) values
 	:param boolean predict: if True, uses a linear or quadratic predictor
+	:returns: None
 
 	"""
 
@@ -303,6 +304,7 @@ def fade(self, task, P, n):
 	:param task: task to perform wihtin the loop
 	:param dict P: dict of parameters with a tuple of values (start and finish) for each
 	:param n: number of steps
+	:returns: None
 
 	"""
 
@@ -404,6 +406,9 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 	:param int maxiter: maximum number of iterations
     :param str iteration: method of iteration of parameters ('fixed_point' or 'Broyden')
 	:param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
+	:param str file: name of the file to which the converged result is written via write_summary()
+	:param boolean SEF: if True, computes the Potthoff functional at the end of the procedure
+	:param boolean pr: if True, prints progress of each coupling update
     :param float alpha: if iteration='fixed_point', damping parameter, otherwise trial inverse Jacobian (if a float, that is (1+alpha)*unit matrix)
 	:returns: model instance, converged inverse Jacobian
 
@@ -471,11 +476,12 @@ def flexible_loop(self, task, initial_mu, final_n, initial_step, delta_n=0.005, 
 	model instance must be done and returned by 'task'; it is not done by this looping function.
 
 	:param task: a function called at each step of the loop. Must return a model_instance.
-	:param (float) initial_mu: initial value of mu
-	:param (float) initial_step: initial step in mu
-	:param (float) final_n: final value of density
-	:param (float) delta_n: approximate step in density to keep constant
+	:param float initial_mu: initial value of the chemical potential mu
+	:param float final_n: target final density at which the loop should stop
+	:param float initial_step: initial step in mu for the first iteration
+	:param float delta_n: approximate step in density to keep approximately constant across iterations
 	:param [str] varia: names of the variational parameters
+	:returns: None
 
 	"""
 

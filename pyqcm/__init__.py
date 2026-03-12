@@ -488,6 +488,7 @@ class lattice_model:
 
         :param str name: name of the parameter, or list of names
         :param float value: its value (or iterable of values)
+        :param boolean pr: if True, prints the parameter name and value being set
         :return: None
 
         """
@@ -513,6 +514,7 @@ class lattice_model:
 
         :param str name: name of the parameter of iterable of names
         :param float value: its value (or iterable of values)
+        :param boolean pr: if True, prints the parameter name and new multiplier being set
         :return: None
 
         """
@@ -536,8 +538,10 @@ class lattice_model:
         """
         Returns a string with the model parameters. Used for including in plots.
         :param int clus : cluster label to print the parameters of (starts at 1). If 0, prints lattice parameters only. If None, prints all parameters.
-        :param boolean CR : if True, puts each parameter on a line.
-        :param boolean constr : if True, also includes constrained parameters
+        :param boolean CR: if True, puts each parameter on a line.
+        :param boolean constr: if True, also includes constrained parameters
+        :returns: a formatted string listing the model parameters
+        :rtype: str
         """
         par = qcm.parameter_set()
         S = ''
@@ -563,7 +567,8 @@ class lattice_model:
         if p is a list of parameter names, then returns an array of values associated (in the same order) to this list.
 
         :param [str] param: a list of parameter names (optional)
-        :return: a dict {string,float} OR a numpy array of values
+        :returns: a dict {string, float} if param is None, or a numpy array of values if param is given
+        :rtype: dict or numpy.ndarray
 
         """
         par = qcm.parameters()
@@ -653,6 +658,8 @@ class lattice_model:
         :param model_instance I1: first model instance
         :param model_instance I2: second model instance
         :param int clus: cluster label
+        :returns: the fidelity (overlap squared of the ground states) between I1 and I2
+        :rtype: float
 
         """
 
@@ -749,7 +756,7 @@ class model_instance:
         """
         Computes the Lehmann representation of the dynamic susceptibility of an operator
 
-        :param str name: name of the operator
+        :param str op_name: name of the operator
         :param int clus: label of the cluster (starts at 0)
         :returns [(float,float)]: array of 2-tuple (pole, residue)
 
@@ -776,11 +783,12 @@ class model_instance:
         """
         Returns the Lehmann representation of the Green function
 
+        :param int clus: label of the cluster (0 to the number of clusters-1)
         :return: 2-tuple made of
             1. the array of M real eigenvalues, M being the number of poles in the representation
             2. a rectangular (L x M) matrix (real of complex), L being the dimension of the Green function
 
-        """	
+        """
 
         return qcm.qmatrix(self.label*self.model.nclus + clus)
 
@@ -788,8 +796,9 @@ class model_instance:
     def write(self, filename, clus=0):
         """
         Writes the solved cluster model instance to a text file
-        
+
         :param str filename: name of the file
+        :param int clus: label of the cluster (0 to the number of clusters-1)
         :return: None
 
         """
@@ -843,7 +852,8 @@ class model_instance:
         Computes the lattice averages of the operators present in the model
 
         :param [str] ops: list of operators to compute the average of. If empty, then computes the averages of all one-body operators.
-        :param str file: name of the file in which the information is appended
+        :param str file: name of the file in which the averages summary is appended
+        :param boolean pr: if True, prints the computed averages to the screen
         :return: a dict giving the values of the averages for each parameter
         :rtype: {str,float}
 
@@ -901,6 +911,7 @@ class model_instance:
         Writes to a file the data defining the impurity problem
 
         :param s: label of the system (starts at 0)
+        :param boolean bath_diag: if True, uses the diagonal form of the hopping matrix for the bath
         :param file: name of the output file
 
         """
@@ -931,13 +942,10 @@ class model_instance:
     #-----------------------------------------------------------------------------------------------
     def write_Green_function(self, clus=0, file='GF.tsv'):
         """
-        Writes the Lehmann representation of the Green function to a file 
+        Writes the Lehmann representation of the Green function to a file
 
-        :param clus: label of the cluster (0 to the number of clusters - 1)
-        :param str S: long string containing the solution 
-
-        :param clus: label of the cluster (0 to the number of clusters - 1)
-        :param file: name of the output file
+        :param int clus: label of the cluster (0 to the number of clusters - 1)
+        :param str file: name of the output file
 
         """
 
@@ -958,8 +966,8 @@ class model_instance:
         long, it is interpreted as the name of a file in which the solution is read. Otherwise
         it is interpreted as the solution itself.
 
-        :param clus: label of the cluster (0 to the number of clusters - 1)
-        :param str S: long string containing the solution 
+        :param str S: long string containing the solution, or a short filename (<=32 chars)
+        :param int clus: label of the cluster (0 to the number of clusters - 1)
 
         :return: None
 
@@ -1061,6 +1069,7 @@ class model_instance:
 
         :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
+        :param int label: label of the model instance (default 0; normally should not be changed)
         :return: a single (ndarray(d)) or an array (ndarray(N,d)) of real values (energies). d is the reduced GF dimension.
 
         """
@@ -1142,6 +1151,7 @@ class model_instance:
         Computes the average and variance of all operators of the cluster model in the cluster ground state.
 
         :param int sys: label of the system
+        :param boolean pr: if True, prints the averages and variances to the screen
         :return: a dict str : (float, float) with the averages and variances as a function of operator name
 
         """
@@ -1180,8 +1190,8 @@ class model_instance:
         """
         Returns the hybridization function for cluster 'cluster' and instance 'label'
 
-        :param int clus: label of the cluster (0 to the number of clusters-1)
         :param complex z: frequency
+        :param int clus: label of the cluster (0 to the number of clusters-1)
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a complex-valued matrix
 
@@ -1301,7 +1311,7 @@ class model_instance:
         """
         Computes the density from the Green function average
 
-        :param int clus: label of the cluster (0 to the number of clusters-1)
+        :param int sys: label of the system (0 to the number of systems-1)
         :return (float): the density
 
         """
@@ -1541,8 +1551,9 @@ class model_instance:
     def write_summary(self, f, commented=False):
         """
         Writes a summary of the properties of the model instance in a file
-        
+
         :param str f: name of the output file
+        :param boolean commented: if True, prefixes each line with '#' so it is treated as a comment
 
         """
 
@@ -1614,7 +1625,11 @@ class model_instance:
     #-----------------------------------------------------------------------------------------------
     def GS_consistency(self, check_ground_state=False, threshold = 0.0001):
         """
-        compares the density from the wavefunction and from the Green function
+        Compares the density from the wavefunction and from the Green function for each system.
+        Prints a warning banner if the discrepancy exceeds the threshold.
+
+        :param boolean check_ground_state: if True, raises a ValueError when the consistency check fails
+        :param float threshold: maximum allowed difference between wavefunction and Green function densities
 
         """
 
@@ -1663,6 +1678,8 @@ class double_counting:
         Applies the double counting corretion to the model instance I. Changes the parameter_set taking into account the average values within the instance I
 
         :param I: instance of the lattice model
+        :returns: the correction value to be added to the kinetic operator
+        :rtype: float
 
         """
         
@@ -1757,9 +1774,9 @@ class hartree:
     def omega(self, I):
         """
         Returns the constant contribution, added to the Potthoff functional
-        
-        :param I model_instance: the current model_instance
-        
+
+        :param I: the current model_instance
+
         """
 
         par = self.model.parameters()
@@ -1822,11 +1839,11 @@ class NelderMead:
 
     def __init__(self, F, X, xtol = 1e-6, ftol = 1e-6, maxfev = 10000):
        """
-       @param F: function to minimize. Its argument is a numpy array.
-       @param X: Initial simplex (d+1 elements with each d components)
-       @param float xtol: minimum size of the simplex for convergence
-       @param float ytol: minimum variation of the objective function within the simplex for convergence
-       @param int maxfev: maximum number of evaluations of F
+       :param F: function to minimize. Its argument is a numpy array.
+       :param X: Initial simplex (d+1 elements with each d components)
+       :param float xtol: minimum size of the simplex for convergence
+       :param float ftol: minimum variation of the objective function within the simplex for convergence
+       :param int maxfev: maximum number of evaluations of F
        """
        self.F = F
        self.n = len(X)
@@ -1845,8 +1862,8 @@ class NelderMead:
 
     def size(self):
         """
-        Taille du simplexe
-        Retourne la plus grande parmi les distances inter-sommets
+        Size of the simplex.
+        Returns the largest among the inter-vertex distances.
         """
         v = np.zeros(self.n*(self.n-1)//2)
         k = 0
@@ -1863,6 +1880,14 @@ class NelderMead:
         return S 
           
     def minimize(self, verb=False):
+        """
+        Runs the Nelder-Mead minimization algorithm until convergence or until the maximum
+        number of function evaluations is reached.
+
+        :param boolean verb: if True, prints progress information at each iteration
+        :returns: the coordinates of the best simplex vertex (the minimizer) if converged, else None
+        :rtype: numpy.ndarray or None
+        """
         converged = False
         iter = 0
         while True:
@@ -1962,7 +1987,7 @@ def set_global_parameter(name, value=None):
 #---------------------------------------------------------------------------------------------------
 def get_global_parameter(name, value=None):
     """
-    Gets the value of a global parameter. 
+    Gets the value of a global parameter.
 
     :param str name: name of the global option
     :return: the value, according to type
@@ -2229,6 +2254,13 @@ def wavevector_grid(n=100, orig=[-1.0, -1.0], side=2, k_perp = 0, plane='z'):
 #---------------------------------------------------------------------------------------------------
 def orbital_manager(orbitals, from_zero=False):
     """
+    Converts an orbital specification to a list of orbital indices.
+
+    :param orbitals: orbital specification; can be None (all orbitals), an int (single orbital),
+        or a list/tuple of ints
+    :param boolean from_zero: if True, converts the result to zero-based indices (subtracts 1 from each)
+    :returns: list of orbital indices
+    :rtype: list
     """
 
     if orbitals is None:
@@ -2249,6 +2281,12 @@ def orbital_manager(orbitals, from_zero=False):
 #---------------------------------------------------------------------------------------------------
 def orbital_pair_manager(orbitals):
     """
+    Converts an orbital pair specification to two lists of orbital indices, for use in
+    hopping or interaction operator definitions.
+
+    :param orbitals: a 2-tuple (orb1, orb2) of orbital labels (starting at 1), or None to use all orbitals
+    :returns: two lists of orbital indices (orb1_list, orb2_list)
+    :rtype: (list, list)
     """
 
     if orbitals is not None:
@@ -2273,6 +2311,11 @@ def print_options(opt=0):
 def frequency_array(wmax=6.0, eta=0.05, imaginary=False):
     """Returns an array of complex frequencies for plotting spectral quantities
 
+    :param wmax: the frequency range. If a float, the range is from -wmax to wmax. If a tuple (wmin, wmax), the range is from wmin to wmax. If a numpy array of real values, eta is added as imaginary part. If a numpy array of complex values, it is returned as-is.
+    :param float eta: Lorentzian broadening (imaginary part added to each frequency)
+    :param boolean imaginary: if True, returns purely imaginary frequencies (wmax * 1j); if False (default), returns complex frequencies with eta as the imaginary part
+    :returns: array of complex frequencies
+    :rtype: numpy.ndarray
     """
 
     if isinstance(wmax, tuple):

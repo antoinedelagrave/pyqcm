@@ -85,6 +85,15 @@ class convergence_manager:
                 return False
 
     def stdev_test(self, x):
+        """
+        Tests for convergence using the standard deviation of the accumulated sequence of values.
+        Appends x to the internal sequence and computes the standard deviation of the mean;
+        convergence is declared when this standard deviation falls below self.tol.
+
+        :param float x: the new value to add to the convergence sequence
+        :returns: True if the standard deviation of the mean is below the tolerance, False otherwise
+        :rtype: bool
+        """
         print(self.name + ' = {:1.5g} (added to sequence)'.format(x))
         if self.iter > len(self.val):
             self.val.resize(len(self.val) + 32)
@@ -871,8 +880,9 @@ class general_bath:
     def  varia(self, H=None, E=None, c=1, spin_down=False):
         """creates a dict of variational parameters to values taken from the hybridization matrix H and the energies E, for cluster c
 
-        :param ndarray H: matrix of hybridization values
-        :param ndarray E: array of energy values
+        :param ndarray H: matrix of hybridization values, shape (nmixed*nb, nmixed*ns)
+        :param ndarray E: array of energy values for the bath orbitals
+        :param int c: label of the cluster (starts at 1), used as suffix in parameter names
         :param boolean spin_down: True for the spin-down values
         :return {str,float}: dict of variational parameters to values
 
@@ -1119,6 +1129,8 @@ class hybridization:
         Evaluates the distance function bewteen the data and the hybridization function of an impurity model instance of label I
 
         :param [model_instance] I: model instance
+        :returns: the squared Frobenius norm of the difference matrix, averaged over frequencies
+        :rtype: float
         """
         M = np.zeros((self.nw, self.n, self.n), dtype=np.complex128)
         for i in range(self.nw):
@@ -1141,8 +1153,12 @@ class hybridization:
     def optimize_bath(self, model, varia, x, method='Nelder-Mead', accur = 1e-4, accur_dist = 1e-8):
         """
         Optimizes the bath parameters to fit the hybridization function delta
+        :param lattice_model model: the lattice model whose bath parameters are to be optimized
         :param [str] varia: list of variational parameters (bath parameters) from PyQCM
         :param [float] x: starting values of the parameters
+        :param str method: minimization method passed to optimize() (default 'Nelder-Mead')
+        :param float accur: requested accuracy in the parameters (x-tolerance)
+        :param float accur_dist: requested accuracy in the distance function (f-tolerance)
         """
 
         nvar = len(varia)
@@ -1189,6 +1205,9 @@ def optimize(F, x, method='Nelder-Mead', initial_step=0.1, accur = 1e-4, accur_d
     :param float initial_step: initial step in the minimization procedure
     :param float accur: requested accuracy in the parameters
     :param float accur_dist: requested accuracy in the distance function
+    :param int maxfev: maximum number of function evaluations allowed
+    :returns: a 4-tuple (opt_x, iter_done, success, fun) with the optimal parameters, number of evaluations, success flag, and optimal function value
+    :rtype: tuple
 
     """
 

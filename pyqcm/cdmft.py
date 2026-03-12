@@ -527,19 +527,19 @@ class CDMFT:
             self.Hyb.append(np.zeros((self.grid.nw, d, d), dtype=np.complex128))
 
         for i in range(self.grid.nw):
-            for j in range(self.model.nclus):
-                self.Hyb[j][i, :, :] = self.I.hybridization_function(self.grid.w[i], j, spin_down=False)
+            for c in range(self.model.nclus):
+                self.Hyb[c][i, :, :] = self.I.hybridization_function(self.grid.w[i], c, spin_down=False)
 
         if self.model.mixing == 4:
             self.Hyb0_down = self.Hyb_down
             self.Hyb_down = []
-            for j in range(self.model.nclus):
-                d = self.model.dimGFC[j]
+            for c in range(self.model.nclus):
+                d = self.model.dimGFC[c]
                 self.Hyb_down.append(np.zeros((self.grid.nw, d, d), dtype=np.complex128))
 
             for i in range(self.grid.nw):
-                for j in range(self.model.nclus):
-                    self.Hyb_down[j][i, :, :] = self.I.hybridization_function(self.grid.w[i], j, spin_down=True)
+                for c in range(self.model.nclus):
+                    self.Hyb_down[c][i, :, :] = self.I.hybridization_function(self.grid.w[i], c, spin_down=True)
 
 
     #-----------------------------------------------------------------------------------------------
@@ -556,20 +556,20 @@ class CDMFT:
         g = self.grid
         if self.model.mixing!=4:
             for i in range(g.nw):
-                for j in range(self.model.nclus):
-                    delta = X[j][i,:,:] - Y[j][i,:,:]
+                for c in range(self.model.nclus):
+                    delta = X[c][i,:,:] - Y[c][i,:,:]
                     norm = np.linalg.norm(delta)
                     diff += g.weight[i]*norm*norm
 
         if self.model.mixing==4:
             for i in range(g.nw):
-                for j in range(self.model.nclus):
-                    delta = X[0][j][i,:,:] - Y[0][j][i,:,:]
+                for c in range(self.model.nclus):
+                    delta = X[0][c][i,:,:] - Y[0][c][i,:,:]
                     norm = np.linalg.norm(delta)
                     diff += g.weight[i]*norm*norm
             for i in range(g.nw):
-                for j in range(self.model.nclus):
-                    delta = X[1][j][i,:,:] - Y[1][j][i,:,:]
+                for c in range(self.model.nclus):
+                    delta = X[1][c][i,:,:] - Y[1][c][i,:,:]
                     norm = np.linalg.norm(delta)
                     diff += g.weight[i]*norm*norm
 
@@ -590,24 +590,24 @@ class CDMFT:
         """
         self.sigma0 = self.sigma
         self.sigma = []
-        for j in range(self.model.nclus):
-            d = self.model.dimGFC[j]
+        for c in range(self.model.nclus):
+            d = self.model.dimGFC[c]
             self.sigma.append(np.zeros((self.grid.nw, d, d), dtype=np.complex128))
 
         for i in range(self.grid.nw):
-            for j in range(self.model.nclus):
-                self.sigma[j][i, :, :] = self.I.cluster_self_energy(self.grid.w[i], j, spin_down=False)
+            for c in range(self.model.nclus):
+                self.sigma[c][i, :, :] = self.I.cluster_self_energy(self.grid.w[i], c, spin_down=False)
 
         if self.model.mixing == 4:
             self.sigma0_down = self.sigma_down
             self.sigma_down = []
-            for j in range(self.model.nclus):
+            for c in range(self.model.nclus):
                 d = self.model.dimGFC[j]
                 self.sigma_down.append(np.zeros((self.grid.nw, d, d), dtype=np.complex128))
 
             for i in range(self.grid.nw):
-                for j in range(self.model.nclus):
-                    self.sigma_down[j][i, :, :] = self.I.cluster_self_energy(self.grid.w[i], j, spin_down=True)
+                for c in range(self.model.nclus):
+                    self.sigma_down[c][i, :, :] = self.I.cluster_self_energy(self.grid.w[i], c, spin_down=True)
 
     #-----------------------------------------------------------------------------------------------
     def plot_iterations(self):

@@ -187,7 +187,7 @@ class cluster:
     :param [[int]] sites: sequence of 3-component integer vectors, the geometric sites of the cluster
     :param [int] pos: base position of the cluster; all site vectors are added this position (for convenience)
 
-    :ivar int index: index of the cluster within the set of clusters forming the repeated unit (starts at 1)
+    :ivar int index: index of the cluster within the set of clusters forming the repeated unit (1-based)
     """
     
     def __init__(self, X, sites, pos=(0,0,0)):
@@ -419,7 +419,7 @@ class lattice_model:
     def set_target_sectors(self, sec):
         """
         Sets the Hilbert space sectors in which to look for the ground state. Each sector is specified by 
-        a string of the form 'Rx:Ny:Sz' where x is the irreducible representation label (starts at 0), y
+        a string of the form 'Rx:Ny:Sz' where x is the irreducible representation label (0-based), y
         is the number of electrons and z is twice the total spin projection. For instance, 'R0:N7:S1' means
         7 electrons and total spin projection 1/2, in the trivial representation. If more than one sector
         must be explored, their corresponding strings are separated by '/', e.g. 'R0:N7:S1/R0:N7:S-1'.
@@ -430,6 +430,8 @@ class lattice_model:
 
         """
         if not is_sequence(sec): sec = (sec,)
+        if len(sec) != self.nsys:
+            raise ValueError('the number of target sector strings should be the number of systems in the model')
 
         # sanity check on the sector strings before sending it to qcm
         for i,s in enumerate(sec):
@@ -537,7 +539,7 @@ class lattice_model:
     def parameter_string(self, clus=None, CR=False, constr=False):
         """
         Returns a string with the model parameters. Used for including in plots.
-        :param int clus : cluster label to print the parameters of (starts at 1). If 0, prints lattice parameters only. If None, prints all parameters.
+        :param int clus : cluster label to print the parameters of (1-based). If 0, prints lattice parameters only. If None, prints all parameters.
         :param boolean CR: if True, puts each parameter on a line.
         :param boolean constr: if True, also includes constrained parameters
         :returns: a formatted string listing the model parameters
@@ -651,19 +653,19 @@ class lattice_model:
 
 
     #-----------------------------------------------------------------------------------------------
-    def fidelity(self, I1, I2, clus=0):
+    def fidelity(self, I1, I2, sys=0):
         """
         computes the fidelity between the two instances I1 and I2, i.e. the overlap squared of the ground states (or generalization thereof in case of a mixed state)
 
         :param model_instance I1: first model instance
         :param model_instance I2: second model instance
-        :param int clus: cluster label
+        :param int sys: system label
         :returns: the fidelity (overlap squared of the ground states) between I1 and I2
         :rtype: float
 
         """
 
-        return qcm.fidelity(I1.label*self.nclus + clus, I2.label*self.nclus + clus)
+        return qcm.fidelity(I1.label*self.nsys + sys, I2.label*self.nsys + sys)
     
     
     #-----------------------------------------------------------------------------------------------
@@ -752,34 +754,34 @@ class model_instance:
         self.is_complex = qcm.complex_HS(self.label)
 
     #-----------------------------------------------------------------------------------------------
-    def susceptibility_poles(self, op_name, clus=0):
+    def susceptibility_poles(self, op_name, sys=0):
         """
         Computes the Lehmann representation of the dynamic susceptibility of an operator
 
         :param str op_name: name of the operator
-        :param int clus: label of the cluster (starts at 0)
+        :param int sys: label of the cluster (0-based)
         :returns [(float,float)]: array of 2-tuple (pole, residue)
 
         """
 
-        return qcm.susceptibility_poles(op_name, self.label*self.model.nclus + clus)
+        return qcm.susceptibility_poles(op_name, self.label*self.model.nsys + sys)
 
     #-----------------------------------------------------------------------------------------------
-    def susceptibility(self, op_name, freqs, clus=0):
+    def susceptibility(self, op_name, freqs, sys=0):
         """
         Computes the dynamic susceptibility of an operator point by point
 
         :param str op_name: name of the operator
         :param [complex] freqs: array of complex frequencies
-        :param int clus: label of the cluster (starts at 0)
+        :param int sys: label of the system (0-based)
         :return: array of complex susceptibilities
 
         """
 
-        return qcm.susceptibility(op_name, freqs, self.label*self.model.nclus + clus)
+        return qcm.susceptibility(op_name, freqs, self.label*self.model.nsys + sys)
 
     #-----------------------------------------------------------------------------------------------
-    def qmatrix(self, clus=0):
+    def qmatrix(self, sys=0):
         """
         Returns the Lehmann representation of the Green function
 
@@ -790,20 +792,20 @@ class model_instance:
 
         """
 
-        return qcm.qmatrix(self.label*self.model.nclus + clus)
+        return qcm.qmatrix(self.label*self.model.nsys + sys)
 
     #-----------------------------------------------------------------------------------------------
-    def write(self, filename, clus=0):
+    def write(self, filename, sys=0):
         """
         Writes the solved cluster model instance to a text file
 
         :param str filename: name of the file
-        :param int clus: label of the cluster (0 to the number of clusters-1)
+        :param int sys: label of the system (0-based)
         :return: None
 
         """
 
-        qcm.write_instance_to_file(filename, self.label*self.model.nclus + clus)
+        qcm.write_instance_to_file(filename, self.label*self.model.nsys + sys)
 
     #-----------------------------------------------------------------------------------------------
     def write_all(self, filename):
@@ -814,8 +816,8 @@ class model_instance:
         :return: None
 
         """
-        for i in range(self.model.nclus):
-            self.write(filename+'_{:d}.sol'.format(i), clus=i)
+        for s in range(self.model.nsys):
+            self.write(filename+'_{:d}.sol'.format(s), sys=s)
 
     #-----------------------------------------------------------------------------------------------
     def read_all(self, filename):
@@ -826,8 +828,8 @@ class model_instance:
         :return: None
 
         """
-        for i in range(self.model.nclus):
-            self.read(filename+'_{:d}.sol'.format(i), clus=i)
+        for s in range(self.model.nsys):
+            self.read(filename+'_{:d}.sol'.format(s), sys=s)
     
 
     #-----------------------------------------------------------------------------------------------
@@ -897,7 +899,7 @@ class model_instance:
         """
         Returns the one-body matrix of cluster no i
 
-        :param clus: label of the cluster (0 to the number of clusters - 1)
+        :param clus: label of the cluster (0-based)
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a complex-valued matrix
 
@@ -910,7 +912,7 @@ class model_instance:
         """
         Writes to a file the data defining the impurity problem
 
-        :param s: label of the system (starts at 0)
+        :param s: label of the system (0-based)
         :param boolean bath_diag: if True, uses the diagonal form of the hopping matrix for the bath
         :param file: name of the output file
 
@@ -960,14 +962,14 @@ class model_instance:
         np.savetxt(file, Z, delimiter='\t', fmt='%1.8g')
 
     #-----------------------------------------------------------------------------------------------
-    def read(self, S, clus=0):
+    def read(self, S, sys=0):
         """
         Reads the solution from a string or a file. If the string is less than 32 characters
         long, it is interpreted as the name of a file in which the solution is read. Otherwise
         it is interpreted as the solution itself.
 
         :param str S: long string containing the solution, or a short filename (<=32 chars)
-        :param int clus: label of the cluster (0 to the number of clusters - 1)
+        :param int sys: label of the system (0-based)
 
         :return: None
 
@@ -980,7 +982,7 @@ class model_instance:
                 raise FileNotFoundError(f"The file '{S}' could not be found") from None
 
             
-        qcm.read_instance(S, self.label*self.model.nclus + clus)
+        qcm.read_instance(S, self.label*self.model.nsys + sys)
 
     #-----------------------------------------------------------------------------------------------
     def cluster_self_energy(self, z, clus=0, spin_down=False):
@@ -988,7 +990,7 @@ class model_instance:
         Computes the cluster self-energy
 
         :param complex z: frequency
-        :param int clus: label of the cluster (0 to the number of clusters -1)
+        :param int clus: label of the cluster (0-based)
         :param boolean spin_down: true is the spin down sector is to be computed (applies if mixing = 	4)
         :return: a complex-valued matrix
 
@@ -997,28 +999,28 @@ class model_instance:
         return qcm.cluster_self_energy(clus, z, spin_down, self.label)
 
     #-----------------------------------------------------------------------------------------------
-    def Green_function_average(self, clus=0, spin_down=False):
+    def Green_function_average(self, sys=0, spin_down=False):
         """
         Computes the cluster Green function average (integral over frequencies)
 
-        :param int clus: label of the cluster (0 to the number of clusters-1)
+        :param int sys: label of the system (0-based)
         :param boolean spin_down: true is the spin down sector is to be computed (applies if mixing = 	4)
         :return: a complex-valued matrix
 
         """
-        return qcm.Green_function_average(self.label*self.model.nclus + clus, spin_down)
+        return qcm.Green_function_average(self.label*self.model.nsys + sys, spin_down)
 
     #-----------------------------------------------------------------------------------------------
-    def interactions(self, clus=0):
+    def interactions(self, sys=0):
         """
         returns the density-density interactions on a specific cluster
 
-        :param clus: label of the cluster (starts at 0)
+        :param sys: label of the system (0-based)
         :return: a list of matrix elements tuples (i,j,v)
 
         """
 
-        return qcm.interactions(self.label*self.model.nclus + clus)
+        return qcm.interactions(self.label*self.model.nsys + sys)
 
 
     #-----------------------------------------------------------------------------------------------
@@ -1055,7 +1057,7 @@ class model_instance:
         Computes the frequency-integrated Green function
 
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
-        :param int clus: label of the cluster (starts at 1). If clus > 0, integrates the cluster Green function for cluster 'clus'. If clus = 0, then computes the integral over frequencies of the momentum-integrated CPT Green function. The momentum integration is done on the same regular grid as in CDMFT, as set by the global parameter "kgrid_side".
+        :param int clus: label of the cluster (1-based). If clus > 0, integrates the cluster Green function for cluster 'clus'. If clus = 0, then computes the integral over frequencies of the momentum-integrated CPT Green function. The momentum integration is done on the same regular grid as in CDMFT, as set by the global parameter "kgrid_side".
         :return: a complex-valued matrix
         
         """
@@ -1175,7 +1177,7 @@ class model_instance:
         Computes the Lehmann representation of the periodized Green function for a set of wavevectors
 
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
-        :param int orb: orbital index (starts at 1)
+        :param int orb: orbital index (1-based)
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a pair {poles, residues}, each of poles and residues being itself a list.
 
@@ -1241,10 +1243,10 @@ class model_instance:
     #-----------------------------------------------------------------------------------------------
     def periodized_Green_function_element(self, r, c, z, k, spin_down=False):
         """
-        Computes the element (r,c) of the periodized Green function at a given frequency and wavevectors (starts at 0)
+        Computes the element (r,c) of the periodized Green function at a given frequency and wavevectors (0-based)
 
-        :param int r: a row index (starts at 0)
-        :param int c: a column index (starts at 0)
+        :param int r: a row index (0-based)
+        :param int c: a column index (0-based)
         :param complex z: frequency
         :param k: array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param boolean spin_down: true is the spin down sector is to be computed (applies if mixing = 4)
@@ -1323,7 +1325,7 @@ class model_instance:
         """
         Computes the density matrix of subsystem A, defined by the array of site indices "sites"
 
-        :param int sys: label of the system (starts at 0)
+        :param int sys: label of the system (0-based)
         :param [int] sites: list of sites defining subsystem A
         :return: the density matrix, the left and right bases (spins up and down)
         :rtype:  [complex], [int32], [int32]
@@ -1399,18 +1401,18 @@ class model_instance:
 
 
     #-----------------------------------------------------------------------------------------------
-    def print_wavefunction(self, clus=0, pr=True):
+    def print_wavefunction(self, sys=0, pr=True):
         """
         Prints the ground state wavefunction(s) on the screen
 
-        :param int clus: label of the cluster (0 to the number of clusters-1)
+        :param int sys: label of the system (0-based)
         :param bool pr: prints wavefunction to screen if pr=True
 
         :return: the wavefunction
         :rtype: str
 
         """
-        wavefunction = qcm.print_wavefunction(self.label*self.model.nclus+clus)
+        wavefunction = qcm.print_wavefunction(self.label*self.model.nsys+sys)
 
         if pr:
             print(wavefunction)
@@ -1425,7 +1427,7 @@ class model_instance:
 
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param float eta: increment in the imaginary axis direction used to computed the derivative of the self-energy
-        :param int orb: orbital index (starts at 1)
+        :param int orb: orbital index (1-based)
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a single float or an array of floats, depending on the shape of k
 
@@ -1487,15 +1489,15 @@ class model_instance:
         """
         Computes the cluster quasi-particle weight from the cluster self-energy
 
-        :param int clus: cluster label (starts at 0)
+        :param int clus: cluster label (0-based)
         :param float eta: increment in the imaginary axis direction used to computed the derivative of the self-energy
-        :param int orb: orbital index (starts at 1)
+        :param int orb: orbital index (1-based)
         :param boolean spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :return: a float
 
         """
-        sigma1 = self.cluster_self_energy(clus, -eta*1j, spin_down, self.label*self.model.nclus+clus)
-        sigma2 = self.cluster_self_energy(clus, eta*1j, spin_down, self.label*self.model.nclus+clus)
+        sigma1 = self.cluster_self_energy(clus, -eta*1j, spin_down)
+        sigma2 = self.cluster_self_energy(clus, eta*1j, spin_down)
         Z = (sigma1[orb-1,orb-1].imag - sigma2[orb-1,orb-1].imag)/(2*eta) + 1.0
         Z = 1.0/Z
         return Z
@@ -1508,7 +1510,7 @@ class model_instance:
 
         :param freq: complex freqency
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
-        :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
+        :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (1-based)
         :return: depending on the shape of k, a nd.array(3) of nd.array(N,3)
 
         """

@@ -21,7 +21,7 @@ using namespace std;
  */
 template<> void matrix<double>::inverse()
 {
-	assert(r==c);
+	QCM_ASSERT(r==c);
 	if(r==1){v[0] = 1/v[0]; return;}
 	else if(r==0) return;
 	
@@ -35,9 +35,9 @@ template<> void matrix<double>::inverse()
 	LDA = r;
 	
 	dgetrf_(&M, &N,(doublereal *)&v[0], &LDA,IPIV.data(),&INFO);
-	assert((int)INFO==0);
+	QCM_ASSERT((int)INFO==0);
 	dgetri_(&N,(doublereal *)&v[0],&LDA,IPIV.data(),WORK.data(),&N,&INFO);
-	assert((int)INFO==0);
+	QCM_ASSERT((int)INFO==0);
 }
 
 
@@ -66,9 +66,9 @@ template<> bool matrix<Complex >::is_real(double accuracy)
  */
 template<> void matrix<double>::eigensystem(vector<double> &d, matrix<double> &U)const
 {
-	assert(r == c);
-	assert(U.r == r and U.c == c);
-	assert(d.size() == r);
+	QCM_ASSERT(r == c);
+	QCM_ASSERT(U.r == r and U.c == c);
+	QCM_ASSERT(d.size() == r);
 	
 	char JOBZ, UPLO;
 	integer INFO=0, N , LDA, LWORK;
@@ -104,7 +104,7 @@ template<> void matrix<double>::eigensystem(vector<double> &d, matrix<double> &U
  */
 template<> void matrix<double>::eigenvalues(vector<double> &d)
 {
-	assert(r == c);
+	QCM_ASSERT(r == c);
 	
 	char JOBZ, UPLO;
 	integer INFO, N , LDA, LWORK;
@@ -118,7 +118,7 @@ template<> void matrix<double>::eigenvalues(vector<double> &d)
 	vector<doublereal> WORK(LWORK);
 	
 	dsyev_(&JOBZ, &UPLO, &N, (doublereal *)&w[0], &LDA, (doublereal *)&d[0], WORK.data(), &LWORK, &INFO);
-	assert((int)INFO==0);
+	QCM_ASSERT((int)INFO==0);
 }
 
 
@@ -131,7 +131,7 @@ template<> void matrix<double>::eigenvalues(vector<double> &d)
  */
 template<> void matrix<Complex >::inverse()
 {
-	assert(r==c);
+	QCM_ASSERT(r==c);
 	if(r==0) return;
 	integer INFO=0, M , N , LDA;
 	
@@ -141,12 +141,10 @@ template<> void matrix<Complex >::inverse()
 	N = r;
 	M = r;
 	LDA = r;
-	try{
-		zgetrf_(&M, &N,(doublecomplex*)&v[0], &LDA, IPIV.data(),&INFO);
-		if((int)INFO) qcm_throw("Error in matrix inversion:  zgetrf_() produces INFO = "+to_string<int>(INFO));
-		zgetri_(&N,(doublecomplex*)&v[0],&LDA,IPIV.data(),WORK.data(),&N,&INFO);
-		if((int)INFO) qcm_throw("Error in matrix inversion:  zgetri_() produces INFO = "+to_string<int>(INFO));
-	} catch(const string& s) {qcm_catch(s);}
+	zgetrf_(&M, &N,(doublecomplex*)&v[0], &LDA, IPIV.data(),&INFO);
+	if((int)INFO) qcm_throw("Error in matrix inversion:  zgetrf_() produces INFO = "+to_string<int>(INFO));
+	zgetri_(&N,(doublecomplex*)&v[0],&LDA,IPIV.data(),WORK.data(),&N,&INFO);
+	if((int)INFO) qcm_throw("Error in matrix inversion:  zgetri_() produces INFO = "+to_string<int>(INFO));
 }
 
 
@@ -169,7 +167,7 @@ template<> Complex  matrix<Complex >::determinant()
 	vector<integer> IPIV(r);
 	LDA = r;
 	zgetrf_((integer *)&r, (integer *)&c,(doublecomplex*)&v[0], &LDA, IPIV.data(), &INFO);
-	assert((int)INFO==0);
+	QCM_ASSERT((int)INFO==0);
 	z = Complex(1.0);
 	for(i=0; i<r; ++i) z *= v[i+i*r];
 	return(z);
@@ -187,7 +185,7 @@ template<> Complex  matrix<Complex >::determinant()
  */
 template<> void matrix<Complex >::eigensystem(vector<double> &d, matrix<Complex > &U)const
 {
-	assert(r == c);
+	QCM_ASSERT(r == c);
 	
 	char JOBZ, UPLO;
 	integer INFO=0, N , LDA, LWORK;
@@ -209,7 +207,7 @@ template<> void matrix<Complex >::eigensystem(vector<double> &d, matrix<Complex 
 		throw std::runtime_error(std::string
 			("bad INFO value from zheev (eigensystem<complex>)")+std::to_string((int)INFO) );
 	}
-	assert((int)INFO==0);
+	QCM_ASSERT((int)INFO==0);
 }
 
 
@@ -223,7 +221,7 @@ template<> void matrix<Complex >::eigensystem(vector<double> &d, matrix<Complex 
  */
 template<> void matrix<Complex >::eigenvalues(vector<double> &d)
 {
-	assert(r == c);
+	QCM_ASSERT(r == c);
 	
 	char JOBZ, UPLO;
 	integer INFO=0, N , LDA, LWORK;
@@ -237,7 +235,7 @@ template<> void matrix<Complex >::eigenvalues(vector<double> &d)
 	vector<doublecomplex> WORK(LWORK);
 	vector<doublereal> RWORK(3*N-2);
 	zheev_(&JOBZ, &UPLO, &N, (doublecomplex *)w.data(), &LDA, (doublereal *)d.data(), WORK.data(), &LWORK, RWORK.data(), &INFO );
-	assert((int)INFO==0);
+	QCM_ASSERT((int)INFO==0);
 }
 
 

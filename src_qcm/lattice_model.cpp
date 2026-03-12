@@ -828,7 +828,7 @@ void lattice_model::interaction_operator(const string &name, vector3D<int64_t> &
       case latt_op_type::X:
       case latt_op_type::Y:
       case latt_op_type::Z:
-        assert(s1 != s2);
+        QCM_ASSERT(s1 != s2);
         tmp_op->elements.push_back({s1, 0, s2, 0, ni, amplitude});
         break;
       default:
@@ -869,7 +869,7 @@ void lattice_model::hopping_operator(const string &name, vector3D<int64_t> &link
   }
   // previous_name = name;
 
-  assert(tau>=0 and tau<=3 and sigma >=0 and sigma <=3);
+  QCM_ASSERT(tau>=0 and tau<=3 and sigma >=0 and sigma <=3);
   if(tau==0 and !link.is_null()) qcm_throw("Problem with the definition of " + tmp_op->name+ ". Cannot define an operator with nonzero link AND matrix tau = 0");
   if(tau!=0 and link.is_null()) qcm_throw("Problem with the definition of " + tmp_op->name + ". Cannot define an operator with on-site operator AND matrix tau != 0");
   if(tau==3) qcm_throw("Problem with the definition of " + tmp_op->name + ". Cannot define an operator with matrix tau = 3");

@@ -179,7 +179,7 @@ void QCM::qcm_init() {
 #endif
 }
 
-void qcm_catch(const std::string &s) { PyErr_SetString(qcm_Error, s.c_str()); }
-void qcm_ED_catch(const std::string &s) {
-  PyErr_SetString(qcm_Error, s.c_str());
+void qcm_catch(const std::exception &e) { PyErr_SetString(qcm_Error, e.what()); }
+void qcm_ED_catch(const std::exception &e) {
+  PyErr_SetString(qcm_Error, e.what());
 }

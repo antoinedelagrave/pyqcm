@@ -192,7 +192,7 @@ void lattice_model_instance::periodized_Green_function(Green_function_k &M)
 		M.g.inverse();
 	}
 	else if(periodization == 'C'){ // cluster
-		assert(model->clusters.size()==1);
+		QCM_ASSERT(model->clusters.size()==1);
 		matrix<Complex> Gc = M.G.G.block[0];
 		M.g = model->periodize(M.k, Gc);
 	}
@@ -327,7 +327,7 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 	}
 	else return;
 	if(model->hybrid != nullptr){
-		assert(model->hybrid->nw == freqs.size());
+		QCM_ASSERT(model->hybrid->nw == freqs.size());
 		CDMFT_host();
 		return;
 	}

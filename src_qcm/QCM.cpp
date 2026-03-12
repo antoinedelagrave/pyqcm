@@ -788,9 +788,7 @@ check_instance(label);
       qcm_throw("This system cannot be added to the cluster (out of range, or maybe clusters not yet added to lattice model)");
   
     auto tmp = ED::model_size(name);
-    try{
-      if(get<0>(tmp) != qcm_model->clusters[clus].n_sites) qcm_throw("The number of sites of cluster "+name+" is inconsistent with the cluster model");
-    } catch(const string& s) {qcm_catch(s);}
+    if(get<0>(tmp) != qcm_model->clusters[clus].n_sites) qcm_throw("The number of sites of cluster "+name+" is inconsistent with the cluster model");
     if(get<1>(tmp) > 0) qcm_model->bath_exists = true;
     // n_sites, n_bath, name, clus, mixing, n_sym
     qcm_model->systems.push_back({get<0>(tmp), get<1>(tmp), name, clus, 0, get<2>(tmp)});
@@ -808,9 +806,7 @@ check_instance(label);
    */
   void new_lattice_model(const string &name, vector<int64_t> &superlattice, vector<int64_t> &unit_cell, const string &latt_hybrid)
   {
-    try{
-      if(qcm_model==nullptr) qcm_throw("no cluster has been added to the model!");
-    } catch(const string& s) {qcm_catch(s);}
+    if(qcm_model==nullptr) qcm_throw("no cluster has been added to the model!");
     if(qcm_model->is_closed){
       qcm_warning("model already created. Ignoring.");
       return;
@@ -854,9 +850,7 @@ check_instance(label);
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
-    try{
-      qcm_model->interaction_operator(name, link, amplitude, orb1-1, orb2-1, type);
-    } catch(const string& s) {qcm_catch(s);}
+    qcm_model->interaction_operator(name, link, amplitude, orb1-1, orb2-1, type);
   }
   
   
@@ -878,9 +872,7 @@ check_instance(label);
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
-    try{
-      qcm_model->hopping_operator(name, link, amplitude, orb1-1, orb2-1, tau, sigma);
-    } catch(const string& s) {qcm_catch(s);}
+    qcm_model->hopping_operator(name, link, amplitude, orb1-1, orb2-1, tau, sigma);
   }
   
   
@@ -902,9 +894,7 @@ check_instance(label);
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
-    try{
-      qcm_model->current_operator(name, link, amplitude, orb1-1, orb2-1, dir, pau);
-    } catch(const string& s) {qcm_catch(s);}
+    qcm_model->current_operator(name, link, amplitude, orb1-1, orb2-1, dir, pau);
   }
 
 
@@ -923,9 +913,7 @@ check_instance(label);
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
-    try{
-      qcm_model->anomalous_operator(name, link, amplitude, orb1-1, orb2-1, type);
-    } catch(const string& s) {qcm_catch(s);}
+    qcm_model->anomalous_operator(name, link, amplitude, orb1-1, orb2-1, type);
   }
   
   /**
@@ -944,9 +932,7 @@ check_instance(label);
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
-    try{
-      qcm_model->density_wave(name, link, amplitude, orb-1, Q, phase, type);
-    } catch(const string& s) {qcm_catch(s);}
+    qcm_model->density_wave(name, link, amplitude, orb-1, Q, phase, type);
   }
 
   /**
@@ -963,9 +949,7 @@ check_instance(label);
       qcm_warning("model already created and closed. Ignoring operator creation.");
       return;
     }
-    try{
-      qcm_model->explicit_operator(name, type, elem, tau, sigma);
-    } catch(const string& s) {qcm_catch(s);}
+    qcm_model->explicit_operator(name, type, elem, tau, sigma);
   }
 
   

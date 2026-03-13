@@ -1,3 +1,0 @@
-matplotlib
-scipy
-nlopt>=2.9

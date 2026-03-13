@@ -1,14 +1,42 @@
 [build-system]
 requires = [
-    "setuptools>=42",
-    "wheel",
-    "scikit-build>=0.12",
+    "scikit-build-core>=0.9",
+    "setuptools-scm>=8",
     "numpy>=2",
-    "ninja",
-    "Pillow>=8.3"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyqcm"
+dynamic = ["version"]
+description = "Quantum cluster methods for the physics of strongly correlated systems."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.10"
+authors = [
+    { name = "David Sénéchal", email = "david.senechal@usherbrooke.ca" }
+]
+dependencies = [
+    "numpy>=2",
+    "matplotlib",
+    "scipy",
+    "nlopt",
 ]
 
-build-backend = "setuptools.build_meta"
+[project.urls]
+Documentation = "https://qcm-wed.readthedocs.io/"
+Repository    = "https://bitbucket.org/dsenechQCM/qcm_wed"
+
+[tool.setuptools_scm]
+# Reads the version from git tags automatically.
+# Writes it to this file at build time so the package can read it at runtime.
+write_to = "pyqcm/_version.py"
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+wheel.packages   = ["pyqcm"]
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+sdist.include = ["pyqcm/_version.py"]
 
 [tool.isort]
 profile = "black"

@@ -89,5 +89,3 @@ X = CDMFT(
     iteration="fixed_point",
 )
 
-X.I.cluster_spectral_function()
-X.I.spectral_function()

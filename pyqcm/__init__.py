@@ -871,29 +871,31 @@ class model_instance:
         return qcm.susceptibility(op_name, freqs, self.label * self.model.nclus + clus)
 
     # -----------------------------------------------------------------------------------------------
-    def qmatrix(self, clus=0):
+    def qmatrix(self, sys=0):
         """
         Returns the Lehmann representation of the Green function
 
+        :param int sys: label of the system (0-based)
         :return: 2-tuple made of
             1. the array of M real eigenvalues, M being the number of poles in the representation
             2. a rectangular (L x M) matrix (real of complex), L being the dimension of the Green function
 
         """
 
-        return qcm.qmatrix(self.label * self.model.nclus + clus)
+        return qcm.qmatrix(self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
-    def write(self, filename, clus=0):
+    def write(self, filename, sys=0):
         """
         Writes the solved cluster model instance to a text file
 
         :param str filename: name of the file
+        :para int sys: label of system (0-based)
         :return: None
 
         """
 
-        qcm.write_instance_to_file(filename, self.label * self.model.nclus + clus)
+        qcm.write_instance_to_file(filename, self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
     def write_all(self, filename):
@@ -904,8 +906,8 @@ class model_instance:
         :return: None
 
         """
-        for i in range(self.model.nclus):
-            self.write(filename + "_{:d}.sol".format(i), clus=i)
+        for s in range(self.model.nclus):
+            self.write(filename + "_{:d}.sol".format(i), sys=s)
 
     # -----------------------------------------------------------------------------------------------
     def read_all(self, filename):
@@ -916,8 +918,8 @@ class model_instance:
         :return: None
 
         """
-        for i in range(self.model.nclus):
-            self.read(filename + "_{:d}.sol".format(i), clus=i)
+        for s in range(self.model.nsys):
+            self.read(filename + "_{:d}.sol".format(i), sys=s)
 
     # -----------------------------------------------------------------------------------------------
     def parameters(self, param=None):
@@ -1058,13 +1060,13 @@ class model_instance:
         np.savetxt(file, Z, delimiter="\t", fmt="%1.8g")
 
     # -----------------------------------------------------------------------------------------------
-    def read(self, S, clus=0):
+    def read(self, S, sys=0):
         """
         Reads the solution from a string or a file. If the string is less than 32 characters
         long, it is interpreted as the name of a file in which the solution is read. Otherwise
         it is interpreted as the solution itself.
 
-        :param clus: label of the cluster (0 to the number of clusters - 1)
+        :param sys: label of the system (0-based)
         :param str S: long string containing the solution
 
         :return: None
@@ -1077,7 +1079,7 @@ class model_instance:
             except OSError:
                 raise FileNotFoundError(f"The file '{S}' could not be found") from None
 
-        qcm.read_instance(S, self.label * self.model.nclus + clus)
+        qcm.read_instance(S, self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
     def cluster_self_energy(self, z, clus=0, spin_down=False):
@@ -1094,30 +1096,30 @@ class model_instance:
         return qcm.cluster_self_energy(clus, z, spin_down, self.label)
 
     # -----------------------------------------------------------------------------------------------
-    def Green_function_average(self, clus=0, spin_down=False):
+    def Green_function_average(self, sys=0, spin_down=False):
         """
         Computes the cluster Green function average (integral over frequencies)
 
-        :param int clus: label of the cluster (0 to the number of clusters-1)
+        :param int sys: label of the system (0-based)
         :param boolean spin_down: true is the spin down sector is to be computed (applies if mixing = 	4)
         :return: a complex-valued matrix
 
         """
         return qcm.Green_function_average(
-            self.label * self.model.nclus + clus, spin_down
+            self.label * self.model.nsys + sys, spin_down
         )
 
     # -----------------------------------------------------------------------------------------------
-    def interactions(self, clus=0):
+    def interactions(self, sys=0):
         """
         returns the density-density interactions on a specific cluster
 
-        :param clus: label of the cluster (starts at 0)
+        :param int sys: label of the system (0-based)
         :return: a list of matrix elements tuples (i,j,v)
 
         """
 
-        return qcm.interactions(self.label * self.model.nclus + clus)
+        return qcm.interactions(self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
     def CPT_Green_function(self, z, k, spin_down=False):
@@ -2558,13 +2560,13 @@ def banner(s, c="-", skip=0):
 
 
 # ---------------------------------------------------------------------------------------------------
-def varia_table(var, val, nsys, prefix=""):
+def varia_table(var, val, nsys=1, prefix=""):
     """Pretty prints a list of variational parameters and values in a table form,
     grouped by cluster. For screen output in CDMFT and VCA.
 
     :param [str] var: list of parameter names
     :param [float] val: list of associated values
-    :param int nsys: number of clusters; inferred from parameter suffixes if None
+    :param int nsys: number of systems; inferred from parameter suffixes if None
     :param str prefix: prefix string to each line
 
     """

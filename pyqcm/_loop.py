@@ -404,7 +404,7 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 	:param task: task to perform within the loop. Must return a model_instance
 	:param [hartree] couplings: sequence of couplings (or single coupling)
 	:param int maxiter: maximum number of iterations
-    :param str iteration: method of iteration of parameters ('fixed_point' or 'Broyden')
+    :param str iteration: method of iteration of parameters ('fixed_point' or 'broyden')
 	:param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
 	:param str file: name of the file to which the converged result is written via write_summary()
 	:param boolean SEF: if True, computes the Potthoff functional at the end of the procedure
@@ -449,7 +449,7 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 		return hartree_converged
 	
 	niter = 0
-	if iteration == 'Broyden':
+	if iteration == 'broyden' or iteration == 'Broyden':
 		hartree_params, niter, alpha = pyqcm.broyden(F, X, iJ0 = alpha, maxiter=maxiter, convergence_test=G)
 	elif iteration == 'fixed_point':
 		hartree_params, niter = pyqcm.fixed_point_iteration(F, X, xtol=1e-6, convergence_test=G, maxiter=maxiter, alpha=alpha, eps_algo=eps_algo)

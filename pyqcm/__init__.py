@@ -617,10 +617,10 @@ class lattice_model:
                 raise ValueError("Error in set_multiplier()") from e
 
     # -----------------------------------------------------------------------------------------------
-    def parameter_string(self, clus=None, CR=False, constr=False):
+    def parameter_string(self, sys=None, CR=False, constr=False):
         """
         Returns a string with the model parameters. Used for including in plots.
-        :param int clus : cluster label to print the parameters of (starts at 1). If 0, prints lattice parameters only. If None, prints all parameters.
+        :param int sys : system label to print the parameters of (starts at 1). If 0, prints lattice parameters only. If None, prints all parameters.
         :param boolean CR : if True, puts each parameter on a line.
         :param boolean constr : if True, also includes constrained parameters
         """
@@ -635,7 +635,7 @@ class lattice_model:
                 c = 0
             else:
                 c = int(c)
-            if clus != None and c != clus:
+            if sys != None and c != sys:
                 continue
             if par[x][1] != None and constr:
                 S += x + "= {:g}*{:s}".format(par[x][2], par[x][1]) + sep
@@ -1035,7 +1035,7 @@ class model_instance:
                 f.writelines("{:d}\t{:d}\t{:1.8g}\n".format(x[0], x[1], x[2]))
 
     # -----------------------------------------------------------------------------------------------
-    def write_Green_function(self, clus=0, file="GF.tsv"):
+    def write_Green_function(self, sys=0, file="GF.tsv"):
         """
         Writes the Lehmann representation of the Green function to a file
 
@@ -1047,7 +1047,7 @@ class model_instance:
 
         """
 
-        W, Q = self.qmatrix(clus)
+        W, Q = self.qmatrix(sys)
         if self.is_complex:
             Z = np.empty((W.shape[0], Q.shape[1] + 1), dtype=complex)
             Z[:, 1:] = np.round(Q, 8)

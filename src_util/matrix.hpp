@@ -7,7 +7,6 @@
 #include <ctype.h>
 
 #include "parser.hpp"
-#include "lapack-blas.h"
 #include "vector_num.hpp"
 
 using namespace std;

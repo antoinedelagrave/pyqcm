@@ -1241,8 +1241,8 @@ class model_instance:
         if file is not None:
             self.write_summary(file)
         if pr:
-            for x in GS:
-                print("E0 = {:f}\tsector =  {:s}".format(x[0], x[1]))
+            for s,x in enumerate(GS):
+                print("system {:d} : E0 = {:f}\tsector =  {:s}".format(s, x[0], x[1]))
         return GS
 
     # -----------------------------------------------------------------------------------------------
@@ -2560,35 +2560,38 @@ def banner(s, c="-", skip=0):
 
 
 # ---------------------------------------------------------------------------------------------------
-def varia_table(var, val, nsys=1, prefix=""):
+def varia_table(var, val):
     """Pretty prints a list of variational parameters and values in a table form,
     grouped by cluster. For screen output in CDMFT and VCA.
 
     :param [str] var: list of parameter names
     :param [float] val: list of associated values
-    :param int nsys: number of systems; inferred from parameter suffixes if None
-    :param str prefix: prefix string to each line
 
     """
     assert len(var) == len(val)
-    s = ""
-    for system in range(1, nsys + 1):
-        if nsys > 1:
-            s += prefix + "Subbath {:d}: ".format(system)
-        s += prefix
-        count = 0
-        for i, p in enumerate(var):
-            if p[-1] == str(system):
-                s += "{:<9} = {: .5g}\t".format(p, val[i])
-                count += 1
-                if count % 5 == 0:
-                    s += "\n" + prefix
-        if count % 5 != 0 and system < nsys:
-            s += "\n"
-        if nsys > 1 and system < nsys:
-            s += "\n"
-    return s
+    S = ""
+    nsys = 0
+    # finds the number of systems
+    for i, p in enumerate(var):
+        s = int(p.partition("_")[-1])
+        if s > nsys: nsys = s
 
+    dic = [dict() for s in range(nsys)]
+
+    for i, p in enumerate(var):
+        X = p.partition("_")
+        s = int(X[-1])
+        dic[s-1][X[0]] = val[i]
+
+    for s in range(nsys):
+        S += "\nsystem {:d}:\n".format(s+1)
+        i = 0
+        for x in dic[s]:
+            S += "{:>9} = {: .5g}\t".format(x, dic[s][x])
+            i += 1
+            if i%5 == 0: S += '\n'
+
+    return S+'\n'
 
 # ---------------------------------------------------------------------------------------------------
 def epsilon(y, pr=False):

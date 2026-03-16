@@ -56,9 +56,12 @@ void lattice_model_instance::Green_eigensystem(Green_function &G, const vector3D
   }
 }
 
-/*
-returns an increment vector 
-*/
+/**
+ returns an increment vector
+ @param d step size
+ @param no index of the step within the sequence (0, 1, or 2)
+ @param dir direction code: 2 or 3 (with sign) selecting the plane of integration
+ */
 vector3D<double> increment(double d, int no, int dir)
 {
   switch(dir){

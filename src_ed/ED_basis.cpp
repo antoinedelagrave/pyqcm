@@ -29,7 +29,7 @@ bool ED_basis::verb = false;
 /**
  Constructor of the basis in the sector the_sec
  @param _sec sector of the Hilbert space considered
- @param _group pointer to symmetry group
+ @param _L number of orbitals (sites)
  */
 ED_basis::ED_basis(const sector &_sec, int _L): sec(_sec) , L(_L), dim(0)
 {

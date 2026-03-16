@@ -14,7 +14,7 @@ extern vector<double> grid_weights; // weights associated with grid_freqs
 //==============================================================================
 /**
  Calculates the lattice expectation value of all operators in the model
- @param ops list of names of operators to compute the averages of
+ @param _ops list of names of operators to compute the averages of
  @returns an array of (string, double) giving the average for each lattice operator
  */
 vector<pair<string,double>> lattice_model_instance::averages(const vector<string> &_ops)

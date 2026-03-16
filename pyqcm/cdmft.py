@@ -131,8 +131,9 @@ class CDMFT:
 
     :param [str] varia: list of variational parameters.
     :param float beta: inverse fictitious temperature (for the frequency grid)
-    :param float wc: cutoff frequency (for the frequency grid)
-    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self', 'adapt'
+    :param float wc: cutoff frequency (for the frequency grid) or, if grid_type = 'legendre', (w1, w2, n), where w1 is a low-frequency boundary, w2 a high-frequency boundary and n the number of points in each of the 3 segments 
+    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'adapt', 'legendre'
+    :param boolean selfnorm: multiplies the weights of the frequency grid by the norm of the self-energy
     :param int maxiter: maximum number of CDMFT iterations
     :param int miniter: minimum number of CDMFT iterations
     :param float accur_bath: the x-tolerance for distance function optimization
@@ -169,6 +170,7 @@ class CDMFT:
         beta=50,
         wc=2.0,
         grid_type="sharp",
+        selfnorm=False,
         maxiter=32,
         miniter=0,
         convergence="parameters",
@@ -202,6 +204,7 @@ class CDMFT:
         self.dist = 1e6
         self.hartree = hartree
         self.grid_type = grid_type
+        self.selfnorm = selfnorm
         self.host_function = host_function
         self.Hyb = None  # internal : hybridization function
         self.Hyb_down = (
@@ -445,7 +448,7 @@ class CDMFT:
         ):  # find the maximum value of variational (bath) parameters
             self.wc = max([2.0, max(self.x[self.nvar[0] :])])
 
-        self.grid = frequency_grid(self.I, self.grid_type, self.beta, self.wc)
+        self.grid = frequency_grid(self.I, self.grid_type, self.beta, self.wc, self.selfnorm)
 
         # solve the impurity problem
 
@@ -748,9 +751,10 @@ class frequency_grid:
     This class contains the imaginary frequency grid data, including weights
 
     :param model_instance I: current model instance
-    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq', 'self'
+    :param str grid_type: type of frequency grid along the imaginary axis : 'sharp', 'ifreq'
     :param float beta: inverse fictitious temperature (for the frequency grid)
-    :param float wc: cutoff frequency (for the frequency grid)
+    :param float wc: cutoff frequency (for the frequency grid) OR, if grid_type='legendre', (w1, w2, n) where w1 and w2 are low- and high-frequency boundaries and n is the number of points for each of the 3 frequency regions
+    :param boolean self_norm: if true, multiplies the weight by the norm of the self-energy
 
     :ivar float beta: inverse fictitious temperature
     :ivar float wc: cutoff frequency (for the frequency grid)
@@ -761,13 +765,13 @@ class frequency_grid:
     :ivar int nw: number of frequencies in the grid
     """
 
-    def __init__(self, I=None, grid_type="sharp", beta=50, wc=2):
+    def __init__(self, I=None, grid_type="sharp", beta=50, wc=2, self_norm=False):
         self.beta = beta
         self.wc = wc
         self.grid_type = grid_type
 
         if grid_type == "legendre":
-            assert type(wc) == list
+            assert pyqcm.is_sequence(wc)
             self.wr, self.weight = pyqcm.legendre_frequency_grid(wc[0], wc[1], wc[2])
             self.w = self.wr * 1j
             self.dist_function = "legendre/{:.1f}/{:.1f}/{:d}".format(
@@ -794,18 +798,17 @@ class frequency_grid:
                 self.dist_function = "ifreq_wc_{0:.1f}_b_{1:d}".format(
                     self.wc, int(self.beta)
                 )
-            elif self.grid_type == "self":
-                self.weight = np.zeros(self.nw)
-                Sig_inf = I.cluster_self_energy(1.0e6j)
-                for i, x in enumerate(self.w):
-                    Sig = I.cluster_self_energy(x) - Sig_inf
-                    self.weight[i] = np.linalg.norm(Sig)
-                self.weight *= 1.0 / self.weight.sum()
-                self.dist_function = "self_wc_{0:.1f}_b_{1:d}".format(
-                    self.wc, int(self.beta)
-                )
             else:
                 raise ValueError(f"unknown frequency grid type `{grid_type}`")
+        if self_norm:
+            Sig_inf = I.cluster_self_energy(1.0e6j)
+            for i, x in enumerate(self.w):
+                Sig = I.cluster_self_energy(x) - Sig_inf
+                self.weight[i] *= np.linalg.norm(Sig)
+            self.weight *= 1.0 / self.weight.sum()
+            self.dist_function += "-self"
+        
+
 
 
 ####################################################################################################

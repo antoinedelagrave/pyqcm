@@ -979,7 +979,7 @@ def plot_GS_energy(model, param, prm, clus=0, file=None, plt_ax=None, **kwargs):
 # detects a continuous phase transition
 
 def _transition(model, varia, P, bracket, step=0.001, verb=False, symmetrized_operator=None):
-    """Detects a transition as a function of external parameter param by looking at the equality between 
+    r"""Detects a transition as a function of external parameter param by looking at the equality between 
     :math:`\Omega(h=s)` and :math:`\Omega(h=0)` where *h* is a single variational parameter (Weiss field)
     and *s* is a step. 
     

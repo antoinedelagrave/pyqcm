@@ -35,6 +35,7 @@ template<> void matrix<double>::inverse()
 
 /**
  checks whether the Complex matrix A is real
+ @param accuracy threshold below which an imaginary part is considered zero
  */
 template<> bool matrix<Complex>::is_real(double accuracy)
 {

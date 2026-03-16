@@ -8,6 +8,7 @@
 
 /**
  returns the sum of all components
+ @param x input vector
  */
 double sum(vector<double> &x) {
   double z = 0.0;
@@ -17,6 +18,7 @@ double sum(vector<double> &x) {
 
 /**
  returns the sum of the negative components
+ @param x input vector
  */
 double sum_negative(vector<double> &x) {
   double z = 0.0;
@@ -28,6 +30,9 @@ double sum_negative(vector<double> &x) {
 
 /**
  performs the multiply-add operation y += a*x
+ @param a scalar multiplier
+ @param x input vector to scale and add
+ @param y [in,out] accumulation vector
  */
 void mult_add(double a, const vector<double> &x, vector<double> &y) { cblas_daxpy((int)y.size(), a, x.data(), 1, y.data(), 1); }
 
@@ -36,6 +41,9 @@ void mult_add(double a, const vector<double> &x, vector<double> &y) { cblas_daxp
 /**
  performs the multiply-add operation y += a*x
  Complex version
+ @param a scalar multiplier
+ @param x input vector to scale and add
+ @param y [in,out] accumulation vector
  */
 void mult_add(Complex a, const vector<Complex> &x, vector<Complex> &y) {
   cblas_zaxpy((int)x.size(), (void *)&a, (void *)x.data(), 1, (void *)y.data(), 1);
@@ -45,6 +53,8 @@ void mult_add(Complex a, const vector<Complex> &x, vector<Complex> &y) {
 
 /**
  dot product (double version)
+ @param x first vector
+ @param y second vector
  */
 double operator*(const vector<double> &x, const vector<double> &y) {
   double z = 0.0;
@@ -55,6 +65,8 @@ double operator*(const vector<double> &x, const vector<double> &y) {
 
 /**
  dot product (complex version)
+ @param x first vector
+ @param y second vector
  */
 Complex operator*(const vector<Complex> &x, const vector<Complex> &y) {
   Complex z = 0.0;
@@ -65,6 +77,7 @@ Complex operator*(const vector<Complex> &x, const vector<Complex> &y) {
 
 /**
  norm of a vector
+ @param x input vector
  */
 double norm(const vector<double> &x) { return cblas_dnrm2((int)x.size(), x.data(), 1); }
 double norm(const vector<Complex> &x) { return cblas_dznrm2((int)x.size(), x.data(), 1); }
@@ -72,6 +85,7 @@ double norm(const vector<Complex> &x) { return cblas_dznrm2((int)x.size(), x.dat
 
 /**
  square norm of a vector
+ @param x input vector
  */
 double norm2(const vector<double> &x) {
   double z = cblas_dnrm2((int)x.size(), x.data(), 1);
@@ -85,13 +99,17 @@ double norm2(const vector<Complex> &x) {
 
 /**
  multiplies the vector by a constant: x *= a
+ @param x [in,out] vector to scale
+ @param c scalar multiplier
  */
 void operator*=(vector<double> &x, const double &c) { cblas_dscal((int)x.size(), c, x.data(), 1); }
 void operator*=(vector<Complex> &x, const Complex &c) { cblas_zscal((int)x.size(), &c, x.data(), 1); }
 
 
 /**
-Adds to vector  random components between -1 and 1, then normalizes
+ Adds to vector random components between -1 and 1, then normalizes
+ @param x [in,out] vector to randomize and normalize
+ @param ran normal distribution object used to generate random values
  */
 bool random(vector<double> &x, std::normal_distribution<double> &ran) {
   std::default_random_engine generator((unsigned)global_int("seed"));

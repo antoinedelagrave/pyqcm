@@ -13,6 +13,8 @@ bool parser::no_rewind = false;
  Looks for the string \a search in the input stream and positions the stream right after the string if found.
  If not, returns the stream at EOF.
  Does not start from the beginning of file, but from current position, contrary to the operators defined above.
+ @param flux input stream to search in
+ @param search keyword string to look for
  */
 istream & parser::find_next(istream &flux, const char* search)
 {
@@ -38,6 +40,8 @@ istream & parser::find_next(istream &flux, const char* search)
  Looks for the string \a search in the input stream and positions the stream right after the string if found.
  If not, returns the stream at EOF.
  Used to input parameters (located after a keyword) or options that are not mandatory
+ @param flux input stream to search in
+ @param search keyword string to look for
  */
 istream & operator==(istream &flux, const char* search)
 {
@@ -67,6 +71,8 @@ istream & operator==(istream &flux, const char* search)
  Looks for the string \a search in the input stream and positions the stream right after the string if found.
  If not, returns the stream at EOF.
  Used to input parameters (located after a keyword) or options that are not mandatory
+ @param flux input stream to search in
+ @param search keyword string to look for
  */
 istream & operator==(istream &flux, const string &search)
 {
@@ -96,6 +102,8 @@ istream & operator==(istream &flux, const string &search)
  Looks for the string \a search in the input stream and positions the stream right after the string if found.
  If not, terminate the program.
  Used to input mandatory parameters (located after a keyword)
+ @param flux input stream to search in
+ @param search keyword string to look for
  */
 istream & operator>>(istream &flux, const char* search)
 {
@@ -125,6 +133,8 @@ istream & operator>>(istream &flux, const char* search)
  Looks for the string \a search in the input stream and positions the stream right after the string if found.
  If not, terminate the program.
  Used to input mandatory parameters (located after a keyword)
+ @param flux input stream to search in
+ @param search keyword string to look for
  */
 istream & operator>>(istream &flux, const string &search)
 {

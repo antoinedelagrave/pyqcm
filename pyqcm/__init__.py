@@ -1123,7 +1123,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def CPT_Green_function(self, z, k, spin_down=False):
-        """
+        r"""
         Computes the CPT Green function at a given frequency
 
         :param z: complex frequency
@@ -1137,7 +1137,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def CPT_Green_function_inverse(self, z, k, spin_down=False):
-        """
+        r"""
         Computes the inverse CPT Green function at a given frequency
 
         :param z: complex frequency
@@ -1164,7 +1164,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def dispersion(self, k, spin_down=False, label=0):
-        """
+        r"""
         Computes the dispersion relation for a single or an array of wavevectors
 
         :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
@@ -1176,7 +1176,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def epsilon(self, k, spin_down=False):
-        """
+        r"""
         Computes the hopping matrix (orbital basis) for a single or an array of wavevectors
 
         :param wavevector k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
@@ -1278,7 +1278,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def Lehmann_Green_function(self, k, orb=1, spin_down=False):
-        """
+        r"""
         Computes the Lehmann representation of the periodized Green function for a set of wavevectors
 
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
@@ -1309,7 +1309,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def momentum_profile(self, name, k):
-        """
+        r"""
         Computes the momentum-resolved average of an operator
 
         :param str name: name of the lattice operator
@@ -1332,7 +1332,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def periodized_Green_function(self, z, k, spin_down=False):
-        """
+        r"""
         Computes the periodized Green function at a given frequency and wavevectors
 
         :param complex z: frequency
@@ -1345,7 +1345,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def periodized_Green_function_element(self, r, c, z, k, spin_down=False):
-        """
+        r"""
         Computes the element (r,c) of the periodized Green function at a given frequency and wavevectors (starts at 0)
 
         :param int r: a row index (starts at 0)
@@ -1360,7 +1360,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def band_Green_function(self, z, k, spin_down=False):
-        """
+        r"""
         Computes the periodized Green function at a given frequency and wavevectors, in the band basis (defined
         in the noninteracting model). It only differs from the periodized Green function in multi-band models.
 
@@ -1374,7 +1374,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def self_energy(self, z, k, spin_down=False):
-        """
+        r"""
         Computes the self-energy associated with the periodized Green function at a given frequency and wavevectors
 
         :param complex z: frequency
@@ -1529,7 +1529,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def QP_weight(self, k, eta=0.01, orb=1, spin_down=False):
-        """
+        r"""
         Computes the k-dependent quasi-particle weight from the self-energy derived from the periodized Green function
 
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
@@ -1570,7 +1570,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def V_matrix(self, z, k, spin_down=False):
-        """
+        r"""
         Computes the matrix :math:`V=G_0^{-1}-G^{c-1}_0` at a given frequency and wavevectors, where :math:`G_0` is the noninteracting Green function on the infinite lattice and :math:`G^c_0` is the noninteracting Green function on the cluster.
 
         :param complex z: frequency
@@ -1583,7 +1583,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def tk(self, k, spin_down=False):
-        """
+        r"""
         Computes the k-dependent one-body matrix of the lattice model
 
         :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
@@ -1619,7 +1619,7 @@ class model_instance:
 
     # -----------------------------------------------------------------------------------------------
     def spin_spectral_function(self, freq, k, orb=None):
-        """
+        r"""
         Computes the k-dependent spin-resolved spectral function
 
         :param freq: complex freqency
@@ -1804,7 +1804,7 @@ class model_instance:
 
 ####################################################################################################
 class double_counting:
-    """
+    r"""
     Class used to correct the value of band energies and chemical potential as a function of interaction strength
 
     .. math::  e = e_0 + c V \\langle n\\rangle
@@ -1840,7 +1840,7 @@ class double_counting:
 
 ####################################################################################################
 class hartree:
-    """
+    r"""
     This class contains the elements needed to perform the Hartree approximation for the inter-cluster components of an
     extended interaction. The basic self-consistency relation is
 
@@ -2586,8 +2586,9 @@ def varia_table(var, val):
     for s in range(nsys):
         S += "\nsystem {:d}:\n".format(s+1)
         i = 0
-        for x in dic[s]:
-            S += "{:>9} = {: .5g}\t".format(x, dic[s][x])
+        sorted_dic = dict(sorted(dic[s].items()))
+        for x in sorted_dic:
+            S += "{:>8} = {: .5g}\t".format(x, sorted_dic[x])
             i += 1
             if i%5 == 0: S += '\n'
 

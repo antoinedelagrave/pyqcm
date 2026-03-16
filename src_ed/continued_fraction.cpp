@@ -61,6 +61,8 @@ Complex continued_fraction::evaluate(Complex z)
 
 /**
  prints on a stream (for debugging)
+ @param flux output stream
+ @param F continued fraction to print
  */
 std::ostream& operator<<(std::ostream &flux, const continued_fraction &F)
 {
@@ -76,6 +78,8 @@ std::ostream& operator<<(std::ostream &flux, const continued_fraction &F)
 
 /**
  reads from a stream
+ @param flux input stream
+ @param F continued fraction to populate
  */
 std::istream& operator>>(std::istream &flux, continued_fraction &F)
 {

@@ -37,6 +37,8 @@ void Heisenberg_operator::set_target(vector<bool> &in_bath){
 
 /**
  returns a pointer to, and constructs the associated HS operator in the sector with basis B.
+ @param sec sector of the Hilbert space in which to build the operator
+ @param complex_Hilbert_space if true, builds the operator in a complex Hilbert space
  */
 shared_ptr<HS_Hermitian_operator> Heisenberg_operator::build_HS_operator(sector sec, bool complex_Hilbert_space)
 {

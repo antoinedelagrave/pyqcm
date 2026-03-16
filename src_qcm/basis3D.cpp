@@ -103,7 +103,10 @@ void basis3D::inverse()
 
 
 //------------------------------------------------------------------------------
-//! from a vector V expressed in the working basis, provides as output its components in the current basis
+/**
+ from a vector V expressed in the working basis, provides as output its components in the current basis
+ @param V vector expressed in the working (Cartesian) basis
+ */
 vector3D<double> basis3D::to(const vector3D<double>& V)
 {
 	vector3D<double> W;

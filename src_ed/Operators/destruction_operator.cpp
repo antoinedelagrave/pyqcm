@@ -6,6 +6,9 @@ template specializations of destruction_operator
 
 /**
  constructor
+ @param _B source (bra) basis
+ @param _T target (ket) basis after annihilation
+ @param orb symmetric orbital on which the destruction operator acts
  */
 template<>
 destruction_operator<double>::destruction_operator(shared_ptr<ED_mixed_basis> _B, shared_ptr<ED_mixed_basis> _T, const symmetric_orbital &orb)
@@ -34,6 +37,9 @@ destruction_operator<double>::destruction_operator(shared_ptr<ED_mixed_basis> _B
 
 /**
  constructor
+ @param _B source (bra) basis
+ @param _T target (ket) basis after annihilation
+ @param orb symmetric orbital on which the destruction operator acts
  */
 template<>
 destruction_operator<Complex>::destruction_operator(shared_ptr<ED_mixed_basis> _B, shared_ptr<ED_mixed_basis> _T, const symmetric_orbital &orb)

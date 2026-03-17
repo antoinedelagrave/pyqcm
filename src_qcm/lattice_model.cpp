@@ -345,10 +345,7 @@ void lattice_model::post_parameter_consolidate(size_t label)
 	}
 	if(mixing > 5) mixing = mixing & HS_mixing::full;
 	if(mixing == 5) mixing = HS_mixing::anomalous;
-	// for(size_t i=0; i<clusters.size(); i++){
-	// 	if(mixing != ED::mixing(i+label*clusters.size())) qcm_throw("In this version, all clusters must have the same mixing.");
-	// }
-	
+
 	n_mixed = 1;
 	if(mixing & HS_mixing::anomalous) n_mixed *= 2;
 	if(mixing & HS_mixing::spin_flip) n_mixed *= 2;
@@ -797,12 +794,8 @@ void lattice_model::interaction_operator(const string &name, vector3D<int64_t> &
 
   }
   else{
-    // if(name != previous_name and previous_name != ""){
-    //   qcm_throw("operator " + name + " has been defined in another context");
-    // }
     tmp_op = it_op->second;
   }
-  // previous_name = name;
   
   // looping over sites of the super unit cell
   for(int s1=0; s1 < (int)sites.size(); s1++){
@@ -862,12 +855,8 @@ void lattice_model::hopping_operator(const string &name, vector3D<int64_t> &link
     term[name] = tmp_op;
   }
   else{
-    // if(name != previous_name and previous_name != ""){
-    //   qcm_throw("operator " + name + " has been defined in another context");
-    // }
     tmp_op = it_op->second;
   }
-  // previous_name = name;
 
   QCM_ASSERT(tau>=0 and tau<=3 and sigma >=0 and sigma <=3);
   if(tau==0 and !link.is_null()) qcm_throw("Problem with the definition of " + tmp_op->name+ ". Cannot define an operator with nonzero link AND matrix tau = 0");
@@ -1009,12 +998,8 @@ void lattice_model::anomalous_operator(const string &name, vector3D<int64_t> &li
     term[name] = tmp_op;
   }
   else{
-    // if(name != previous_name and previous_name != ""){
-    //   qcm_throw("operator " + name + " has been defined in another context");
-    // }
     tmp_op = it_op->second;
   }
-  // previous_name = name;
   
 
   
@@ -1059,12 +1044,8 @@ void lattice_model::density_wave(const string &name, vector3D<int64_t> &cdw_link
     term[name] = tmp_op;
   }
   else{
-    // if(name != previous_name and previous_name != ""){
-    //   qcm_throw("operator " + name + " has been defined in another context");
-    // }
     tmp_op = it_op->second;
   }
-  // previous_name = name;
   
   
   if(type == "spin") dw_type = 'Z';

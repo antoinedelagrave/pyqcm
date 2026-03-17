@@ -83,19 +83,9 @@ void model_instance<double>::build_cf(state<double> &Omega, bool spin_down)
           continued_fraction cont_fraction(V.first, V.second, Omega.energy, norm*Omega.weight, pm==1);
           if(pm == 1){
             cf->e[r](o1,o2) = cont_fraction;
-            // if(global_bool("verb_ED")){
-            //   cout << "coefficients of the electron continued fraction:\n";
-            //   cout << "alphas\tbetas\n";
-            //   cout << cont_fraction; 
-            // }
           }
           else{
             cf->h[r](o1,o2) = cont_fraction;
-            // if(global_bool("verb_ED")){
-            //   cout << "coefficients of the hole continued fraction:\n";
-            //   cout << "alphas\tbetas\n";
-            //   cout << cont_fraction; 
-            // }
           }
         }
       }
@@ -169,19 +159,9 @@ void model_instance<Complex>::build_cf(state<Complex> &Omega, bool spin_down)
           continued_fraction cont_fraction(V.first, V.second, Omega.energy,norm*Omega.weight,pm==1);
           if(pm == 1){
             cf->e[r](o1,o2) = cont_fraction;
-            // if(global_bool("verb_ED")){
-            //   cout << "coefficients of the electron continued fraction:\n";
-            //   cout << "alphas\tbetas\n";
-            //   cout << cont_fraction; 
-            // }
           }
           else{
             cf->h[r](o1,o2) = cont_fraction;
-            // if(global_bool("verb_ED")){
-            //   cout << "coefficients of the hole continued fraction:\n";
-            //   cout << "alphas\tbetas\n";
-            //   cout << cont_fraction; 
-            // }
           }
         }
       }

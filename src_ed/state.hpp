@@ -6,6 +6,7 @@
 #include "sector.hpp"
 #include "Q_matrix_set.hpp"
 #include "continued_fraction_set.hpp"
+#include "mcf_set.hpp"
 #include "parser.hpp"
 #include "ED_basis.hpp"
 
@@ -53,6 +54,9 @@ struct state
     else if(GF_solver == GF_format_CF){
       gf = shared_ptr<continued_fraction_set>(new continued_fraction_set(fin, sec, group, mixing, typeid(HilbertField) == typeid(Complex)));
     }
+    else if(GF_solver == GF_format_MCF){
+      gf = make_shared<mcf_set>(fin, group, mixing);
+    }
     else qcm_ED_throw("unkown Green function solver (GF_solver)");
     if(mixing&HS_mixing::up_down){
       if(GF_solver == GF_format_BL){
@@ -60,6 +64,9 @@ struct state
       }
       else if(GF_solver == GF_format_CF){
         gf_down = shared_ptr<continued_fraction_set>(new continued_fraction_set(fin, sec, group, mixing, typeid(HilbertField) == typeid(Complex)));
+      }
+      else if(GF_solver == GF_format_MCF){
+        gf_down = make_shared<mcf_set>(fin, group, mixing);
       }
     }
   }

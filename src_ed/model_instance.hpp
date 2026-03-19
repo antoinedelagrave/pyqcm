@@ -11,6 +11,7 @@
 #include "model_instance_base.hpp"
 #include "Q_matrix_set.hpp"
 #include "continued_fraction_set.hpp"
+#include "mcf_set.hpp"
 #include "ED_basis.hpp"
 #include "binary_state.hpp"
 
@@ -69,6 +70,7 @@ struct model_instance : model_instance_base
 
   void build_cf(state<HilbertField> &Omega, bool spin_down);
   void build_qmatrix(state<HilbertField> &Omega, bool spin_down);
+  void build_mcf(state<HilbertField> &Omega, bool spin_down);
   void clear_states();
   void compute_weights();
   void insert_state(shared_ptr<state<HilbertField>> S);
@@ -517,15 +519,17 @@ void model_instance<HilbertField>::Green_function_solve()
     bool is_complex = (typeid(HilbertField) == typeid(Complex));
 
     if(GF_solver == GF_format_CF) build_cf(*x, false);
+    else if(GF_solver == GF_format_MCF) build_mcf(*x, false);
     else build_qmatrix(*x,false);
-    
+
     if(mixing&HS_mixing::up_down){
       if(GF_solver == GF_format_CF) build_cf(*x,true);
+      else if(GF_solver == GF_format_MCF) build_mcf(*x,true);
       else build_qmatrix(*x,true);
     }
   }
 
-  if(states.size() > 1 and GF_solver != GF_format_CF and global_bool("merge_states")){
+  if(states.size() > 1 and GF_solver == GF_format_BL and global_bool("merge_states")){
     cout << states.size() << " states were found. Merging..." << endl;
     merge_states();
   } 
@@ -796,6 +800,120 @@ void model_instance<HilbertField>::build_qmatrix(state<HilbertField> &Omega, boo
     Q->q[r].append(Qp.q[r]);
     Q->q[r].check_norm(global_double("accur_Q_matrix"));
     Q->q[r].v.v *= sqrt(Omega.weight);
+  }
+}
+
+
+
+
+/**
+ Constructs the matrix continued fraction (MCF) representation of the Green
+ function from the block Lanczos method.
+
+ Mimics build_qmatrix() but uses blockLanczos() instead of the band Lanczos
+ (build_Q_matrix).  The result is stored as a pair of matrix_continued_fraction
+ objects (one electron, one hole) per irrep block, held in an mcf_set.
+
+ ### Weight matrix W
+ Before calling blockLanczos (which orthonormalises the starting block
+ internally), the upper-triangular QR factor W is extracted from the phi block
+ via modified Gram-Schmidt.  This captures the norms of the starting vectors,
+ exactly as norm/sqrt(norm) does in the scalar build_cf.
+ The factor sqrt(Omega.weight) is folded into W so that the spectral weight is
+ correct across degenerate ground states.
+
+ ### Conventions
+ The electron MCF is stored without modification.  mcf_set::Green_function
+ transposes its output before adding to G.block[r] to match the cconjugate
+ convention of build_qmatrix (see mcf_set.hpp for the derivation).
+
+ @param Omega      State on which the GF is built.
+ @param spin_down  True when building the spin-down component (up-down mixing).
+*/
+template<typename HilbertField>
+void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool spin_down)
+{
+  auto& sym_orb = the_model->sym_orb[mixing];
+
+  auto mcf = make_shared<mcf_set>(the_model->group, mixing);
+  if(spin_down) Omega.gf_down = mcf;
+  else          Omega.gf      = mcf;
+
+  check_signals();
+  if(global_bool("verb_ED")){
+    cout << "\ncomputing MCF for state of energy " << Omega.energy
+         << " in sector " << Omega.sec.name() << endl;
+    if(spin_down) cout << "spin down part" << endl;
+  }
+
+  double accur_deflation = global_double("accur_deflation");
+
+  int ns = 2*(int)sym_orb.size();
+  for(int s = 0; s < ns; ++s){
+    int r  = s / 2;
+    int pm = 2*(s % 2) - 1;          // -1 (hole) or +1 (electron)
+
+    if(sym_orb[r].size() == 0) continue;
+    int spin = (spin_down) ? 1 : sym_orb[r][0].spin;
+    sector target_sec = the_model->group->shift_sector(Omega.sec, pm, spin, r);
+    if(!the_model->group->sector_is_valid(target_sec)) continue;
+
+    int p = (int)sym_orb[r].size();  // block size
+
+    // Build starting block: phi[i] = c_i^{pm} |Omega>
+    vector<vector<HilbertField>> phi(p);
+    bool skip_sector = false;
+    for(int i = 0; i < p; ++i){
+      symmetric_orbital sorb = sym_orb[r][i];
+      if(spin_down) sorb.spin = 1;
+      if(!the_model->create_or_destroy(pm, sorb, Omega, phi[i], HilbertField(1.0)))
+        skip_sector = true;
+    }
+    if(skip_sector) continue;
+
+    // Extract the upper-triangular QR factor W of the phi block.
+    // Working copies q[] are orthonormalized; W captures the norms and
+    // overlaps so that phi[l] = sum_{k<=l} q[k] * W(k,l).
+    matrix<HilbertField> W(p);
+    {
+      vector<vector<HilbertField>> q(phi);   // working copies (phi not modified)
+      bool rank_deficient = false;
+      for(int l = 0; l < p; ++l){
+        for(int k = 0; k < l; ++k){
+          HilbertField z = q[k] * q[l];      // <q[k] | q[l]>
+          W(k, l) = z;
+          mult_add(-z, q[k], q[l]);
+        }
+        double nrm = norm(q[l]);
+        if(nrm < accur_deflation){ rank_deficient = true; break; }
+        W(l, l) = HilbertField(nrm);
+        q[l] *= 1.0 / nrm;
+      }
+      if(rank_deficient) continue;
+    }
+    // Fold in the state weight so that the spectral weight is Omega.weight.
+    W.v *= sqrt(Omega.weight);
+
+    // Assemble the Hamiltonian in the target sector
+    Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
+    if(H->dim == 0){ delete H; continue; }
+
+    // Block Lanczos: produces diagonal blocks A[j] and off-diagonal QR blocks B[j].
+    // blockLanczos orthonormalises phi internally (consistent with the W extracted above).
+    vector<matrix<HilbertField>> A, B;
+    int M0 = (int)(14 * p * log(1.0 * H->dim));
+    blockLanczos(*H, phi, A, B, M0, global_bool("verb_ED"));
+
+    delete H; H = nullptr;
+
+    if(A.empty()) continue;
+
+    // Build the matrix continued fraction with energy shift.
+    // The constructor shifts A[j] by ±Omega.energy (create flag) and stores W.
+    matrix_continued_fraction frac(A, B, Omega.energy, W, pm == 1);
+
+    if(pm == -1) mcf->h[r] = frac;
+    else         mcf->e[r] = frac;
   }
 }
 
@@ -1149,6 +1267,7 @@ void model_instance<HilbertField>::write(ostream& fout)
   for (auto &x : value) fout << x.first << '\t' << x.second << '\n';
   fout << "\nGS_energy: " << GS_energy << " GS_sector: " << GS_string() << '\n';
   if(GF_solver == GF_format_CF) fout << "GF_format: cf\n";
+  else if(GF_solver == GF_format_MCF) fout << "GF_format: mcf\n";
   else fout << "GF_format: bl\n";
   fout << "mixing\t" << mixing << endl;
   
@@ -1181,6 +1300,7 @@ void model_instance<HilbertField>::read(istream& fin)
   fin >> "GS_energy:" >> GS_energy >> tmp >> tmp;
   fin >> "GF_format:" >> tmp;
   if(tmp == "bl") GF_solver = GF_format_BL;
+  else if(tmp == "mcf") GF_solver = GF_format_MCF;
   else GF_solver = GF_format_CF;
   fin >> "mixing" >> mixing;
   n_mixed = 1;

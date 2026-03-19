@@ -7,7 +7,7 @@
 #include "symmetry_group.hpp"
 #include "Q_matrix.hpp"
 
-enum GF_FORMAT {GF_format_BL, GF_format_CF};
+enum GF_FORMAT {GF_format_BL, GF_format_CF, GF_format_MCF};
 
 //! Abstract class for a Green function solution that can provide the Green function at any complex frequency
 struct Green_function_set

@@ -30,4 +30,4 @@ convergence=['self-energy', 'distance']; accur=[1e-4, 1e-5]
 
 varia = ['tb1_1', 'eb1_1', 'tb1_2', 'eb1_2']
 
-sol = CDMFT(model, varia=varia, wc=10, grid_type='self', accur=accur, convergence=convergence, method='Nelder-Mead', maxiter=64, depth=1, iteration='fixed_point')
+sol = CDMFT(model, varia=varia, wc=10, selfnorm=True, accur=accur, convergence=convergence, method='Nelder-Mead', maxiter=64, depth=1, iteration='fixed_point')

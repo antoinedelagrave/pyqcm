@@ -43,7 +43,7 @@ def run_cdmft():
         alpha = X.alpha
     except:
         alpha = 0.0
-    X = CDMFT(M.model, varia=varia, wc=10, grid_type='self', accur=accur, convergence=convergence, converge_with_stdev=False, miniter=1, maxiter=64, depth=1, iteration='fixed_point', alpha=alpha)
+    X = CDMFT(M.model, varia=varia, wc=10, selfnorm=True, accur=accur, convergence=convergence, converge_with_stdev=False, miniter=1, maxiter=64, depth=1, iteration='fixed_point', alpha=alpha)
     return X.I
 
 # Looping over values of U

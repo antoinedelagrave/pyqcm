@@ -81,6 +81,7 @@ namespace QCM {
 #else
     new_global_char('L', "Ground_state_method", "Desired method to compute the ground state: L (Lanczos method - default), D (Davidson method)");
 #endif
+    new_global_char('L', "GF_method", "Representation of the Green function: L (Lehmann/band-Lanczos - default), F (continued fraction), M (matrix continued fraction)");
   }
 }
 

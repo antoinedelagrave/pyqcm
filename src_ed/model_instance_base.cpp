@@ -18,7 +18,16 @@ model_instance_base::model_instance_base(size_t _label, shared_ptr<model> _the_m
 
   static bool first_instance = true;
 
-  GF_solver = global_bool("continued_fraction") ? GF_format_CF : GF_format_BL;
+  {
+    char gf = global_char("GF_method");
+    // backward compatibility: continued_fraction=true maps to 'F'
+    if(gf == 'L' && global_bool("continued_fraction")) gf = 'F';
+    switch(gf){
+      case 'F': GF_solver = GF_format_CF;  break;
+      case 'M': GF_solver = GF_format_MCF; break;
+      default:  GF_solver = GF_format_BL;  break;
+    }
+  }
   
   max_gap = -log(global_double("minimum_weight"))*global_double("temperature");
   if(max_gap < MIN_GAP) max_gap = MIN_GAP;

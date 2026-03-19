@@ -147,6 +147,7 @@ add_library(
   src_ed/binary_state.cpp
   src_ed/continued_fraction.cpp
   src_ed/continued_fraction_set.cpp
+  src_ed/matrix_continued_fraction.cpp
   src_ed/Operators/destruction_operator.cpp
   src_ed/model.cpp
   src_ed/model_instance.cpp

@@ -201,7 +201,7 @@ void lattice_model_instance::periodized_Green_function(Green_function_k &M)
 		M.g = M.Gcpt;
 	}
 	else if(periodization == 'L'){ // Lanczos MCF periodization
-		qcm_throw("This periodization option (L) is not yet implemented")
+		qcm_throw("This periodization option (L) is not yet implemented");
 		// if(global_char("GF_method") != 'M')
 		// 	qcm_throw("periodization='L' requires GF_method='M' (matrix continued fraction)");
 		// QCM_ASSERT(model->clusters.size() == 1);

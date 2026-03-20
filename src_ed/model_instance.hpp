@@ -75,35 +75,35 @@ struct model_instance : model_instance_base
   void compute_weights();
   void insert_state(shared_ptr<state<HilbertField>> S);
   void set_hopping_matrix(bool spin_down);
-  void merge_states();
+  void merge_states() override;
   string GS_string() const;
   void build_bases_and_HS_operators(const sector& GS_sector, bool spin_down);
   double fidelity(model_instance<HilbertField>& label);
 
   // realization of virtual base class methods
-  pair<double, string> low_energy_states();
-  pair<double, double> cluster_averages(shared_ptr<Hermitian_operator> h);
-  void Green_function_solve();
-  pair<double, string> one_body_solve();
-  matrix<Complex>  Green_function(const Complex &z, bool spin_down, bool blocks);
-  void Green_function_average();
-  matrix<Complex>  self_energy(const Complex &z, bool spin_down);
-  matrix<Complex>  hopping_matrix(bool spin_down);
-  matrix<Complex>  hopping_matrix_full(bool spin_down, bool diag);
-  vector<tuple<int,int,double>> interactions();
-  matrix<Complex>  hybridization_function(Complex w, bool spin_down);
-  vector<Complex>  susceptibility(shared_ptr<Hermitian_operator> h, const vector<Complex> &w);
-  vector<pair<double,double>> susceptibility_poles(shared_ptr<Hermitian_operator> h);
-  void Green_function_density();
-  void print(ostream& fout);
-  void write(ostream& fout);
-  void read(istream& fin);
-  double tr_sigma_inf();
+  pair<double, string> low_energy_states() override;
+  pair<double, double> cluster_averages(shared_ptr<Hermitian_operator> h) override;
+  void Green_function_solve() override;
+  pair<double, string> one_body_solve() override;
+  matrix<Complex>  Green_function(const Complex &z, bool spin_down, bool blocks) override;
+  void Green_function_average() override;
+  matrix<Complex>  self_energy(const Complex &z, bool spin_down) override;
+  matrix<Complex>  hopping_matrix(bool spin_down) override;
+  matrix<Complex>  hopping_matrix_full(bool spin_down, bool diag) override;
+  vector<tuple<int,int,double>> interactions() override;
+  matrix<Complex>  hybridization_function(Complex w, bool spin_down) override;
+  vector<Complex>  susceptibility(shared_ptr<Hermitian_operator> h, const vector<Complex> &w) override;
+  vector<pair<double,double>> susceptibility_poles(shared_ptr<Hermitian_operator> h) override;
+  void Green_function_density() override;
+  void print(ostream& fout) override;
+  void write_hdf5(H5::Group& grp) override;
+  void read_hdf5(H5::Group& grp)  override;
+  double tr_sigma_inf() override;
   pair<vector<double>, vector<complex<double>>> qmatrix(bool spin_down);
   pair<vector<double>, vector<complex<double>>> hybridization(bool spin_down);
-  void print_wavefunction(ostream& fout);
-  pair<matrix<Complex>, vector<uint64_t>>  density_matrix_mixed(vector<int> sites);
-  pair<matrix<Complex>, vector<uint64_t>>  density_matrix_factorized(vector<int> sites);
+  void print_wavefunction(ostream& fout) override;
+  pair<matrix<Complex>, vector<uint64_t>>  density_matrix_mixed(vector<int> sites) override;
+  pair<matrix<Complex>, vector<uint64_t>>  density_matrix_factorized(vector<int> sites) override;
 };
 
 
@@ -1252,87 +1252,90 @@ string model_instance<HilbertField>::GS_string() const
 }
 
 
+
+
 /**
- writes the Green function information to a stream.
- This can be read instead of solving the model
- */
+ Writes the model instance (parameters + all states) to an HDF5 group.
+ Layout:
+   attribute "GS_energy"  : double
+   attribute "GS_sectors" : string
+   attribute "GF_format"  : string ("bl" | "cf" | "mcf")
+   attribute "mixing"     : int
+   attribute "complex_HS" : int
+   for each (key, val) in value: attribute "param/<key>" : double, stored in sub-group "params"
+   sub-groups "state_0", "state_1", … for each state in the density matrix
+*/
 template<typename HilbertField>
-void model_instance<HilbertField>::write(ostream& fout)
+void model_instance<HilbertField>::write_hdf5(H5::Group& grp)
 {
   if(!gf_solved) Green_function_solve();
-  
-  // writing the info line
-  // fout << "cluster: " << the_model->name << '\n';
-  fout << setprecision((int)global_int("print_precision"));
-  for (auto &x : value) fout << x.first << '\t' << x.second << '\n';
-  fout << "\nGS_energy: " << GS_energy << " GS_sector: " << GS_string() << '\n';
-  if(GF_solver == GF_format_CF) fout << "GF_format: cf\n";
-  else if(GF_solver == GF_format_MCF) fout << "GF_format: mcf\n";
-  else fout << "GF_format: bl\n";
-  fout << "mixing\t" << mixing << endl;
-  
-  for(auto& x: states){
-    x->write(fout);
+
+  h5_write_attr(grp, "GS_energy",  GS_energy);
+  h5_write_attr(grp, "GS_sectors", GS_string());
+  string fmt;
+  if(GF_solver == GF_format_CF)        fmt = "cf";
+  else if(GF_solver == GF_format_MCF)  fmt = "mcf";
+  else                                  fmt = "bl";
+  h5_write_attr(grp, "GF_format",  fmt);
+  h5_write_attr(grp, "mixing",     mixing);
+  h5_write_attr(grp, "complex_HS", (int)complex_Hilbert);
+
+  H5::Group pg = grp.createGroup("params");
+  for(auto& kv : value) h5_write_attr(pg, kv.first, kv.second);
+
+  h5_write_attr(grp, "nstates", (int)states.size());
+  int idx = 0;
+  for(auto& st : states){
+    H5::Group sg = grp.createGroup("state_" + to_string(idx++));
+    st->write_hdf5(sg);
   }
 }
 
 
-
-
+/**
+ Reads the model instance from an HDF5 group (written by write_hdf5).
+*/
 template<typename HilbertField>
-void model_instance<HilbertField>::read(istream& fin)
+void model_instance<HilbertField>::read_hdf5(H5::Group& grp)
 {
-  while(true){
-    vector<string> input = read_strings(fin);
-    if(input.size()==0) break;
-    if(input.size()!=2){
-      string error = "failed to read a parameter in input. Need two columns per parameter. Line read: \n";
-      for(int i=0; i<input.size(); i++) error += input[i] + "\t";
-      error += "\n";
-      qcm_ED_throw(error);
-    }
-    if(value.find(input[0])==value.end()) qcm_ED_throw("unkown parameter "+input[0]+" in solutions file");
-    if(abs(value[input[0]] - from_string<double>(input[1])) > MIDDLE_VALUE) 
-      cout << "WARNING : The value of "+input[0]+" from the solution read ("+input[1]+") differs from the expected value ("+to_string<double>(value[input[0]])+")." << endl;
-  }
-  
-  string tmp;
-  fin >> "GS_energy:" >> GS_energy >> tmp >> tmp;
-  fin >> "GF_format:" >> tmp;
-  if(tmp == "bl") GF_solver = GF_format_BL;
-  else if(tmp == "mcf") GF_solver = GF_format_MCF;
-  else GF_solver = GF_format_CF;
-  fin >> "mixing" >> mixing;
+  GS_energy = h5_read_attr_double(grp, "GS_energy");
+  string fmt = h5_read_attr_string(grp, "GF_format");
+  if(fmt == "bl")       GF_solver = GF_format_BL;
+  else if(fmt == "mcf") GF_solver = GF_format_MCF;
+  else                  GF_solver = GF_format_CF;
+  mixing = h5_read_attr_int(grp, "mixing");
   n_mixed = 1;
   if(mixing & HS_mixing::anomalous) n_mixed *= 2;
   if(mixing & HS_mixing::spin_flip) n_mixed *= 2;
 
-
-  // reading the states
-  // states.clear();
-  clear_states();
-  while(true){
-    parser::next_line(fin);
-    vector<string> input = read_strings(fin);
-    if(input.size()==0) break;
-    states.insert(shared_ptr<state<HilbertField>>(new state<HilbertField>(fin, the_model->group, mixing, GF_solver)));
+  // Check parameter values
+  H5::Group pg = grp.openGroup("params");
+  for(auto& kv : value){
+    if(pg.attrExists(kv.first)){
+      double stored = h5_read_attr_double(pg, kv.first);
+      if(std::abs(stored - kv.second) > MIDDLE_VALUE)
+        cout << "WARNING : The value of " << kv.first
+             << " from the HDF5 solution (" << stored
+             << ") differs from the expected value (" << kv.second << ")." << endl;
+    }
   }
-  is_correlated = true; // added to remove confusion when dealing with read instances
+
+  // Read states
+  clear_states();
+  int nstates = h5_read_attr_int(grp, "nstates");
+  for(int i = 0; i < nstates; ++i){
+    H5::Group sg = grp.openGroup("state_" + to_string(i));
+    states.insert(make_shared<state<HilbertField>>(sg, the_model->group, mixing));
+  }
+
+  is_correlated = true;
   M.set_size(dim_GF);
-  if(mixing&HS_mixing::up_down) M_down.set_size(dim_GF);
+  if(mixing & HS_mixing::up_down) M_down.set_size(dim_GF);
   Green_function_average();
-  #ifdef QCM_DEBUG
-  cout << "Green_function_average() done" << endl;
-  #endif
   Green_function_density();
-  #ifdef QCM_DEBUG
-  cout << "Green_function_density() done" << endl;
-  #endif
-  gf_read = true;
+  gf_read   = true;
   gf_solved = true;
 }
-
-
 
 
 template<typename HilbertField>

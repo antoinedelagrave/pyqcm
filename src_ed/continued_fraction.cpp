@@ -1,7 +1,4 @@
 #include "continued_fraction.hpp"
-#include "parser.hpp"
-#include "symmetry_group.hpp"
-#include "sector.hpp"
 
 /** default constructor
  */
@@ -57,41 +54,5 @@ Complex continued_fraction::evaluate(Complex z)
 
 
 
-
-
-/**
- prints on a stream (for debugging)
- @param flux output stream
- @param F continued fraction to print
- */
-std::ostream& operator<<(std::ostream &flux, const continued_fraction &F)
-{
-  flux << "floors: " << F.a.size() << endl;
-  for(size_t i=0; i<F.a.size();++i) flux << F.a[i] << '\t' << F.b[i] << '\n';
-  return flux;
-}
-
-
-
-
-
-
-/**
- reads from a stream
- @param flux input stream
- @param F continued fraction to populate
- */
-std::istream& operator>>(std::istream &flux, continued_fraction &F)
-{
-  string tmp;
-  size_t n;
-  flux >> tmp >> n; // next_line(flux);
-  F.a.resize(n);
-  F.b.resize(n);
-  for(int i=0; i<n; i++){
-    flux >> F.a[i] >> F.b[i];
-  }
-  return flux;
-}
 
 

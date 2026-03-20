@@ -6,6 +6,7 @@
 #include "block_matrix.hpp"
 #include "symmetry_group.hpp"
 #include "Q_matrix.hpp"
+#include "hdf5_io.hpp"
 
 enum GF_FORMAT {GF_format_BL, GF_format_CF, GF_format_MCF};
 
@@ -29,8 +30,9 @@ struct Green_function_set
   virtual void  Green_function(const Complex &z, block_matrix<Complex> &G) = 0;
   virtual void  integrated_Green_function(block_matrix<Complex> &M) = 0;
   
-  // writes the Green function data in a file
-  virtual void write(ostream &fout) = 0;
+  // HDF5 serialization (write into / read from an already-opened group)
+  virtual void write_hdf5(H5::Group& grp) = 0;
+  virtual void read_hdf5(H5::Group& grp)  = 0;
 };
 
 #endif /* Green_function_set_h */

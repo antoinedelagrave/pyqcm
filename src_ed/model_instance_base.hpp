@@ -3,6 +3,7 @@
 
 #include "model.hpp"
 #include "Green_function_set.hpp"
+#include "hdf5_io.hpp"
 
 struct sector_data
 {
@@ -65,8 +66,8 @@ struct model_instance_base
   virtual void print(ostream& fout) = 0;
   virtual double tr_sigma_inf() = 0;
   virtual void merge_states() = 0;
-  virtual void write(ostream& fout) = 0;
-  virtual void read(istream& fin) = 0;
+  virtual void write_hdf5(H5::Group& grp) = 0;
+  virtual void read_hdf5(H5::Group& grp)  = 0;
   virtual void print_wavefunction(ostream& fout) = 0;
   virtual pair<matrix<Complex>, vector<uint64_t>>  density_matrix_mixed(vector<int> sites) = 0;
   virtual pair<matrix<Complex>, vector<uint64_t>>  density_matrix_factorized(vector<int> sites) = 0;

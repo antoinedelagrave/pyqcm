@@ -1112,82 +1112,49 @@ static PyObject *hybridization_python(PyObject *self, PyObject *args) {
 }
 
 //==============================================================================
-const char *write_instance_to_file_help =
+const char *write_instance_to_hdf5_help =
     R"{(
-Writes the solved model instance to a text file
-argument:
-    1. name of the file
-    2. The instance label (default = 0)
+Writes the solved model instance to a group inside an HDF5 file
+arguments:
+    1. name of the HDF5 file (created if absent, appended if present)
+    2. name of the HDF5 group to write into (e.g. "cluster_0")
+    3. the instance label (default = 0)
 returns None
 ){";
 //------------------------------------------------------------------------------
-static PyObject *write_instance_to_file_python(PyObject *self, PyObject *args) {
-  char *op = nullptr;
-  int label = 0;
+static PyObject *write_instance_to_hdf5_python(PyObject *self, PyObject *args) {
+  char *filename = nullptr;
+  char *group    = nullptr;
+  int   label    = 0;
   try {
-    if (!PyArg_ParseTuple(args, "s|i", &op, &label))
-      qcm_ED_throw("failed to read parameters in call to "
-                   "qcm_ED.write_instance_to_file()");
-    ofstream fout(string(op).c_str());
-    if (!fout.good())
-      qcm_ED_throw("failed to open file " + string(op));
-    ED::write_instance(fout, label);
-    fout.close();
-  } catch (const std::exception &e) {
+    if(!PyArg_ParseTuple(args, "ss|i", &filename, &group, &label))
+      qcm_ED_throw("failed to read parameters in call to write_instance_to_hdf5()");
+    ED::write_instance_hdf5(string(filename), label, string(group));
+  } catch(const std::exception& e){
     qcm_ED_catch(e);
   }
   return Py_BuildValue("");
 }
 //==============================================================================
-const char *write_instance_help =
+const char *read_instance_from_hdf5_help =
     R"{(
-Writes the solved model instance to a string
-argument:
-    1. The instance label (default = 0)
+Reads the solved model instance from a group inside an HDF5 file
+arguments:
+    1. name of the HDF5 file
+    2. name of the HDF5 group to read from (e.g. "cluster_0")
+    3. the instance label (default = 0)
 returns None
 ){";
 //------------------------------------------------------------------------------
-static PyObject *write_instance_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  ostringstream fout;
+static PyObject *read_instance_from_hdf5_python(PyObject *self, PyObject *args) {
+  char *filename = nullptr;
+  char *group    = nullptr;
+  int   label    = 0;
   try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to qcm_ED.write_instance()");
-    ED::write_instance(fout, label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("s#", fout.str().c_str(), fout.str().length());
-}
-//==============================================================================
-const char *read_instance_help =
-    R"{(
-Reads the solved model instance from a text file
-argument:
-    1. name of the file
-    2. The instance label (default=0)
-returns None
-){";
-//------------------------------------------------------------------------------
-static PyObject *read_instance_python(PyObject *self, PyObject *args) {
-  char *op = nullptr;
-  int label = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "s|i", &op, &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to read_instance (python)");
-    string S(op);
-    if (S.length() < 65) {
-      ifstream fin(string(op).c_str());
-      if (!fin.good())
-        qcm_ED_throw("failed to open file " + string(op));
-      ED::read_instance(fin, label);
-    } else {
-      istringstream fin(S);
-      ED::read_instance(fin, label);
-    }
-  } catch (const std::exception &e) {
+    if(!PyArg_ParseTuple(args, "ss|i", &filename, &group, &label))
+      qcm_ED_throw("failed to read parameters in call to read_instance_from_hdf5()");
+    ED::read_instance_hdf5(string(filename), label, string(group));
+  } catch(const std::exception& e){
     qcm_ED_catch(e);
   }
   return Py_BuildValue("");

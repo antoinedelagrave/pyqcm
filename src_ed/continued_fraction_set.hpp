@@ -15,12 +15,12 @@ struct continued_fraction_set : Green_function_set
 
   continued_fraction_set(sector _sec, shared_ptr<symmetry_group> _group, int mixing, bool _is_complex);
   continued_fraction_set(sector _sec, shared_ptr<symmetry_group> _group, int mixing, const vector<vector<double>> &_a, const vector<vector<double>> &b, bool _is_complex);
-  continued_fraction_set(istream& fin, sector _sec, shared_ptr<symmetry_group> _group, int mixing, bool _is_complex);
 
   // realizations of base class virtual methods
-  void Green_function(const Complex &z, block_matrix<Complex> &G);
-  void integrated_Green_function(block_matrix<Complex> &M);
-  void write(ostream& fout);
+  void Green_function(const Complex &z, block_matrix<Complex> &G) override;
+  void integrated_Green_function(block_matrix<Complex> &M) override;
+  void write_hdf5(H5::Group& grp) override;
+  void read_hdf5(H5::Group& grp) override;
 };
 
 

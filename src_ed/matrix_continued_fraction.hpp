@@ -36,6 +36,7 @@
 */
 
 #include "continued_fraction.hpp"   // pulls in block_matrix.hpp → matrix.hpp
+// hdf5_io.hpp is already pulled in by continued_fraction.hpp
 
 //! Matrix-valued Jacobi continued fraction.
 /**
@@ -142,8 +143,8 @@ struct matrix_continued_fraction
 };
 
 
-std::ostream& operator<<(std::ostream &flux, const matrix_continued_fraction &F);
-std::istream& operator>>(std::istream &flux,       matrix_continued_fraction &F);
+void h5_write_mcf(H5::Group& grp, const matrix_continued_fraction& F);
+void h5_read_mcf (H5::Group& grp,       matrix_continued_fraction& F);
 
 
 #endif

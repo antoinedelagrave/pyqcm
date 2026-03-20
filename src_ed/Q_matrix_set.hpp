@@ -12,7 +12,6 @@ struct Q_matrix_set : Green_function_set
 
   Q_matrix_set(const Q_matrix_set &Q);
   Q_matrix_set(shared_ptr<symmetry_group> _group, int mixing);
-  Q_matrix_set(istream& fin, shared_ptr<symmetry_group> _group, int mixing);
   Q_matrix_set(shared_ptr<symmetry_group> _group, int mixing, const vector<vector<double>>& w, const vector<matrix<HilbertField>> &_q);
   Q_matrix<HilbertField> consolidated_qmatrix();
   void append(Q_matrix_set &Q);
@@ -21,9 +20,10 @@ struct Q_matrix_set : Green_function_set
   void merge(vector<multimap<double, vector<HilbertField>>>& M);
 
   // realizations of base class virtual methods
-  void Green_function(const Complex &z, block_matrix<Complex> &G);
-  void integrated_Green_function(block_matrix<Complex> &M);
-  void write(ostream& fout);
+  void Green_function(const Complex &z, block_matrix<Complex> &G) override;
+  void integrated_Green_function(block_matrix<Complex> &M) override;
+  void write_hdf5(H5::Group& grp) override;
+  void read_hdf5(H5::Group& grp) override;
 };
 
 
@@ -58,16 +58,7 @@ Q_matrix_set<HilbertField>::Q_matrix_set(const Q_matrix_set &Q)
 
 
 
-/**
- constructor from input stream (ASCII file)
- */
-template<typename HilbertField>
-Q_matrix_set<HilbertField>::Q_matrix_set(istream& fin, shared_ptr<symmetry_group> _group, int mixing) : Green_function_set(_group, mixing)
-{
-  group = _group;
-  q.resize(group->g);
-  for(int i=0; i<group->g; i++) q[i] = Q_matrix<HilbertField>(fin);
-}
+
 
 
 /**
@@ -80,6 +71,7 @@ Q_matrix_set<HilbertField>::Q_matrix_set(shared_ptr<symmetry_group> _group, int 
   q.resize(group->g);
   for(int i=0; i<group->g; i++) q[i] = Q_matrix<HilbertField>(_e[i], _q[i]);
 }
+
 
 /**
  partial Green function evaluation
@@ -118,29 +110,6 @@ void Q_matrix_set<HilbertField>::append(Q_matrix_set &Q)
 }
 
 
-
-
-
-/**
- Printing
- */
-template<typename HilbertField>
-std::ostream& operator<<(std::ostream &flux, const Q_matrix_set<HilbertField> &Q)
-{
-  
-  flux << "\nQMatrix:\n" << std::setprecision(LONG_DISPLAY);
-  for(size_t r=0; r<Q.q.size(); ++r){
-    flux << "\nPart " << r+1 << '\n';
-    flux << Q.q[r];
-  }
-  return flux;
-}
-
-
-
-
-
-
 /**
  Checking normalization
  */
@@ -149,10 +118,6 @@ void Q_matrix_set<HilbertField>::check_norm(double threshold, double norm)
 {
   for(size_t r=0; r<q.size(); ++r) q[r]->check_norm(threshold, norm);
 }
-
-
-
-
 
 
 /**
@@ -167,10 +132,6 @@ void Q_matrix_set<HilbertField>::streamline(bool verb)
 }
 
 
-
-
-
-
 /**
  Puts together the elements into a single Q_matrix, in the cluster site basis (i.e. not symmetric operators)
  */
@@ -178,10 +139,10 @@ template<typename HilbertField>
 Q_matrix<HilbertField> Q_matrix_set<HilbertField>::consolidated_qmatrix()
 {
   size_t i_cum = 0, i_tot = 0;
-  
+
   for(size_t r=0; r<q.size(); ++r) i_tot += q[r].M;
   Q_matrix<HilbertField> Q(L, i_tot);
-  
+
   vector<HilbertField> Y(L);
   for(size_t r=0; r<q.size(); ++r){
     vector<HilbertField> X(q[r].L);
@@ -198,24 +159,11 @@ Q_matrix<HilbertField> Q_matrix_set<HilbertField>::consolidated_qmatrix()
 }
 
 
-
-
-/**
- Printing to ASCII file
- */
-template<typename HilbertField>
-void Q_matrix_set<HilbertField>::write(ostream&fout)
-{
-  fout << setprecision((int)global_int("print_precision"));
-  for(auto& x : q) fout << x;
-}
-
-
 /**
 Merging into a multimap
  */
 template<typename HilbertField>
-void Q_matrix_set<HilbertField>::merge(vector<multimap<double, vector<HilbertField>>>& M) 
+void Q_matrix_set<HilbertField>::merge(vector<multimap<double, vector<HilbertField>>>& M)
 {
   for(size_t r=0; r<q.size(); ++r){
     for(int j=0; j< q[r].M; j++){
@@ -223,6 +171,35 @@ void Q_matrix_set<HilbertField>::merge(vector<multimap<double, vector<HilbertFie
       for(int k=0; k<q[r].L; k++) v[k] = q[r].v(k,j);
       M[r].insert({q[r].e[j], v});
     }
+  }
+}
+
+/**
+ Writes the Q_matrix_set to an HDF5 group.
+ Layout: attribute "nblocks"; sub-groups "block_0" … "block_{g-1}".
+*/
+template<typename HilbertField>
+void Q_matrix_set<HilbertField>::write_hdf5(H5::Group& grp)
+{
+  h5_write_attr(grp, "nblocks", (int)q.size());
+  for(size_t r = 0; r < q.size(); ++r){
+    H5::Group bg = grp.createGroup("block_" + to_string(r));
+    q[r].write_hdf5(bg);
+  }
+}
+
+
+/**
+ Reads the Q_matrix_set from an HDF5 group written by write_hdf5.
+*/
+template<typename HilbertField>
+void Q_matrix_set<HilbertField>::read_hdf5(H5::Group& grp)
+{
+  int nblocks = h5_read_attr_int(grp, "nblocks");
+  q.resize(nblocks);
+  for(int r = 0; r < nblocks; ++r){
+    H5::Group bg = grp.openGroup("block_" + to_string(r));
+    q[r].read_hdf5(bg);
   }
 }
 

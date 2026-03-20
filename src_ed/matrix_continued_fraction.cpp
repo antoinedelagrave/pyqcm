@@ -1,5 +1,6 @@
 #include "matrix_continued_fraction.hpp"
 #include "parser.hpp"
+#include "hdf5_io.hpp"
 
 /**
  Default constructor.
@@ -76,46 +77,48 @@ matrix<Complex> matrix_continued_fraction::evaluate(Complex z) const
 
 
 /**
- Write to a stream (for debugging / serialisation).
- Format mirrors continued_fraction::operator<<:
-
-   floors: M
-   block: p
-   A[0]  …  A[M-1]      (each written as a matrix<Complex>)
-   B[0]  …  B[M-1]      (idem)
-   W                    (weight matrix)
+ Writes a matrix_continued_fraction to an HDF5 group.
+ Layout:
+   attributes: "p" (int), "floors" (int)
+   sub-groups "A_0" … "A_{M-1}" — each a p×p complex matrix via h5_write_mat
+   sub-groups "B_0" … "B_{M-1}" — idem
+   sub-group  "W"               — p×p complex weight matrix
 */
-std::ostream& operator<<(std::ostream &flux, const matrix_continued_fraction &F)
+void h5_write_mcf(H5::Group& grp, const matrix_continued_fraction& F)
 {
-    flux << "floors: " << F.floors() << "\tblock: " << F.p << "\n";
-    for(int j = 0; j < F.floors(); ++j) flux << "A[" << j << "]\n" << F.A[j];
-    for(int j = 0; j < (int)F.B.size(); ++j) flux << "B[" << j << "]\n" << F.B[j];
-    flux << "W\n" << F.W;
-    return flux;
+    int M = F.floors();
+    h5_write_attr(grp, "p",      F.p);
+    h5_write_attr(grp, "floors", M);
+    for(int j = 0; j < M; ++j){
+        H5::Group ag = grp.createGroup("A_" + to_string(j));
+        h5_write_mat(ag, "data", F.A[j]);
+    }
+    for(int j = 0; j < (int)F.B.size(); ++j){
+        H5::Group bg = grp.createGroup("B_" + to_string(j));
+        h5_write_mat(bg, "data", F.B[j]);
+    }
+    H5::Group wg = grp.createGroup("W");
+    h5_write_mat(wg, "data", F.W);
 }
 
 
 /**
- Read from a stream (inverse of operator<<).
+ Reads a matrix_continued_fraction from an HDF5 group written by h5_write_mcf.
 */
-std::istream& operator>>(std::istream &flux, matrix_continued_fraction &F)
+void h5_read_mcf(H5::Group& grp, matrix_continued_fraction& F)
 {
-    string tmp;
-    int M;
-    flux >> tmp >> M >> tmp >> F.p;   // "floors: M  block: p"
-
+    F.p      = h5_read_attr_int(grp, "p");
+    int M    = h5_read_attr_int(grp, "floors");
     F.A.resize(M);
     F.B.resize(M);
-    F.W.set_size(F.p);
-
     for(int j = 0; j < M; ++j){
-        F.A[j].set_size(F.p);
-        flux >> tmp >> F.A[j];        // "A[j]" then matrix
+        H5::Group ag = grp.openGroup("A_" + to_string(j));
+        h5_read_mat(ag, "data", F.A[j]);
     }
     for(int j = 0; j < M; ++j){
-        F.B[j].set_size(F.p);
-        flux >> tmp >> F.B[j];        // "B[j]" then matrix
+        H5::Group bg = grp.openGroup("B_" + to_string(j));
+        h5_read_mat(bg, "data", F.B[j]);
     }
-    flux >> tmp >> F.W;               // "W" then matrix
-    return flux;
+    H5::Group wg = grp.openGroup("W");
+    h5_read_mat(wg, "data", F.W);
 }

@@ -8,6 +8,7 @@
 #include "parser.hpp"
 #include "block_matrix.hpp"
 #include "VDVH_kernel.hpp"
+#include "hdf5_io.hpp"
 
 //! Used to store the Lehman representation of a part of the Green function (a given symmetry block)
 template<typename HilbertField>
@@ -23,7 +24,6 @@ struct Q_matrix
   Q_matrix(size_t _L, size_t _M);
   Q_matrix(const Q_matrix<HilbertField> &q);
   Q_matrix(const vector<double>& _e, const matrix<HilbertField>& _v);
-  Q_matrix(istream& fin);
   Q_matrix<HilbertField>& operator=(const Q_matrix<HilbertField> &q);
   void append(Q_matrix &q);
   void check_norm(double threshold, double norm = 1.0);
@@ -31,6 +31,8 @@ struct Q_matrix
   void integrated_Green_function(matrix<Complex> &G);
   void streamline(bool verb=false);
   matrix<HilbertField> streamlineQ(const matrix<HilbertField> &Q, double threshold);
+  void write_hdf5(H5::Group& grp) const;
+  void read_hdf5(H5::Group& grp);
 };
 
 
@@ -80,28 +82,6 @@ Q_matrix<HilbertField>::Q_matrix(const vector<double>& _e, const matrix<HilbertF
   #endif
 }
 
-/**
- Constructor from input stream (ASCII file)
- */
-template<typename HilbertField>
-Q_matrix<HilbertField>::Q_matrix(std::istream &flux){
-  size_t i,j;
-  
-  parser::find_next(flux, "w");
-  flux >> L >> M;
-  
-  QCM_ASSERT(M > 0 and L > 0);
-  v.set_size(L,M);
-  e.resize(M);
-  
-  for(i=0; i<M; ++i){
-    flux >> e[i];
-    for(j=0; j<L; ++j) flux >> v(j,i);
-  }
-  #ifdef QCM_DEBUG
-    cout << "Q-matrix read from file with " << L << " sites and " << M << " lines" << endl;
-  #endif
-}
 
 
 
@@ -330,6 +310,33 @@ matrix<HilbertField> Q_matrix<HilbertField>::streamlineQ(const matrix<HilbertFie
   }
   // cout << "\nUs  = \n" << Us << endl;
   return Us;
+}
+
+
+/**
+ Writes a Q_matrix to an HDF5 group.
+ Layout: attributes "L","M"; dataset "e"; sub-group "v" (via h5_write_mat).
+*/
+template<typename HilbertField>
+void Q_matrix<HilbertField>::write_hdf5(H5::Group& grp) const
+{
+  h5_write_attr(grp, "L", (int)L);
+  h5_write_attr(grp, "M", (int)M);
+  h5_write_vec(grp, "e", e);
+  h5_write_mat(grp, "v", v);
+}
+
+/**
+ Reads a Q_matrix from an HDF5 group written by write_hdf5.
+*/
+template<typename HilbertField>
+void Q_matrix<HilbertField>::read_hdf5(H5::Group& grp)
+{
+  L = (size_t)h5_read_attr_int(grp, "L");
+  M = (size_t)h5_read_attr_int(grp, "M");
+  e.resize(M);
+  h5_read_vec(grp, "e", e);
+  h5_read_mat(grp, "v", v);
 }
 
 #endif

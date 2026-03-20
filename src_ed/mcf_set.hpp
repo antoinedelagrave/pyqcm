@@ -51,19 +51,11 @@ struct mcf_set : Green_function_set
         h.resize(group->g);
     }
 
-    //! Constructor from ASCII input stream (used when reading back a solution).
-    mcf_set(istream &fin, shared_ptr<symmetry_group> _group, int mixing)
-        : Green_function_set(_group, mixing)
-    {
-        e.resize(group->g);
-        h.resize(group->g);
-        for(size_t r = 0; r < group->g; ++r) fin >> e[r] >> h[r];
-    }
-
     // Virtual method implementations
     void Green_function(const Complex &z, block_matrix<Complex> &G) override;
     void integrated_Green_function(block_matrix<Complex> &G) override;
-    void write(ostream &fout) override;
+    void write_hdf5(H5::Group& grp) override;
+    void read_hdf5(H5::Group& grp) override;
 };
 
 
@@ -116,12 +108,37 @@ inline void mcf_set::integrated_Green_function(block_matrix<Complex> &G)
 
 
 /**
- Writes the mcf_set to an ASCII stream.
- Format: for each irrep r, write e[r] then h[r] using matrix_continued_fraction::operator<<.
+ Writes the mcf_set to an HDF5 group.
+ Layout: attribute "nblocks"; for each r, sub-group "block_r" containing "e" and "h".
 */
-inline void mcf_set::write(ostream &fout)
+inline void mcf_set::write_hdf5(H5::Group& grp)
 {
-    for(size_t r = 0; r < group->g; ++r) fout << e[r] << h[r];
+    h5_write_attr(grp, "nblocks", (int)group->g);
+    for(size_t r = 0; r < group->g; ++r){
+        H5::Group bg = grp.createGroup("block_" + to_string(r));
+        H5::Group eg = bg.createGroup("e");
+        h5_write_mcf(eg, e[r]);
+        H5::Group hg = bg.createGroup("h");
+        h5_write_mcf(hg, h[r]);
+    }
+}
+
+
+/**
+ Reads the mcf_set from an HDF5 group written by write_hdf5.
+*/
+inline void mcf_set::read_hdf5(H5::Group& grp)
+{
+    int nblocks = h5_read_attr_int(grp, "nblocks");
+    e.resize(nblocks);
+    h.resize(nblocks);
+    for(int r = 0; r < nblocks; ++r){
+        H5::Group bg = grp.openGroup("block_" + to_string(r));
+        H5::Group eg = bg.openGroup("e");
+        h5_read_mcf(eg, e[r]);
+        H5::Group hg = bg.openGroup("h");
+        h5_read_mcf(hg, h[r]);
+    }
 }
 
 

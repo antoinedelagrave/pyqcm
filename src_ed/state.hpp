@@ -39,48 +39,74 @@ struct state
   
   
   /**
-   constructor from ASCII file
-   */
-  state(istream& fin, shared_ptr<symmetry_group> group , int mixing, GF_FORMAT GF_solver)
+   writes state to an HDF5 group.
+   Layout: attributes "sec","energy","weight","gf_format";
+           sub-group "gf"; optionally sub-group "gf_down".
+   The GF format is deduced from the runtime type of the gf pointer.
+  */
+  void write_hdf5(H5::Group& grp)
   {
-    vector<string> input = read_strings(fin);
-    if(input.size()!=3) qcm_ED_throw("failed to read a state from input file. Need sector, energy and weight in header line");
-    sec = sector(input[0]);
-    energy = from_string<double>(input[1]);
-    weight = from_string<double>(input[2]);
-    if(GF_solver == GF_format_BL){
-      gf = make_shared<Q_matrix_set<HilbertField>>(fin, group, mixing);
+    h5_write_attr(grp, "sec",    sec.name());
+    h5_write_attr(grp, "energy", energy);
+    h5_write_attr(grp, "weight", weight);
+    // Deduce the GF format from the runtime type of gf
+    string fmt = "bl";
+    if(gf != nullptr){
+      if(dynamic_pointer_cast<continued_fraction_set>(gf) != nullptr) fmt = "cf";
+      else if(dynamic_pointer_cast<mcf_set>(gf) != nullptr)           fmt = "mcf";
     }
-    else if(GF_solver == GF_format_CF){
-      gf = shared_ptr<continued_fraction_set>(new continued_fraction_set(fin, sec, group, mixing, typeid(HilbertField) == typeid(Complex)));
+    h5_write_attr(grp, "gf_format", fmt);
+    if(gf != nullptr){
+      H5::Group gg = grp.createGroup("gf");
+      gf->write_hdf5(gg);
     }
-    else if(GF_solver == GF_format_MCF){
-      gf = make_shared<mcf_set>(fin, group, mixing);
-    }
-    else qcm_ED_throw("unkown Green function solver (GF_solver)");
-    if(mixing&HS_mixing::up_down){
-      if(GF_solver == GF_format_BL){
-        gf_down = shared_ptr<Q_matrix_set<HilbertField>>(new Q_matrix_set<HilbertField>(fin, group, mixing));
-      }
-      else if(GF_solver == GF_format_CF){
-        gf_down = shared_ptr<continued_fraction_set>(new continued_fraction_set(fin, sec, group, mixing, typeid(HilbertField) == typeid(Complex)));
-      }
-      else if(GF_solver == GF_format_MCF){
-        gf_down = make_shared<mcf_set>(fin, group, mixing);
-      }
+    if(gf_down != nullptr){
+      H5::Group gg = grp.createGroup("gf_down");
+      gf_down->write_hdf5(gg);
     }
   }
-  
 
 
   /**
-   writing the Green function representation to an ASCII file
-   */
-  void write(ostream& fout)
+   constructs state from an HDF5 group (written by write_hdf5).
+   @param grp     HDF5 group containing the state data
+   @param group   symmetry group (needed to construct GF representations)
+   @param mixing  mixing state
+  */
+  state(H5::Group& grp, shared_ptr<symmetry_group> sym_group, int mixing)
   {
-    fout << "state\n" << sec << '\t' << energy << '\t' << weight << endl;
-    if(gf != nullptr) gf->write(fout);
-    if(gf_down != nullptr) gf_down->write(fout);
+    sec    = sector(h5_read_attr_string(grp, "sec"));
+    energy = h5_read_attr_double(grp, "energy");
+    weight = h5_read_attr_double(grp, "weight");
+    string fmt = h5_read_attr_string(grp, "gf_format");
+    GF_FORMAT gf_fmt;
+    if(fmt == "bl")       gf_fmt = GF_format_BL;
+    else if(fmt == "mcf") gf_fmt = GF_format_MCF;
+    else                  gf_fmt = GF_format_CF;
+
+    bool is_complex = (typeid(HilbertField) == typeid(Complex));
+
+    auto read_gf = [&](const string& gname) -> shared_ptr<Green_function_set> {
+      H5::Group gg = grp.openGroup(gname);
+      if(gf_fmt == GF_format_BL){
+        auto qs = make_shared<Q_matrix_set<HilbertField>>(sym_group, mixing);
+        qs->read_hdf5(gg);
+        return qs;
+      }
+      else if(gf_fmt == GF_format_MCF){
+        auto ms = make_shared<mcf_set>(sym_group, mixing);
+        ms->read_hdf5(gg);
+        return ms;
+      }
+      else {
+        auto cfs = make_shared<continued_fraction_set>(sec, sym_group, mixing, is_complex);
+        cfs->read_hdf5(gg);
+        return cfs;
+      }
+    };
+
+    if(grp.nameExists("gf"))      gf      = read_gf("gf");
+    if(grp.nameExists("gf_down")) gf_down = read_gf("gf_down");
   }
 
 

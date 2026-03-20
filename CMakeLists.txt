@@ -159,6 +159,7 @@ add_library(
   src_python/qcm_lib.cpp
   src_util/ED_global_parameter.cpp
   src_util/global_parameter.cpp
+  src_util/hdf5_io.cpp
   src_util/integrate.cpp
   src_util/matrix.cpp
   src_util/parser.cpp
@@ -285,6 +286,7 @@ message(STATUS "LAPACK lib: ${LAPACK_LIBRARIES}")
 # ------------
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 target_link_libraries(qcm PRIVATE HDF5::HDF5)
+target_include_directories(qcm PRIVATE ${HDF5_INCLUDE_DIRS})
 
 # ------------
 # Cuba library

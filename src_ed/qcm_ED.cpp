@@ -6,6 +6,8 @@
 #include <fstream>
 #include <memory>
 #include <tuple>
+#include <H5Cpp.h>
+#include <sys/stat.h>
 #include "qcm_ED.hpp"
 #include "model_instance.hpp"
 #include "Operators/one_body_operator.hpp"
@@ -368,28 +370,39 @@ namespace ED{
   
   
   
-  void write_instance(ostream& fout, int label)
+  void write_instance_hdf5(const string& filename, int label, const string& group)
   {
-    if(model_instances.find(label) == model_instances.end()) qcm_ED_throw("The label "+to_string(label)+" is out of range.");
-    auto& M = model_instances.at(label);
-    M->write(fout);
+    if(model_instances.find(label) == model_instances.end())
+      qcm_ED_throw("The label " + to_string(label) + " is out of range.");
+    try {
+      // Open file in read-write mode if it exists, create otherwise
+      struct stat st{};
+      H5::H5File file(filename,
+        (stat(filename.c_str(), &st) == 0) ? H5F_ACC_RDWR : H5F_ACC_TRUNC);
+      // Remove the group if it already exists (e.g. overwriting a previous run)
+      if(file.nameExists(group)) file.unlink(group);
+      H5::Group grp = file.createGroup(group);
+      model_instances.at(label)->write_hdf5(grp);
+    } catch(H5::Exception& e){
+      qcm_ED_throw("HDF5 error while writing instance: " + string(e.getDetailMsg()));
+    }
   }
-  
-  
-  
-  void read_instance(istream& fin, int label)
+
+
+  void read_instance_hdf5(const string& filename, int label, const string& group)
   {
-    #ifdef QCM_DEBUG
-    check_instance(label);
-    #endif
-    auto& M = model_instances.at(label);
-    M->read(fin);
-    #ifdef QCM_DEBUG
-    cout << "cluster instance " << label << " read from file" << endl;
-    #endif
+    if(model_instances.find(label) == model_instances.end())
+      qcm_ED_throw("The label " + to_string(label) + " is out of range.");
+    try {
+      H5::H5File file(filename, H5F_ACC_RDONLY);
+      H5::Group grp = file.openGroup(group);
+      model_instances.at(label)->read_hdf5(grp);
+    } catch(H5::Exception& e){
+      qcm_ED_throw("HDF5 error while reading instance: " + string(e.getDetailMsg()));
+    }
   }
-  
-  
+
+
   pair<vector<double>, vector<complex<double>>> qmatrix(bool spin_down, const size_t label)
   {
     #ifdef QCM_DEBUG

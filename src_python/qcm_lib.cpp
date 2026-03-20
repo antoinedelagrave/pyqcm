@@ -43,13 +43,12 @@ static PyMethodDef methods[] = {
     {"print_models", print_models_python, METH_VARARGS, print_models_help},
     {"print_wavefunction", print_wavefunction_python, METH_VARARGS, print_wavefunction_help},
     {"qmatrix", qmatrix_python, METH_VARARGS, qmatrix_help},
-    {"read_instance", read_instance_python, METH_VARARGS, read_instance_help},
     {"self_energyC", self_energyC_python, METH_VARARGS, self_energyC_help},
     {"set_global_parameterC", set_global_parameterC_python, METH_VARARGS, set_global_parameterC_help},
     {"susceptibility_poles", susceptibility_poles_python, METH_VARARGS, susceptibility_poles_help},
     {"susceptibility", susceptibility_python, METH_VARARGS, susceptibility_help},
-    {"write_instance_to_file", write_instance_to_file_python, METH_VARARGS, write_instance_to_file_help},
-    {"write_instance", write_instance_python, METH_VARARGS, write_instance_help},
+    {"write_instance_to_hdf5", write_instance_to_hdf5_python, METH_VARARGS, write_instance_to_hdf5_help},
+    {"read_instance_from_hdf5", read_instance_from_hdf5_python, METH_VARARGS, read_instance_from_hdf5_help},
     //-------------------- QCM
     //--------------------------------------------------------------
     {"add_cluster", add_cluster_python, METH_VARARGS, add_cluster_help},

@@ -872,41 +872,61 @@ class model_instance:
         return qcm.qmatrix(self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
-    def write(self, filename, sys=0):
+    def write_hdf5(self, filename, sys=0):
         """
-        Writes the solved cluster model instance to a text file
+        Writes the solved cluster model instance to an HDF5 file.
 
-        :param str filename: name of the file
-        :para int sys: label of system (0-based)
-        :returns:None
+        The data for system *sys* is stored inside an HDF5 group named
+        ``"cluster_{sys}"`` within *filename*.  The file is created if it
+        does not yet exist; if it does, the group is added to it.
 
+        :param str filename: path to the HDF5 file
+        :param int sys: label of the system (0-based)
+        :returns: None
         """
-
-        qcm.write_instance_to_file(filename, self.label * self.model.nsys + sys)
+        label  = self.label * self.model.nsys + sys
+        group  = "cluster_{:d}".format(sys)
+        qcm.write_instance_to_hdf5(filename, group, label)
 
     # -----------------------------------------------------------------------------------------------
-    def write_all(self, filename):
+    def read_hdf5(self, filename, sys=0):
         """
-        Writes the solved model instance (all clusters) to a collection of text files
+        Reads the solved cluster model instance from an HDF5 file previously
+        written by :meth:`write_hdf5`.
 
-        :param str filename: name of the file
-        :returns:None
-
+        :param str filename: path to the HDF5 file
+        :param int sys: label of the system (0-based)
+        :returns: None
         """
-        for s in range(self.model.nsys):
-            self.write(filename + "_{:d}.sol".format(s), sys=s)
+        label  = self.label * self.model.nsys + sys
+        group  = "cluster_{:d}".format(sys)
+        qcm.read_instance_from_hdf5(filename, group, label)
 
     # -----------------------------------------------------------------------------------------------
-    def read_all(self, filename):
+    def write_all_hdf5(self, filename):
         """
-        Reads the solved model instance (all clusters) from a collection of text files
+        Writes the solved model instance (all clusters) to a **single** HDF5 file.
 
-        :param str filename: name of the file
-        :returns:None
+        Each cluster is stored in its own group ``"cluster_0"``,
+        ``"cluster_1"``, … within *filename*.
 
+        :param str filename: path to the HDF5 file
+        :returns: None
         """
         for s in range(self.model.nsys):
-            self.read(filename + "_{:d}.sol".format(s), sys=s)
+            self.write_hdf5(filename, sys=s)
+
+    # -----------------------------------------------------------------------------------------------
+    def read_all_hdf5(self, filename):
+        """
+        Reads the solved model instance (all clusters) from a single HDF5 file
+        previously written by :meth:`write_all_hdf5`.
+
+        :param str filename: path to the HDF5 file
+        :returns: None
+        """
+        for s in range(self.model.nsys):
+            self.read_hdf5(filename, sys=s)
 
     # -----------------------------------------------------------------------------------------------
     def parameters(self, param=None):
@@ -1045,28 +1065,6 @@ class model_instance:
             Z[:, 1:] = np.round(np.real(Q), 8)
         Z[:, 0] = W
         np.savetxt(file, Z, delimiter="\t", fmt="%1.8g")
-
-    # -----------------------------------------------------------------------------------------------
-    def read(self, S, sys=0):
-        """
-        Reads the solution from a string or a file. If the string is less than 32 characters
-        long, it is interpreted as the name of a file in which the solution is read. Otherwise
-        it is interpreted as the solution itself.
-
-        :param sys: label of the system (0-based)
-        :param str S: long string containing the solution
-
-        :returns:None
-
-        """
-        if len(S) <= 32:
-            try:
-                f = open(S, "r")
-                S = f.read()
-            except OSError:
-                raise FileNotFoundError(f"The file '{S}' could not be found") from None
-
-        qcm.read_instance(S, self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
     def cluster_self_energy(self, z, clus=0, spin_down=False):

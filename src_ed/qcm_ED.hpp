@@ -254,22 +254,19 @@ namespace ED{
   
   
   /**
-   writes the solved model instance in a stream, for re-use later
-   fout : output stream
-   label : label of the model instance (in case there are many)
+   writes the solved model instance to a group inside an HDF5 file.
+   filename : path to the HDF5 file (created if absent, opened if present)
+   label    : label of the model instance
+   group    : name of the HDF5 group to write into (e.g. "cluster_0")
    */
-  void write_instance(ostream& fout, int label);
-    
+  void write_instance_hdf5(const string& filename, int label, const string& group);
 
   /**
-   reads the solved model instance from a text file
-   fin : input stream
-   label : label of the model instance (in case there are many)
+   reads the solved model instance from a group inside an HDF5 file.
    */
-  void read_instance(istream& fin, int label);
+  void read_instance_hdf5(const string& filename, int label, const string& group);
 
-  
-  
+
   /**
    prints the global model on a file
    */

@@ -134,8 +134,10 @@ parameter_set::parameter_set(shared_ptr<lattice_model> _model, vector<pair<strin
 void parameter_set::set_value(const string& name, const double &v)
 {
   if(param.find(name) == param.end()) qcm_throw("parameter "+name+" does not exist! impossible to set value");
-  if(param[name]->ref != nullptr)
-    qcm_throw("parameter "+name+" is dependent! impossible to set value");
+  if(param[name]->ref != nullptr){
+    cout << "WARNING: parameter " << name << " is dependent; set_value() ignored." << endl;
+    return;
+  }
   set_value(param[name], v);
 }
 

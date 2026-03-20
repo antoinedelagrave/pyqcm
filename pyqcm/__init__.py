@@ -18,6 +18,7 @@ except ImportError:
     qcm = None
 
 des_dict = {}  # use to store description lines in output files. filename->current description line
+json_output = False
 
 ####################################################################################################
 # INITIALIZATION
@@ -889,17 +890,25 @@ class model_instance:
         qcm.write_instance_to_hdf5(filename, group, label)
 
     # -----------------------------------------------------------------------------------------------
-    def read_hdf5(self, filename, sys=0):
+    def read_hdf5(self, filename, sys=0, set_parameters=False):
         """
         Reads the solved cluster model instance from an HDF5 file previously
         written by :meth:`write_hdf5`.
 
         :param str filename: path to the HDF5 file
         :param int sys: label of the system (0-based)
+        :param bool set_parameters: if True, update the model parameters to
+            the values stored in the file before loading the solution.
         :returns: None
         """
         label  = self.label * self.model.nsys + sys
         group  = "cluster_{:d}".format(sys)
+        if set_parameters:
+            import h5py
+            with h5py.File(filename, 'r') as f:
+                params = {k: float(v) for k, v in f[group]['params'].attrs.items()}
+            for name, val in params.items():
+                self.model.set_parameter(name, val)
         qcm.read_instance_from_hdf5(filename, group, label)
 
     # -----------------------------------------------------------------------------------------------
@@ -917,16 +926,18 @@ class model_instance:
             self.write_hdf5(filename, sys=s)
 
     # -----------------------------------------------------------------------------------------------
-    def read_all_hdf5(self, filename):
+    def read_all_hdf5(self, filename, set_parameters=False):
         """
         Reads the solved model instance (all clusters) from a single HDF5 file
         previously written by :meth:`write_all_hdf5`.
 
         :param str filename: path to the HDF5 file
+        :param bool set_parameters: if True, update the model parameters to
+            the values stored in the file before loading the solution.
         :returns: None
         """
         for s in range(self.model.nsys):
-            self.read_hdf5(filename, sys=s)
+            self.read_hdf5(filename, sys=s, set_parameters=set_parameters)
 
     # -----------------------------------------------------------------------------------------------
     def parameters(self, param=None):
@@ -1704,6 +1715,18 @@ class model_instance:
         fout.write(val + "\n")
         fout.close()
         self.model.descrpt[f] = des
+
+        # JSON Lines output: same data, self-describing, one object per line
+        if json_output:
+            import json
+            record = {}
+            for x in sorted(self.props.keys()):
+                record[x] = self.props[x]
+            for x in sorted(self.gen_props.keys()):
+                record[x] = self.gen_props[x]
+            base, _ = os.path.splitext(f)
+            with open(base + ".jsonl", "a") as fjson:
+                fjson.write(json.dumps(record) + "\n")
 
     # -----------------------------------------------------------------------------------------------
     def double_counting_correct(self, DC):

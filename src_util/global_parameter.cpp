@@ -31,7 +31,6 @@ namespace QCM {
     new_global_int(32,"kgrid_side","number of wavevectors on the side in a fixed wavevector grid");
     new_global_int(60,"max_iter_QN","maximum number of iterations in the quasi-Newton method");
     new_global_int(64,"max_dim_print","Maximum dimension for printing vectors and matrices");
-    new_global_int(8, "GK_min_regions","minimum number of regions in the Gauss-Kronrod method");
     new_global_int(9,"print_precision","precision of printed output");
 
     new_global_char('G', "periodization", "periodization scheme: G, S, M, C, N (None) or L (Lanczos MCF, requires GF_method=M)");

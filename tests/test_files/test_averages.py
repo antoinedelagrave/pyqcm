@@ -32,11 +32,11 @@ I.cluster_averages(pr=True)
 
 print("\ntesting cluster Green function averages:\n")
 ave = I.Green_function_average()
-print('\naverages of c^\dagger_i c_j :\n\n', ave)
+print(r'\naverages of c^\dagger_i c_j :\n\n', ave)
 
 if model.mixing == 4:
     ave = I.Green_function_average(spin_down=True)
-    print('\naverages of c^\dagger_i c_j (spin down):\n\n', ave)
+    print(r'\naverages of c^\dagger_i c_j (spin down):\n\n', ave)
 
 print('\naverage of t from GF= ', -(ave[0,1]+ave[1,2]+ave[2,3]).real)
 print('average of mu from GF = ', I.Green_function_density())

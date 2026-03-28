@@ -1,10 +1,5 @@
-#include <iostream>
-
-#include <hdf5.h>
 #include <H5Cpp.h>
-#include "matrix.hpp"
 #include "lattice_hybrid.hpp"
-#include "types.hpp"
 
 using namespace std;
 

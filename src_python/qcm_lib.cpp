@@ -6,6 +6,8 @@
 #include <omp.h>
 #endif
 
+PyObject *qcm_Error = nullptr;
+
 //==============================================================================
 // doc string
 const char *qcm_help =

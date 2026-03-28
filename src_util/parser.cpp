@@ -1,6 +1,4 @@
-#include <iomanip>
 #include <cstring>
-#include <cstdio>
 
 #include "parser.hpp"
 #include "global_parameter.hpp"

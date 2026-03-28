@@ -2,11 +2,9 @@
  \brief Methods of the struct \a matrix
  */
 
-#include <cstdio>
 #include <Eigen/Dense>
 
 #include "matrix.hpp"
-#include "parser.hpp"
 
 using namespace std;
 

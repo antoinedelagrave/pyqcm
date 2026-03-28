@@ -758,7 +758,7 @@ check_instance(label);
    * Adds a cluster to the supercluster (or repeated unit)
    * @param cpos base position of the cluster
    * @param pos array of the positions of the different sites of the cluster, with respect to the base position of the cluster
-   * @param ref if cluster is equivalent to another cluster, index of that cluster. If not, cluster index.
+   * @param ref if cluster is equivalent to another cluster, index of that cluster. If not, -1.
    * @param conj true if cluster is equivalent to the complex conjugate of its master
    */
   void add_cluster(const vector3D<int64_t> &cpos, const vector<vector3D<int64_t>> &pos, int ref, bool conj)
@@ -768,7 +768,7 @@ check_instance(label);
       return;
     }
     for(size_t i=0; i<pos.size(); i++) qcm_model->sites.push_back({qcm_model->clusters.size(), i, 0, pos[i]+cpos});
-    if(ref == 0) ref = qcm_model->clusters.size();
+    if(ref == -1) ref = qcm_model->clusters.size();
     qcm_model->clusters.push_back({pos.size(), qcm_model->sites.size(), cpos, ref, 0, conj, 0, 0});
     // n_sites, n_bath, offset, name, position, ref, mixing, sys_start, nsys
   }

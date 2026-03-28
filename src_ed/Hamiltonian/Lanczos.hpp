@@ -572,4 +572,242 @@ bool blockLanczos(
 }
 
 
+//! Block Lanczos biorthogonalization method (non-symmetric / two-sided version)
+/**
+ Builds biorthogonal block Krylov subspaces for a Hermitian matrix H from
+ separate right starting block phi_R and left starting block phi_L.
+ Left and right Lanczos vectors W_j and V_j satisfy:
+   <W_j[k] | V_j[l]> = delta_{kl}
+
+ The non-symmetric block three-term recurrences are:
+   H V_j = V_{j+1} B_j + V_j A_j + V_{j-1} C_{j-1}^H
+   H W_j = W_{j+1} C_j + W_j A_j^H + W_{j-1} B_{j-1}^H
+
+ The projected block-tridiagonal matrix T = W^H H V is:
+   T[j*p+k, j*p+l]       = A_j(k,l)              (diagonal, generally non-Hermitian)
+   T[j*p+k, (j+1)*p+l]   = C_j^H(k,l)            (superdiagonal)
+   T[(j+1)*p+k, j*p+l]   = B_j(k,l)              (subdiagonal)
+
+ When phi_L == phi_R the method reduces to the standard symmetric blockLanczos,
+ with A_j Hermitian and C_j = B_j.
+
+ @param H     Object with mult_add(x, y): y += H*x  (H assumed Hermitian: H = H^H)
+ @param phi_R Right starting block: p vectors of dimension dim. Not modified on output.
+ @param phi_L Left starting block:  p vectors of dimension dim. Not modified on output.
+ @param A     Diagonal blocks A_j (output). Not Hermitian in general when phi_L != phi_R.
+ @param B     Right off-diagonal blocks B_j (upper triangular, from QR of right residual).
+ @param C     Left off-diagonal blocks C_j (from biorthogonal factorisation of left residual).
+ @param M0    Maximum number of block steps on input; actual number on output.
+ @param verb  Verbose flag.
+ @returns true if the off-diagonal block norms fell below accur_band_lanczos.
+
+ Breakdown occurs when C_j becomes singular (right/left Krylov spaces become
+ linearly dependent), which is detected and triggers an early exit.
+*/
+template<typename TYPE, typename HilbertField>
+bool blockLanczosBI(
+    TYPE &H,
+    vector<vector<HilbertField>> &phi_R,
+    vector<vector<HilbertField>> &phi_L,
+    vector<matrix<HilbertField>> &A,
+    vector<matrix<HilbertField>> &B,
+    vector<matrix<HilbertField>> &C,
+    int &M0,
+    bool verb=false
+)
+{
+    int p = (int)phi_R.size();
+    if((int)phi_L.size() != p)
+        qcm_ED_throw("blockLanczosBI: phi_L and phi_R must have the same block size");
+    size_t dim = phi_R[0].size();
+
+    double accur_deflation    = global_double("accur_deflation");
+    double accur_band_lanczos = global_double("accur_band_lanczos");
+    if(accur_band_lanczos < 0.0) accur_band_lanczos = 0.0;
+    size_t max_iter_BL = global_int("max_iter_BL");
+    if(M0 > (int)max_iter_BL) M0 = (int)max_iter_BL;
+
+    if(verb) cout << "\nblock Lanczos biorthogonalization: p=" << p << ", dim=" << dim << endl;
+
+    A.clear(); B.clear(); C.clear();
+
+    // Rolling blocks: _prev = level j-1, _cur = level j
+    vector<vector<HilbertField>> V_prev, W_prev;
+    vector<vector<HilbertField>> V_cur(p, vector<HilbertField>(dim));
+    vector<vector<HilbertField>> W_cur(p, vector<HilbertField>(dim));
+    vector<vector<HilbertField>> R(p, vector<HilbertField>(dim)); // right residual -> V_next
+    vector<vector<HilbertField>> S(p, vector<HilbertField>(dim)); // left residual
+
+    for(int k = 0; k < p; ++k){ V_cur[k] = phi_R[k]; W_cur[k] = phi_L[k]; }
+
+    // --- Biorthogonal modified Gram-Schmidt initialisation ---
+    // Goal: <W_cur[k] | V_cur[l]> = delta_{kl}
+    // For each pair (l,l): first remove projections from all already-normalised pairs (k<l),
+    // then normalise the pair symmetrically so <W_cur[l]|V_cur[l]> = 1.
+    for(int l = 0; l < p; ++l){
+        for(int k = 0; k < l; ++k){
+            // Remove V_cur[k] influence from V_cur[l]: enforce <W_cur[k]|V_cur[l]> = 0
+            HilbertField zv = W_cur[k] * V_cur[l];
+            mult_add(-zv, V_cur[k], V_cur[l]);
+            // Remove W_cur[k] influence from W_cur[l]: enforce <W_cur[l]|V_cur[k]> = 0
+            HilbertField zw = W_cur[l] * V_cur[k];
+            mult_add(-zw, W_cur[k], W_cur[l]);
+        }
+        // Normalise: <a*W_cur[l] | b*V_cur[l]> = 1
+        // Choosing b = 1/|rho|^{1/2} and a = rho/(|rho|^{3/2}) gives the result.
+        // (Here |rho| = sqrt(rho * conj(rho)).)
+        HilbertField rho   = W_cur[l] * V_cur[l];
+        double       arho2 = realpart(rho * conjugate(rho)); // |rho|^2
+        if(arho2 < accur_deflation * accur_deflation)
+            qcm_ED_throw("blockLanczosBI: starting block is biorthogonally rank-deficient at column " + to_string(l));
+        double arho      = sqrt(arho2);          // |rho|
+        double sqrt_arho = sqrt(arho);           // |rho|^{1/2}
+        V_cur[l]        *= 1.0 / sqrt_arho;
+        HilbertField scale_W = rho / (arho * sqrt_arho);
+        for(size_t i = 0; i < dim; ++i) W_cur[l][i] *= scale_W;
+    }
+
+    bool converged = false;
+    double ev_old  = 1e12;
+    int j = 0;
+
+    for(j = 0; j < M0; ++j){
+        check_signals();
+
+        // Step 1 — Compute R[k] = H V_cur[k]  and  S[k] = H W_cur[k]
+        for(int k = 0; k < p; ++k){
+            to_zero(R[k]);  H.mult_add(V_cur[k], R[k]);
+            to_zero(S[k]);  H.mult_add(W_cur[k], S[k]);
+        }
+
+        // Step 2 — Diagonal block: A_j(k,l) = <W_cur[k] | R[l]>
+        matrix<HilbertField> Aj(p);
+        for(int k = 0; k < p; ++k)
+            for(int l = 0; l < p; ++l)
+                Aj(k,l) = W_cur[k] * R[l];
+        A.push_back(Aj);
+
+        // Step 3 — Subtract diagonal from residuals
+        // Right: R[l] -= sum_k A_j(k,l)         * V_cur[k]
+        // Left:  S[m] -= sum_k conj(A_j(m,k))   * W_cur[k]   [= A_j^H(k,m) W_cur[k]]
+        for(int l = 0; l < p; ++l)
+            for(int k = 0; k < p; ++k)
+                mult_add(-Aj(k,l), V_cur[k], R[l]);
+        for(int m = 0; m < p; ++m)
+            for(int k = 0; k < p; ++k)
+                mult_add(-conjugate(Aj(m,k)), W_cur[k], S[m]);
+
+        // Step 4 — Subtract previous off-diagonal contribution (j > 0)
+        // Right: R[m] -= sum_l conj(C_{j-1}(m,l)) V_prev[l]   [= C_{j-1}^H row m]
+        // Left:  S[m] -= sum_l conj(B_{j-1}(m,l)) W_prev[l]   [= B_{j-1}^H row m]
+        if(j > 0){
+            const matrix<HilbertField> &Bprev = B.back();
+            const matrix<HilbertField> &Cprev = C.back();
+            for(int m = 0; m < p; ++m)
+                for(int l = 0; l < p; ++l){
+                    mult_add(-conjugate(Cprev(m,l)), V_prev[l], R[m]);
+                    mult_add(-conjugate(Bprev(m,l)), W_prev[l], S[m]);
+                }
+        }
+
+        // Step 5 — QR factorisation of R via modified Gram-Schmidt -> V_next stored in R, B_j
+        matrix<HilbertField> Bj(p);
+        bool singular_R = false;
+        for(int l = 0; l < p; ++l){
+            for(int k = 0; k < l; ++k){
+                HilbertField z = R[k] * R[l];   // Euclidean inner product (R[k] already normalised)
+                Bj(k,l) = z;
+                mult_add(-z, R[k], R[l]);
+            }
+            double nrm = norm(R[l]);
+            if(nrm < accur_deflation){
+                if(verb) cout << "blockLanczosBI: deflation in R at column " << l << " of step " << j << endl;
+                Bj(l,l) = HilbertField(0);
+                for(int ll = l; ll < p; ++ll) to_zero(R[ll]);
+                singular_R = true;
+                break;
+            }
+            Bj(l,l) = HilbertField(nrm);
+            R[l] *= 1.0 / nrm;
+        }
+        B.push_back(Bj);
+        if(singular_R) break;
+
+        // Step 6 — Compute C_j: C_j(m,l) = <V_next[m] | S[l]>
+        // Derivation: S = W_next * C_j, and W_next^H V_next = I requires C_j^H = S^H V_next,
+        // i.e. C_j(m,l) = <V_next[m]|S[l]> = conj(<S[l]|V_next[m]>) = conj(C_j^H(l,m)). ✓
+        matrix<HilbertField> Cj(p);
+        for(int m = 0; m < p; ++m)
+            for(int l = 0; l < p; ++l)
+                Cj(m,l) = R[m] * S[l];          // R[m] = V_next[m] (after QR above)
+        C.push_back(Cj);
+
+        // Check for left-side breakdown: C_j must be invertible
+        double Cj_diag_norm = 0.0;
+        for(int k = 0; k < p; ++k) Cj_diag_norm += realpart(Cj(k,k) * conjugate(Cj(k,k)));
+        if(sqrt(Cj_diag_norm) < accur_deflation * p){
+            if(verb) cout << "blockLanczosBI: left-side breakdown at step " << j << endl;
+            break;
+        }
+
+        // Step 7 — Compute W_next = S * C_j^{-1}
+        // W_next[m] = sum_l (C_j^{-1})_{lm} S[l]
+        // Then <W_next[k]|V_next[l]> = delta_{kl} by construction (see derivation above).
+        matrix<HilbertField> Cj_inv(Cj);
+        Cj_inv.inverse();
+
+        vector<vector<HilbertField>> W_next(p, vector<HilbertField>(dim));
+        for(int m = 0; m < p; ++m){
+            to_zero(W_next[m]);
+            for(int l = 0; l < p; ++l)
+                mult_add(Cj_inv(l,m), S[l], W_next[m]);
+        }
+
+        // Step 8 — Convergence check every p steps via eigenvalues of the Hermitian part of T
+        // (T + T^H)/2 has diagonal blocks (A_j + A_j^H)/2 and off-diagonal blocks (B_j + C_j)/2
+        if((j+1) >= 2*p && (j+1) % p == 0){
+            int sz = (j+1) * p;
+            matrix<HilbertField> T_herm(sz);
+            for(int jj = 0; jj <= j; ++jj){
+                // Hermitian part of diagonal block: (A[jj] + A[jj]^H) / 2
+                for(int r = 0; r < p; ++r)
+                    for(int c = 0; c < p; ++c){
+                        HilbertField sym = (A[jj](r,c) + conjugate(A[jj](c,r))) * HilbertField(0.5);
+                        T_herm(jj*p+r, jj*p+c) = sym;
+                    }
+                // Off-diagonal: (B[jj] + C[jj]) / 2 and its conjugate transpose
+                if(jj < j){
+                    for(int r = 0; r < p; ++r)
+                        for(int c = 0; c < p; ++c){
+                            HilbertField lo = (B[jj](r,c) + C[jj](r,c)) * HilbertField(0.5);
+                            T_herm((jj+1)*p+r, jj*p+c) = lo;
+                            T_herm(jj*p+c, (jj+1)*p+r) = conjugate(lo);
+                        }
+                }
+            }
+            vector<double> evals(sz);
+            T_herm.eigenvalues(evals);
+            double delta = abs(evals[0] - ev_old);
+            ev_old = evals[0];
+            if(verb){
+                cout.precision(10);
+                cout << "--> block Lanczos BI step " << j+1
+                     << ", delta E (herm. part) = " << delta << endl;
+            }
+            if(delta < accur_band_lanczos){ converged = true; break; }
+        }
+
+        // Advance rolling window
+        V_prev = move(V_cur);  W_prev = move(W_cur);
+        V_cur  = move(R);      W_cur  = move(W_next);
+        R.assign(p, vector<HilbertField>(dim));
+        S.assign(p, vector<HilbertField>(dim));
+    }
+
+    M0 = j + 1;
+    if(verb) cout << A.size() << " block Lanczos BI steps completed" << endl;
+    return converged;
+}
+
+
 #endif

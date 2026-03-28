@@ -561,7 +561,6 @@ matrix<complex<double>> lattice_model_instance::Green_integral(bool spin_down, i
     Gloc.v *= 2.0;
     Gloc.add(-G_pole);
     for(size_t i = 0 ; i<*nv; i++) I[i] = 0.0;
-    // matrix_to_real_vector(Gloc, I);
     hermitian_matrix_to_real_vector(Gloc, I);
   };
   auto Fmp_clus = [this, dim, spin_down] (Complex w, vector3D<double> &ki, const int *nv, double *I) mutable {

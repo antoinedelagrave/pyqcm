@@ -16,6 +16,8 @@ namespace QCM {
     new_global_bool(false, "zero_dim","sets the spatial dimension to zero, on any model");
     new_global_bool(false, "print_all","prints dependent parameters as well");
 
+    new_global_bool(false, "use_pcubature", "uses p-adaptive cubature (pcubature_v) instead of h-adaptive cubature (hcubature_v) for numerical integration");
+
     new_global_double(0.0001, "eta", "value of the imaginary part of the frequency in Chern number/Berry phase computations");
     new_global_double(0.5,"small_scale", "low-frequency region for imaginary frequency axis integrals");
     new_global_double(1.0e12, "cutoff_scale", "high-frequency cutoff in integrals");

@@ -26,14 +26,6 @@ endif()
 # QCM specific options
 # --------------------
 option(
-  DOWNLOAD_CUBA
-  "Specify to download and compile automatically the CUBA integration library"
-  ON)
-option(
-  CUBA_DIR
-  "If CUBA not downloaded and build by this project, specify the path to CUBA directory for linking Pyqcm against (must contain compiled Cuba library libcuba.a along with the header cuba.h"
-)
-option(
   BLA_VENDOR
   "BLAS implementation to use. See CMake vendor documentation https://cmake.org/cmake/help/latest/module/FindBLAS.html for more information"
 )
@@ -161,6 +153,8 @@ add_library(
   src_util/global_parameter.cpp
   src_util/hdf5_io.cpp
   src_util/integrate.cpp
+  external/cubature/hcubature.c
+  external/cubature/pcubature.c
   src_util/matrix.cpp
   src_util/parser.cpp
   src_util/VDVH_kernel.cpp
@@ -288,39 +282,11 @@ find_package(HDF5 REQUIRED COMPONENTS CXX)
 target_link_libraries(qcm PRIVATE HDF5::HDF5)
 target_include_directories(qcm PRIVATE ${HDF5_INCLUDE_DIRS})
 
-# ------------
-# Cuba library
-# ------------
-if(DOWNLOAD_CUBA)
-    include(ExternalProject)
-    ExternalProject_Add(
-    Cuba
-    PREFIX ${CMAKE_SOURCE_DIR}/external
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/cuba
-    URL https://feynarts.de/cuba/Cuba-4.2.2.tar.gz
-    URL_HASH MD5=a92897343027893ba2ec40dc15558b32
-    CONFIGURE_COMMAND
-    COMMAND ${CMAKE_SOURCE_DIR}/external/cuba/configure
-            "CFLAGS=${CMAKE_CXX_FLAGS_RELEASE} -fPIC" "CC=${CMAKE_C_COMPILER}"
-    BUILD_COMMAND
-    COMMAND make "lib"
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ""
-    STEP_TARGETS build
-    BUILD_BYPRODUCTS ${CMAKE_SOURCE_DIR}/external/cuba/libcuba.a)
-    add_dependencies(qcm Cuba)
-    set(CUBA_LIBRARY ${CMAKE_SOURCE_DIR}/external/cuba/libcuba.a)
-else()
-    find_library(
-    CUBA_LIBRARY
-    NAMES libcuba.a
-    HINTS "${CUBA_DIR}" "/usr/local/lib" "$ENV{HOME}/lib"
-          "${CMAKE_SOURCE_DIR}/external/cuba/")
-endif()
-
-get_filename_component(CUBA_DIR ${CUBA_LIBRARY} DIRECTORY)
-message(STATUS "CUBA lib: ${CUBA_LIBRARY}")
-message(STATUS "CUBA dir: ${CUBA_DIR}")
+# ------------------
+# Cubature library
+# ------------------
+set(CUBATURE_DIR ${CMAKE_SOURCE_DIR}/external/cubature)
+message(STATUS "Cubature dir: ${CUBATURE_DIR}")
 
 # ----------------------------------------------
 # Optimized kernel for Green function evaluation
@@ -382,7 +348,7 @@ endif()
 # Link dependencies
 # -----------------
 target_link_libraries(qcm PUBLIC ${Python3_LIBRARIES} ${LAPACK_LIBRARIES}
-                      ${CUBA_LIBRARY} ${PRIMME_LIBRARY} OpenMP::OpenMP_CXX)
+                      ${PRIMME_LIBRARY} OpenMP::OpenMP_CXX)
 
 target_include_directories(
   qcm
@@ -392,7 +358,7 @@ target_include_directories(
          src_util
          ${Python3_INCLUDE_DIRS}
          ${NUMPY_INCLUDE_DIR}
-         ${CUBA_DIR}
+         ${CUBATURE_DIR}
          ${PRIMME_DIR}/include)
 
 # ---------------

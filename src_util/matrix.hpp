@@ -754,7 +754,5 @@ inline matrix<complex<double>> to_complex_matrix(const matrix<complex<double>> &
 
 matrix<Complex> hermitian_matrix_from_real_vector(size_t d, const vector<double> &x);
 void hermitian_matrix_to_real_vector(const matrix<Complex> &M, double *x);
-matrix<Complex> matrix_from_real_vector(size_t d, const vector<double> &x);
-void matrix_to_real_vector(const matrix<Complex> &M, double *x);
 
 #endif

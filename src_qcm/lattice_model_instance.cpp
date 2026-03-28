@@ -200,7 +200,7 @@ matrix<complex<double>> lattice_model_instance::cluster_Green_function_remix(siz
 //==============================================================================
 /**
  returns the cluster Green function for cluster # i at frequency w
- @param i [in] index of the cluster (starts at 0)
+ @param c [in] index of the cluster (0-based)
  @param w [in] complex frequency
  @param spin_down [in] true if we are asking for the spin down part (mixing = 4)
  @returns a complex-valued matrix containing the cluster Green function

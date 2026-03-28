@@ -280,12 +280,12 @@ class lattice_model:
                 raise ValueError(
                     "The argument 'clus' of 'model' should be of type 'cluster' or a sequence thereof"
                 )
-            x.index = c + 1
+            x.index = c
             self.nsites += x.nsites
             if x.ref != None:
                 ref = x.ref.index
             else:
-                ref = 0
+                ref = -1
             qcm.add_cluster(x.pos, x.sites, ref, x.conj)
             if x.sys is None: continue
             for s in x.sys:

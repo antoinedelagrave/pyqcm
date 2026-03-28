@@ -713,7 +713,7 @@ class CDMFT:
             self.sigma0_down = self.sigma_down
             self.sigma_down = []
             for c in range(self.model.nclus):
-                d = self.model.dimGFC[j]
+                d = self.model.dimGFC[c]
                 self.sigma_down.append(
                     np.zeros((self.grid.nw, d, d), dtype=np.complex128)
                 )

@@ -3,6 +3,7 @@
 
 #include "Green_function_set.hpp"
 #include "matrix_continued_fraction.hpp"
+#include "global_parameter.hpp"
 
 /**
  @brief Set of matrix-valued continued fractions for the full Green function.
@@ -11,6 +12,8 @@
  annihilation) per irreducible representation block.  These are obtained from
  the block Lanczos method (blockLanczos) applied to the block of starting
  vectors phi[i] = c_i^†|GS> (electron) or phi[i] = c_i|GS> (hole).
+
+ Template parameter T is the Hilbert-space field (double or Complex).
 
  ### Conventions (matching Q_matrix_set / continued_fraction_set)
 
@@ -28,7 +31,7 @@
  - Hole part:     G.block[r] +=      h[r].evaluate(z)
  - Electron part: G.block[r] += TRANSPOSE(e[r].evaluate(z))
 
- For real Hamiltonians (HilbertField = double) the GF is symmetric, so the
+ For real Hamiltonians (T = double) the GF is symmetric, so the
  transpose is a no-op.
 
  ### Integrated Green function
@@ -38,10 +41,12 @@
  state weight Omega.weight).  Following the same G(b,a) convention as
  Q_matrix::integrated_Green_function, we add (W_h^H W_h)^T to G.block[r].
 */
+template<typename T>
 struct mcf_set : Green_function_set
 {
-    vector<matrix_continued_fraction> e;  //!< electron MCFs (one per irrep)
-    vector<matrix_continued_fraction> h;  //!< hole MCFs (one per irrep)
+    vector<matrix_continued_fraction<T>> e;        //!< electron MCFs (one per irrep)
+    vector<matrix_continued_fraction<T>> h;        //!< hole MCFs (one per irrep)
+    vector<matrix_continued_fraction<T>> combined; //!< pre-built combined MCFs (G_h + G_e^T)
 
     //! Constructor: allocates empty MCFs for each irrep.
     mcf_set(shared_ptr<symmetry_group> _group, int mixing)
@@ -49,6 +54,43 @@ struct mcf_set : Green_function_set
     {
         e.resize(group->g);
         h.resize(group->g);
+        combined.resize(group->g);
+    }
+
+    //! Build combined MCFs from the electron and hole MCFs.
+    /**
+     Must be called after all e[r] and h[r] have been filled (e.g. at the end
+     of build_mcf).  For each irrep block r both sectors must be present; if
+     only one is non-empty the combined MCF defaults to that sector alone.
+
+     When the global option "combine_mcf" is true, the combined MCF is obtained
+     via a new block Lanczos run on the direct-sum operator T_e ⊕ T_h
+     (combine_via_lanczos).  Otherwise (default) the electron and hole MCFs are
+     combined analytically via a non-square weight matrix (combine_for_gf).
+    */
+    void build_combined()
+    {
+        bool use_lanczos = global_bool("combine_mcf");
+        for(size_t r = 0; r < group->g; ++r){
+            bool has_e = e[r].floors() > 0;
+            bool has_h = h[r].floors() > 0;
+            if(has_e && has_h){
+                if(use_lanczos){
+                    int M0 = max(e[r].floors(), h[r].floors());
+                    combined[r] = combine_via_lanczos(e[r], h[r], M0);
+                } else {
+                    combined[r] = combine_for_gf(e[r], h[r]);
+                }
+            } else if(has_h){
+                combined[r] = h[r];          // hole only: W is already correct
+            } else if(has_e){
+                // Electron only: conjugate W_e so evaluate() returns G_e^T
+                auto tmp = e[r];
+                for(size_t k = 0; k < tmp.W.v.size(); ++k)
+                    tmp.W.v[k] = conj(tmp.W.v[k]);
+                combined[r] = tmp;
+            }
+        }
     }
 
     // Virtual method implementations
@@ -70,17 +112,12 @@ struct mcf_set : Green_function_set
  The hole part is added directly.  The electron part is TRANSPOSED before
  addition (see class-level convention note).
 */
-inline void mcf_set::Green_function(const Complex &z, block_matrix<Complex> &G)
+template<typename T>
+inline void mcf_set<T>::Green_function(const Complex &z, block_matrix<Complex> &G)
 {
     for(size_t r = 0; r < group->g; ++r) {
-        if(h[r].floors() > 0) {
-            G.block[r] += h[r].evaluate(z);
-        }
-        if(e[r].floors() > 0) {
-            matrix<Complex> Ge = e[r].evaluate(z);
-            Ge.transpose();
-            G.block[r] += Ge;
-        }
+        if(combined[r].floors() > 0)
+            G.block[r] += combined[r].evaluate(z);
     }
 }
 
@@ -92,7 +129,8 @@ inline void mcf_set::Green_function(const Complex &z, block_matrix<Complex> &G)
  weight is W_h^H W_h.  Following the Q_matrix convention G(b,a) += M(a,b),
  we add (W_h^H W_h)^T to G.block[r].
 */
-inline void mcf_set::integrated_Green_function(block_matrix<Complex> &G)
+template<typename T>
+inline void mcf_set<T>::integrated_Green_function(block_matrix<Complex> &G)
 {
     for(size_t r = 0; r < group->g; ++r) {
         if(h[r].floors() == 0 || h[r].p == 0) continue;
@@ -111,7 +149,8 @@ inline void mcf_set::integrated_Green_function(block_matrix<Complex> &G)
  Writes the mcf_set to an HDF5 group.
  Layout: attribute "nblocks"; for each r, sub-group "block_r" containing "e" and "h".
 */
-inline void mcf_set::write_hdf5(H5::Group& grp)
+template<typename T>
+inline void mcf_set<T>::write_hdf5(H5::Group& grp)
 {
     h5_write_attr(grp, "nblocks", (int)group->g);
     for(size_t r = 0; r < group->g; ++r){
@@ -127,7 +166,8 @@ inline void mcf_set::write_hdf5(H5::Group& grp)
 /**
  Reads the mcf_set from an HDF5 group written by write_hdf5.
 */
-inline void mcf_set::read_hdf5(H5::Group& grp)
+template<typename T>
+inline void mcf_set<T>::read_hdf5(H5::Group& grp)
 {
     int nblocks = h5_read_attr_int(grp, "nblocks");
     e.resize(nblocks);

@@ -835,7 +835,7 @@ void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool sp
 {
   auto& sym_orb = the_model->sym_orb[mixing];
 
-  auto mcf = make_shared<mcf_set>(the_model->group, mixing);
+  auto mcf = make_shared<mcf_set<HilbertField>>(the_model->group, mixing);
   if(spin_down) Omega.gf_down = mcf;
   else          Omega.gf      = mcf;
 
@@ -910,11 +910,12 @@ void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool sp
 
     // Build the matrix continued fraction with energy shift.
     // The constructor shifts A[j] by ±Omega.energy (create flag) and stores W.
-    matrix_continued_fraction frac(A, B, Omega.energy, W, pm == 1);
+    matrix_continued_fraction<HilbertField> frac(A, B, Omega.energy, W, pm == 1);
 
     if(pm == -1) mcf->h[r] = frac;
     else         mcf->e[r] = frac;
   }
+  mcf->build_combined();
 }
 
 

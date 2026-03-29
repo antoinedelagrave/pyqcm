@@ -6,7 +6,7 @@ from model_1D import model1D
 model = model1D(4, sym=False)
 
 mixing = 0
-cluster = False
+cluster = True
 
 if mixing == 4:
     model.set_target_sectors(['R0:N{:d}:S0'.format(L)])
@@ -62,7 +62,26 @@ import matplotlib.pyplot as plt
 
 # plt.gcf().set_size_inches(12/2.54, 12/2.54)
 
+pyqcm.set_global_parameter('GF_method', 'L')
 I = pyqcm.model_instance(model)
+print(I.cluster_Green_function(0.2+0.1j))
+
+pyqcm.set_global_parameter('GF_method', 'F')
+I = pyqcm.model_instance(model)
+print(I.cluster_Green_function(0.2+0.1j))
+
+pyqcm.set_global_parameter('GF_method', 'M')
+I = pyqcm.model_instance(model)
+print(I.cluster_Green_function(0.2+0.1j))
+
+pyqcm.set_global_parameter('combine_mcf')
+pyqcm.set_global_parameter('GF_method', 'M')
+I = pyqcm.model_instance(model)
+print(I.cluster_Green_function(0.2+0.1j))
+
+
+exit()
+
 if cluster:
     I.cluster_spectral_function(wmax = 6, plt_ax = plt.gca(), full=True, offset=14)
 else:
@@ -77,3 +96,11 @@ else:
     I.spectral_function(wmax = 6, plt_ax = plt.gca(), path='line', color='r')
 
 plt.savefig('test_CF.pdf')
+
+pyqcm.set_global_parameter('GF_method', 'M')
+I = pyqcm.model_instance(model)
+if cluster:
+    I.cluster_spectral_function(wmax = 6, full=True, offset=14, plt_ax = plt.gca(), color='r')
+else:
+    I.spectral_function(wmax = 6, plt_ax = plt.gca(), path='line', color='r')
+plt.savefig('test_MCF.pdf')

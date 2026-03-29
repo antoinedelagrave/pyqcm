@@ -249,6 +249,7 @@ namespace ED {
     new_global_bool(false,"verb_ED","prints ED information and progress");
     new_global_bool(false,"print_variances","prints the variance of the operators in files");
     new_global_bool(false,"merge_states","merges states in the mixed state case");
+    new_global_bool(false,"combine_mcf","combines electron and hole matrix continued fractions via a new block Lanczos run (combine_via_lanczos) instead of summing them separately");
 
 
     new_global_double(1e-12,"accur_band_lanczos","energy difference tolerance for stopping the BL process");

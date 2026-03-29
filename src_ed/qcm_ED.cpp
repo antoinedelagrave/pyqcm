@@ -465,8 +465,8 @@ namespace ED{
     int   dim_GF  = inst->dim_GF;
 
     for(auto& x : inst->states){
-      shared_ptr<mcf_set> mcf =
-        dynamic_pointer_cast<mcf_set>(spin_down ? x->gf_down : x->gf);
+      shared_ptr<mcf_set<HilbertField>> mcf =
+        dynamic_pointer_cast<mcf_set<HilbertField>>(spin_down ? x->gf_down : x->gf);
       if(!mcf) continue;
 
       MCF_periodization_data::State s;
@@ -488,8 +488,8 @@ namespace ED{
           block_matrix<Complex> B_blk(group->site_irrep_dim * n_mixed);
           for(size_t r = 0; r < group->g; ++r){
             if(j < mcf->h[r].floors()){
-              A_blk.block[r] = mcf->h[r].A[j];
-              B_blk.block[r] = mcf->h[r].B[j];
+              A_blk.block[r] = to_complex_matrix(mcf->h[r].A[j]);
+              B_blk.block[r] = to_complex_matrix(mcf->h[r].B[j]);
             }
             // blocks left at zero (default-constructed) when j >= floors
           }
@@ -524,8 +524,8 @@ namespace ED{
           block_matrix<Complex> B_blk(group->site_irrep_dim * n_mixed);
           for(size_t r = 0; r < group->g; ++r){
             if(j < mcf->e[r].floors()){
-              A_blk.block[r] = mcf->e[r].A[j];
-              B_blk.block[r] = mcf->e[r].B[j];
+              A_blk.block[r] = to_complex_matrix(mcf->e[r].A[j]);
+              B_blk.block[r] = to_complex_matrix(mcf->e[r].B[j]);
             }
           }
           s.A_e[j] = matrix<Complex>(dim_GF);

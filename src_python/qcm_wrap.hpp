@@ -317,7 +317,9 @@ not on any model instance or solved Green function.
 
 arguments:
 1. A : input matrix (ndarray of shape (d,d), complex, d = dim_GF)
-2. k : wavevector (ndarray(3)) in units of 2*pi
+2. k : wavevector (ndarray(3)) in the same convention as tk() and set_V(): k_phys * a / (2*pi),
+       where a is the primitive lattice constant. The Bloch phase for inter-cluster hopping
+       across a wrapping vector R (in primitive lattice units) is exp(i * k * R * 2*pi).
 returns: symmetrized matrix (ndarray of shape (d,d), complex)
 ){";
 //------------------------------------------------------------------------------

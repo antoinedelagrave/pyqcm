@@ -559,19 +559,16 @@ check_instance(label);
   
   /**
    Applies compact_tiling to an arbitrary dim_GF matrix at wavevector k.
-   Converts k from physical dual to superdual basis, computes the neighbor
-   phase factors, and delegates to Green_function_k::compact_tiling.
-   @param A         input matrix (dim_GF x dim_GF)
-   @param k         wavevector in units of 2pi (physical dual basis)
-   @param spin_down true for the spin-down sector (mixing = 4)
-   @param label     model instance label
+   @param A  input matrix (dim_GF x dim_GF)
+   @param k  wavevector in the same convention as M.k and set_V(): k_phys * a / (2*pi),
+             i.e. in units of the inverse primitive lattice constant / (2*pi).
+             The inter-cluster Bloch phase is exp(i * k * neighbor * 2*pi) where
+             neighbor is the wrapping vector in primitive lattice units.
    */
   matrix<complex<double>> compact_tiling(const matrix<complex<double>>& A, const vector3D<double>& k)
   {
     lattice_model& mod = *qcm_model;
-    // convert k from physical-dual to superdual basis (same convention as periodize() and M.k)
-    vector3D<double> K = mod.superdual.to(mod.physdual.from(k));
-    return mod.compact_tiling(A, K);
+    return mod.compact_tiling(A, k);
   }
 
 

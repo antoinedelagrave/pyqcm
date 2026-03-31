@@ -779,7 +779,7 @@ class lattice_model:
         :math:`\boldsymbol{\delta}` is the wrapping superlattice vector.
 
         :param A: input matrix (ndarray of shape ``(d, d)``, complex, ``d`` = ``dim_GF``)
-        :param k: wavevector (ndarray(3)) in units of :math:`2\pi`
+        :param k: wavevector (ndarray(3)) in the same convention as :py:func:`tk`: :math:`k_{\rm phys}\,a/(2\pi)`, where :math:`a` is the primitive lattice constant. The inter-cluster Bloch phase for wrapping vector :math:`\mathbf{R}` (in primitive lattice units) is :math:`e^{i\mathbf{k}\cdot\mathbf{R}\,2\pi}`.
         :returns: symmetrized matrix (ndarray of shape ``(d, d)``, complex)
 
         """

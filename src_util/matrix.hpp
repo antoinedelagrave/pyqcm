@@ -98,7 +98,7 @@ template <typename T> struct matrix {
 
   //! extracts a rectangular submatrix of size (R,C), starting at (i,j) of this, and copies it to position (I, J) of A
   template <typename S>
-  void move_sub_matrix(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) {
+  void move_sub_matrix(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) const {
     QCM_ASSERT(j + C <= c and i + R <= r and I + R <= A.r and J + C <= A.c);
     for (size_t k = 0; k < R; ++k) {
       for (size_t l = 0; l < C; ++l) { A(I + k, J + l) += z * v[i + k + r * (j + l)]; }
@@ -108,7 +108,7 @@ template <typename T> struct matrix {
   //! extracts a rectangular submatrix of size (R,C), starting at (i,j) of this, and copies its complex conjugate to position (I,
   //! J) of A
   template <typename S>
-  void move_sub_matrix_conjugate(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) {
+  void move_sub_matrix_conjugate(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) const {
     QCM_ASSERT(j + C <= c and i + R <= r and I + R <= A.r and J + C <= A.c);
     for (size_t k = 0; k < R; ++k) {
       for (size_t l = 0; l < C; ++l) { A(I + k, J + l) += z * conjugate(v[i + k + r * (j + l)]); }
@@ -119,7 +119,7 @@ template <typename T> struct matrix {
   //! extracts a rectangular submatrix of size (R,C), starting at (i,j) of this, and copies its hermitian conjugate to position
   //! (I, J) of A
   template <typename S>
-  void move_sub_matrix_HC(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) {
+  void move_sub_matrix_HC(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) const {
     QCM_ASSERT(j + C <= c and i + R <= r and I + C <= A.r and J + R <= A.c);
     for (size_t k = 0; k < R; ++k) {
       for (size_t l = 0; l < C; ++l) { A(I + l, J + k) += z * conjugate(v[i + k + r * (j + l)]); }
@@ -129,7 +129,7 @@ template <typename T> struct matrix {
 
   //! extracts a rectangular submatrix of size (R,C), starting at (i,j) of this, and copies its transpose to position (I, J) of A
   template <typename S>
-  void move_sub_matrix_transpose(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) {
+  void move_sub_matrix_transpose(size_t R, size_t C, size_t i, size_t j, size_t I, size_t J, matrix<S> &A, double z = 1.0) const {
     QCM_ASSERT(j + C <= c and i + R <= r and I + C <= A.r and J + R <= A.c);
     for (size_t k = 0; k < R; ++k) {
       for (size_t l = 0; l < C; ++l) { A(I + l, J + k) += z * v[i + k + r * (j + l)]; }
@@ -750,6 +750,17 @@ matrix<Complex> to_complex_matrix(const matrix<double> &x);
 inline matrix<complex<double>> to_complex_matrix(const matrix<complex<double>> &v)
 {
   return v;
+}
+
+inline matrix<double> to_real_matrix(const matrix<double> &v)
+{
+  return v;
+}
+inline matrix<double> to_real_matrix(const matrix<complex<double>> &v)
+{
+  matrix<double> x(v.r, v.c);
+  for(size_t k = 0; k < v.v.size(); ++k) x.v[k] = v.v[k].real();
+  return x;
 }
 
 matrix<Complex> hermitian_matrix_from_real_vector(size_t d, const vector<double> &x);

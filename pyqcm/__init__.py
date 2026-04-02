@@ -766,6 +766,26 @@ class lattice_model:
         self.is_closed = True
 
     # -----------------------------------------------------------------------------------------------
+    def compact_tiling(self, A, k):
+        r"""
+        Symmetrizes a ``dim_GF`` matrix with respect to cluster translations at wavevector **k**.
+
+        For each element :math:`A[s(x), s(x')]` with link :math:`\mathbf{d} = x' - x`, the result is:
+
+        .. math::
+            A_{\rm ct}[s(x), s(x')] = \frac{1}{L_c} \sum_y A[s(y),\, s(f(y+d))]\, e^{i\mathbf{k}\cdot\boldsymbol{\delta}}
+
+        where :math:`f(y+d)` folds :math:`y+d` back into the super unit cell and
+        :math:`\boldsymbol{\delta}` is the wrapping superlattice vector.
+
+        :param A: input matrix (ndarray of shape ``(d, d)``, complex, ``d`` = ``dim_GF``)
+        :param k: wavevector (ndarray(3)) in the same convention as :py:func:`tk`: :math:`k_{\rm phys}\,a/(2\pi)`, where :math:`a` is the primitive lattice constant. The inter-cluster Bloch phase for wrapping vector :math:`\mathbf{R}` (in primitive lattice units) is :math:`e^{i\mathbf{k}\cdot\mathbf{R}\,2\pi}`.
+        :returns: symmetrized matrix (ndarray of shape ``(d, d)``, complex)
+
+        """
+        return qcm.compact_tiling(A, k)
+
+    # -----------------------------------------------------------------------------------------------
     # imports further functions from other source files
 
     from ._draw import draw_cluster_operator, draw_operator
@@ -878,6 +898,42 @@ class model_instance:
         """
 
         return qcm.qmatrix(self.label * self.model.nsys + sys)
+
+    # -----------------------------------------------------------------------------------------------
+    def combined_mcf(self, sys=0, k=None, pr=False):
+        """
+        Returns the combined matrix continued fraction (MCF) for the cluster Green function.
+
+        The combined MCF encodes G = G⁺ + (G⁻)ᵀ in a single object whose evaluate()
+        gives the full Green function directly.
+
+        Only available when ``GF_method`` has been set to ``'M'`` and the global
+        parameter ``combine_mcf`` is ``True``.  Raises an exception otherwise.
+
+        :param int sys: label of the system (0-based)
+        :param k: wavevector (ndarray(3)). If None, cluster mfc is returned
+        :param bool pr: if True, prints the MCF blocks in addition to returning them
+        :returns: 3-tuple ``(W, A, B)`` where
+
+            * ``W``  -- ``(L, L)`` complex ndarray, weight matrix
+            * ``A``  -- list of M ``(L, L)`` complex ndarrays, diagonal blocks
+            * ``B``  -- list of M ``(L, L)`` complex ndarrays, off-diagonal QR blocks
+
+            L is the dimension of the Green function, M is the number of floors.
+        """
+
+        if pr is False: 
+            return qcm.combined_mcf(self.label * self.model.nsys + sys, k)
+        else:
+            W, A, B = qcm.combined_mcf(self.label * self.model.nsys + sys, k)
+            print('W = \n' + str(W))
+            for i,x in enumerate(A):
+                print('A[' + str(i) + '] = \n' + str(x))
+            for i,x in enumerate(B):
+                print('B[' + str(i) + '] = \n' + str(x)) 
+            return W, A, B   
+
+        
 
     # -----------------------------------------------------------------------------------------------
     def write_hdf5(self, filename, sys=0):
@@ -2224,7 +2280,7 @@ def wavevector_path(n=32, shape="triangle"):
     Builds a wavevector path and associated tick marks
 
     :param int n: number of wavevectors per segment
-    :param str shape: the geometry of the path, one of: line, halfline, triangle, diagonal, graphene, graphene2, tri, cubic, cubic2, tetragonal, tetragonal2  OR a tuple with two wavevectors for a straight path between the two OR a filename ending with ".tsv". In the latter case, the file contains a tab-separated list of wavevectors (in units of 2*pi) and tick marks: the first three columns are the x,y,z components of the wavevectors, and the last columns the strings (possibly latex) for the tick marks (write - in that column if you do not want a tick mark for a specific wavevector).
+    :param str shape: the geometry of the path, one of: line, halfline, triangle, diagonal, graphene, graphene2, tri, cubic, cubic2, tetragonal, tetragonal2  OR a tuple with two wavevectors for a straight path between the two OR a filename ending with ".tsv". In the latter case, the file contains a tab-separated list of wavevectors (in units of pi) and tick marks: the first three columns are the x,y,z components of the wavevectors, and the last columns the strings (possibly latex) for the tick marks (write - in that column if you do not want a tick mark for a specific wavevector).
     :returns tuple: 1) a ndarray of wavevectors 2) a list of tick positions 3) a list of tick strings
 
     """
@@ -2810,6 +2866,7 @@ def is_sequence(obj):
         return False
 
 
+# ---------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------
 def reset_model():
     """

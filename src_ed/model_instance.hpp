@@ -71,6 +71,7 @@ struct model_instance : model_instance_base
   void build_cf(state<HilbertField> &Omega, bool spin_down);
   void build_qmatrix(state<HilbertField> &Omega, bool spin_down);
   void build_mcf(state<HilbertField> &Omega, bool spin_down);
+  void build_mcf_from_qmatrix(state<HilbertField> &Omega, bool spin_down);
   void clear_states();
   void compute_weights();
   void insert_state(shared_ptr<state<HilbertField>> S);
@@ -520,11 +521,13 @@ void model_instance<HilbertField>::Green_function_solve()
 
     if(GF_solver == GF_format_CF) build_cf(*x, false);
     else if(GF_solver == GF_format_MCF) build_mcf(*x, false);
+    else if(GF_solver == GF_format_Q_to_MCF) build_mcf_from_qmatrix(*x, false);
     else build_qmatrix(*x,false);
 
     if(mixing&HS_mixing::up_down){
       if(GF_solver == GF_format_CF) build_cf(*x,true);
       else if(GF_solver == GF_format_MCF) build_mcf(*x,true);
+      else if(GF_solver == GF_format_Q_to_MCF) build_mcf_from_qmatrix(*x,true);
       else build_qmatrix(*x,true);
     }
   }
@@ -835,7 +838,7 @@ void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool sp
 {
   auto& sym_orb = the_model->sym_orb[mixing];
 
-  auto mcf = make_shared<mcf_set>(the_model->group, mixing);
+  auto mcf = make_shared<mcf_set<HilbertField>>(the_model->group, mixing);
   if(spin_down) Omega.gf_down = mcf;
   else          Omega.gf      = mcf;
 
@@ -871,50 +874,109 @@ void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool sp
     }
     if(skip_sector) continue;
 
-    // Extract the upper-triangular QR factor W of the phi block.
-    // Working copies q[] are orthonormalized; W captures the norms and
-    // overlaps so that phi[l] = sum_{k<=l} q[k] * W(k,l).
-    matrix<HilbertField> W(p);
-    {
-      vector<vector<HilbertField>> q(phi);   // working copies (phi not modified)
-      bool rank_deficient = false;
-      for(int l = 0; l < p; ++l){
-        for(int k = 0; k < l; ++k){
-          HilbertField z = q[k] * q[l];      // <q[k] | q[l]>
-          W(k, l) = z;
-          mult_add(-z, q[k], q[l]);
-        }
-        double nrm = norm(q[l]);
-        if(nrm < accur_deflation){ rank_deficient = true; break; }
-        W(l, l) = HilbertField(nrm);
-        q[l] *= 1.0 / nrm;
+    // Extract the upper-triangular QR factor W of the phi block via modified
+    // Gram-Schmidt.  phi[l] = sum_{k<=l} q[k] * W(k,l).
+    // If some phi[l] deflates (norm < accur_deflation) we stop at that column
+    // and proceed with p_actual < p non-deflated vectors.  The non-square weight
+    // W_mcf (p_actual × p) maps the reduced Lanczos block back to the full
+    // p-dimensional orbital space so that evaluate() still returns a p×p matrix.
+    matrix<HilbertField> W(p, p);   // full QR factor (upper-triangular, p×p)
+    int p_actual = p;
+    vector<vector<HilbertField>> q(phi);   // orthonormalized starting block
+    for(int l = 0; l < p; ++l){
+      for(int k = 0; k < l; ++k){
+        HilbertField z = q[k] * q[l];    // <q[k] | q[l]>
+        W(k, l) = z;
+        mult_add(-z, q[k], q[l]);
       }
-      if(rank_deficient) continue;
+      double nrm = norm(q[l]);
+      if(nrm < accur_deflation){ p_actual = l; break; }  // deflation: stop here
+      W(l, l) = HilbertField(nrm);
+      q[l] *= 1.0 / nrm;
     }
+    if(p_actual == 0) continue;
+
     // Fold in the state weight so that the spectral weight is Omega.weight.
     W.v *= sqrt(Omega.weight);
+
+    // Build the (possibly non-square) p_actual × p weight matrix for the MCF.
+    // If p_actual == p this is just the upper-left p×p block (= W itself).
+    matrix<HilbertField> W_mcf(p_actual, p);
+    for(int k = 0; k < p_actual; ++k)
+      for(int l = 0; l < p; ++l)
+        W_mcf(k, l) = W(k, l);
+
+    // Trim the starting block to the p_actual non-deflated vectors.
+    q.resize(p_actual);
 
     // Assemble the Hamiltonian in the target sector
     Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, target_sec);
     if(H->dim == 0){ delete H; continue; }
 
-    // Block Lanczos: produces diagonal blocks A[j] and off-diagonal QR blocks B[j].
-    // blockLanczos orthonormalises phi internally (consistent with the W extracted above).
+    // Block Lanczos on the p_actual orthonormal starting vectors.
+    // block_Lanczos_QR=true (default) uses QR upper-triangular B; false uses polar (Hermitian B).
     vector<matrix<HilbertField>> A, B;
-    int M0 = (int)(14 * p * log(1.0 * H->dim));
-    blockLanczos(*H, phi, A, B, M0, global_bool("verb_ED"));
+    int M0 = (int)(14 * p_actual * log(1.0 * H->dim));
+    if(global_bool("block_Lanczos_QR"))
+      blockLanczos(*H, q, A, B, M0, global_bool("verb_ED"));
+    else
+      blockLanczosSVD(*H, q, A, B, M0, global_bool("verb_ED"));
 
     delete H; H = nullptr;
 
     if(A.empty()) continue;
 
-    // Build the matrix continued fraction with energy shift.
-    // The constructor shifts A[j] by ±Omega.energy (create flag) and stores W.
-    matrix_continued_fraction frac(A, B, Omega.energy, W, pm == 1);
+    // Build the matrix continued fraction with energy shift and non-square W_mcf.
+    matrix_continued_fraction<HilbertField> frac(A, B, Omega.energy, W_mcf, pm == 1);
 
     if(pm == -1) mcf->h[r] = frac;
     else         mcf->e[r] = frac;
   }
+  mcf->build_combined();
+}
+
+
+/**
+ Constructs the MCF representation of the Green function from the Q_matrix
+ Lehmann representation, using block Lanczos on the diagonal Hamiltonian
+ H = diag(Q.e).
+
+ Calls build_qmatrix() to obtain the combined (electron + hole) Q_matrix per
+ irrep block, then converts each block via Q_matrix_to_mcf() and stores the
+ result in mcf_set::combined[r].  The mcf_set replaces the Q_matrix_set in
+ Omega.gf (or Omega.gf_down).
+
+ This path is used when GF_method = 'L' and combine_mcf = true.  It preserves
+ the Lehmann accuracy of build_qmatrix while producing a combined MCF output
+ compatible with get_combined_mcf().
+
+ @param Omega      State on which the GF is built.
+ @param spin_down  True when building the spin-down component (up-down mixing).
+*/
+template<typename HilbertField>
+void model_instance<HilbertField>::build_mcf_from_qmatrix(state<HilbertField> &Omega, bool spin_down)
+{
+  // Step 1: build the Q_matrix_set using the standard Lehmann path
+  build_qmatrix(Omega, spin_down);
+
+  auto Qset = dynamic_pointer_cast<Q_matrix_set<HilbertField>>(
+      spin_down ? Omega.gf_down : Omega.gf);
+  if(!Qset) return;
+
+  // Step 2: create mcf_set; convert each Q_matrix block to a combined MCF.
+  // The Q_matrix already merges electron and hole poles, so each block maps
+  // directly to a single combined MCF stored in combined[r].
+  auto mcf = make_shared<mcf_set<HilbertField>>(the_model->group, mixing);
+
+  auto& sym_orb = the_model->sym_orb[mixing];
+  for(size_t r = 0; r < sym_orb.size(); ++r){
+    if(Qset->q[r].M == 0) continue;
+    mcf->combined[r] = Q_matrix_to_mcf(Qset->q[r]);
+  }
+
+  // Step 3: replace the Q_matrix_set with the new mcf_set
+  if(spin_down) Omega.gf_down = mcf;
+  else          Omega.gf      = mcf;
 }
 
 
@@ -1273,9 +1335,10 @@ void model_instance<HilbertField>::write_hdf5(H5::Group& grp)
   h5_write_attr(grp, "GS_energy",  GS_energy);
   h5_write_attr(grp, "GS_sectors", GS_string());
   string fmt;
-  if(GF_solver == GF_format_CF)        fmt = "cf";
-  else if(GF_solver == GF_format_MCF)  fmt = "mcf";
-  else                                  fmt = "bl";
+  if(GF_solver == GF_format_CF)                                   fmt = "cf";
+  else if(GF_solver == GF_format_MCF ||
+          GF_solver == GF_format_Q_to_MCF)                       fmt = "mcf";
+  else                                                            fmt = "bl";
   h5_write_attr(grp, "GF_format",  fmt);
   h5_write_attr(grp, "mixing",     mixing);
   h5_write_attr(grp, "complex_HS", (int)complex_Hilbert);

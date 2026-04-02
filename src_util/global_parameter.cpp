@@ -15,6 +15,7 @@ namespace QCM {
     new_global_bool(false, "periodized_averages","computes lattice averages using the periodized Green function");
     new_global_bool(false, "zero_dim","sets the spatial dimension to zero, on any model");
     new_global_bool(false, "print_all","prints dependent parameters as well");
+    new_global_bool(false, "compact_tiling_per_site","uses a version of compact tiling where the average is done per site and not per link");
 
     new_global_bool(false, "use_pcubature", "uses p-adaptive cubature (pcubature_v) instead of h-adaptive cubature (hcubature_v) for numerical integration");
 
@@ -40,7 +41,6 @@ namespace QCM {
     new_global_bool(false,"check_lanczos_residual","checks the Lanczos residual at the end of the eigenvector computation");
     new_global_bool(false,"no_degenerate_BL","forbids band lanczos to proceed when the eigenstates have degenerate energies");
     new_global_bool(false,"nosym", "does not take cluster symmetries into account");
-    new_global_bool(false,"one_body_solution","Only solves the one-body part of the problem, for the Green function");
     new_global_bool(false,"print_Hamiltonian","Prints the Hamiltonian on the screen, if small enough");
     new_global_bool(false,"strip_anomalous_self","sets to zero the anomalous part of the self-energy");
     new_global_bool(false,"continued_fraction","Uses the continued fraction solver for the Green function instead of the band Lanczos method");
@@ -51,6 +51,8 @@ namespace QCM {
     new_global_bool(false,"print_variances","prints the variance of the operators in files");
     new_global_bool(false,"parallel_sectors","uses openMP to parallelize the computation of the Green function structures across the different sectors (uses more memory)");
     new_global_bool(false,"merge_states","merges states in the mixed state case");
+    new_global_bool(false,"combine_mcf","combines electron and hole matrix continued fractions via a new block Lanczos run (combine_via_lanczos) instead of summing them separately");
+    new_global_bool(false, "block_Lanczos_QR", "Block Lanczos factorisation of the residual block: true uses QR (upper-triangular B), false (default) uses polar decomposition (Hermitian B via SVD)");
 
     new_global_double(1e-12,"accur_band_lanczos","energy difference tolerance for stopping the BL process");
     new_global_double(0.01,"accur_continued_fraction","value of beta below which the simple Lanczos process stops");

@@ -53,7 +53,7 @@ struct state
     string fmt = "bl";
     if(gf != nullptr){
       if(dynamic_pointer_cast<continued_fraction_set>(gf) != nullptr) fmt = "cf";
-      else if(dynamic_pointer_cast<mcf_set>(gf) != nullptr)           fmt = "mcf";
+      else if(dynamic_pointer_cast<mcf_set<HilbertField>>(gf) != nullptr) fmt = "mcf";
     }
     h5_write_attr(grp, "gf_format", fmt);
     if(gf != nullptr){
@@ -94,7 +94,7 @@ struct state
         return qs;
       }
       else if(gf_fmt == GF_format_MCF){
-        auto ms = make_shared<mcf_set>(sym_group, mixing);
+        auto ms = make_shared<mcf_set<HilbertField>>(sym_group, mixing);
         ms->read_hdf5(gg);
         return ms;
       }

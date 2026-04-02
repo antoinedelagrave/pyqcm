@@ -303,6 +303,145 @@ static PyObject *cluster_self_energy_python(PyObject *self, PyObject *args) {
 }
 
 //==============================================================================
+const char *compact_tiling_help =
+    R"{(
+Symmetrizes a dim_GF matrix with respect to cluster translations at wavevector k.
+
+For each element A[s(x), s(x')] with link d = x' - x, the result is:
+  Act[s(x), s(x')] = (1/Lc) * sum_y  A[s(y), s(f(y+d))] * exp(i*k*delta)
+where f(y+d) is the site obtained by folding y+d into the super unit cell,
+and delta is the wrapping superlattice vector (0 when y+d stays inside).
+
+This depends only on the lattice model structure (sites, neighbors) and k,
+not on any model instance or solved Green function.
+
+arguments:
+1. A : input matrix (ndarray of shape (d,d), complex, d = dim_GF)
+2. k : wavevector (ndarray(3)) in the same convention as tk() and set_V(): k_phys * a / (2*pi),
+       where a is the primitive lattice constant. The Bloch phase for inter-cluster hopping
+       across a wrapping vector R (in primitive lattice units) is exp(i * k * R * 2*pi).
+returns: symmetrized matrix (ndarray of shape (d,d), complex)
+){";
+//------------------------------------------------------------------------------
+static PyObject *compact_tiling_python(PyObject *self, PyObject *args) {
+  PyArrayObject *A_pyobj = nullptr;
+  PyArrayObject *k_pyobj = nullptr;
+
+  try {
+    if (!PyArg_ParseTuple(args, "OO", &A_pyobj, &k_pyobj))
+      qcm_throw("failed to read parameters in call to compact_tiling (python)");
+
+    size_t d = QCM::Green_function_dimension();
+    if (PyArray_NDIM(A_pyobj) != 2 || (size_t)PyArray_DIM(A_pyobj, 0) != d || (size_t)PyArray_DIM(A_pyobj, 1) != d)
+      qcm_throw("argument A of compact_tiling must be a square complex array of size dim_GF");
+
+    matrix<complex<double>> A(d);
+    memcpy(A.v.data(), PyArray_DATA((PyArrayObject *)A_pyobj), d * d * sizeof(complex<double>));
+
+    vector3D<double> k = vector_from_Py(k_pyobj);
+    auto Act = QCM::compact_tiling(A, k);
+
+    npy_intp dims[2];
+    dims[0] = dims[1] = (npy_intp)d;
+    PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
+    memcpy(PyArray_DATA((PyArrayObject *)out), Act.data(), d * d * sizeof(complex<double>));
+    PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
+    return out;
+  } catch (const std::exception &e) {
+    qcm_catch(e);
+    return nullptr;
+  }
+}
+
+//==============================================================================
+const char *combined_mcf_help =
+    R"{(
+Returns the combined matrix continued fraction (W, A, B) for the cluster Green
+function G = G⁺ + (G⁻)ᵀ in the full site-orbital basis.
+
+Only available when GF_method = 'M' and combine_mcf = True, or when
+GF_method = 'L' and combine_mcf = True.
+Raises an exception otherwise.
+
+Arguments:
+  label (optional, int)           : label of the model instance (default 0)
+  k     (optional, ndarray(3))    : wavevector in the physical reciprocal basis.
+    If k is None (default), returns the cluster-level MCF (W, A, B) in the
+    full site-orbital basis (dimensions L x L).
+    If k is provided, applies the 'L' periodization scheme: adds inter-cluster
+    hopping V(k) to A[0], applies compact_tiling to A[j>=1] and B[j>=1], then
+    periodizes all blocks into the reduced (band) basis. Returns the
+    k-dependent MCF (W_k, A_k, B_k) in the band basis.
+
+Returns a 3-tuple:
+  1. W  -- complex weight matrix
+  2. A  -- list of M complex diagonal blocks
+  3. B  -- list of M complex off-diagonal blocks
+where M is the number of floors (Lanczos steps).
+){";
+//------------------------------------------------------------------------------
+static PyObject *combined_mcf_python(PyObject *self, PyObject *args) {
+  int label = 0;
+  PyObject *k_obj = nullptr;
+
+  try {
+    if (!PyArg_ParseTuple(args, "|iO", &label, &k_obj))
+      qcm_throw("failed to read parameters in call to combined_mcf (python)");
+  } catch (const std::exception &e) {
+    qcm_catch(e);
+    return nullptr;
+  }
+
+  try {
+    ED::CombinedMCF_data D;
+    if (k_obj == nullptr || k_obj == Py_None) {
+      D = ED::get_combined_mcf(false, label);
+    } else {
+      if (!PyArray_Check(k_obj))
+        qcm_throw("k argument of combined_mcf must be a numpy array or None");
+      vector3D<double> k = vector_from_Py((PyArrayObject *)k_obj);
+      D = QCM::get_combined_mcf_k(k, false, label);
+    }
+
+    int nW_r = D.W.r;
+    int nW_c = D.W.c;
+    int nM = (int)D.A.size();
+    npy_intp dims2[2];
+
+    // W matrix
+    dims2[0] = nW_r; dims2[1] = nW_c;
+    PyObject *outW = PyArray_SimpleNew(2, dims2, NPY_COMPLEX128);
+    memcpy(PyArray_DATA((PyArrayObject *)outW), D.W.v.data(), nW_r * nW_c * sizeof(complex<double>));
+    PyArray_ENABLEFLAGS((PyArrayObject *)outW, NPY_ARRAY_OWNDATA);
+
+    // A list
+    PyObject *listA = PyList_New(nM);
+    for(int j = 0; j < nM; ++j){
+      dims2[0] = D.A[j].r; dims2[1] = D.A[j].c;
+      PyObject *arr = PyArray_SimpleNew(2, dims2, NPY_COMPLEX128);
+      memcpy(PyArray_DATA((PyArrayObject *)arr), D.A[j].v.data(), D.A[j].r * D.A[j].c * sizeof(complex<double>));
+      PyArray_ENABLEFLAGS((PyArrayObject *)arr, NPY_ARRAY_OWNDATA);
+      PyList_SET_ITEM(listA, j, arr);
+    }
+
+    // B list
+    PyObject *listB = PyList_New(nM);
+    for(int j = 0; j < nM; ++j){
+      dims2[0] = D.B[j].r; dims2[1] = D.B[j].c;
+      PyObject *arr = PyArray_SimpleNew(2, dims2, NPY_COMPLEX128);
+      memcpy(PyArray_DATA((PyArrayObject *)arr), D.B[j].v.data(), D.B[j].r * D.B[j].c * sizeof(complex<double>));
+      PyArray_ENABLEFLAGS((PyArrayObject *)arr, NPY_ARRAY_OWNDATA);
+      PyList_SET_ITEM(listB, j, arr);
+    }
+
+    return Py_BuildValue("OOO", outW, listA, listB);
+  } catch (const std::exception &e) {
+    qcm_catch(e);
+  }
+  Py_RETURN_NONE;
+}
+
+//==============================================================================
 const char *cluster_hopping_matrix_help =
     R"{(
 returns the one-body matrix of cluster no i for instance 'label'

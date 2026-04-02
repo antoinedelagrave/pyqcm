@@ -101,6 +101,8 @@ void lattice_model::pre_operator_consolidate()
   Lc = sites.size()/n_band;
   
   neighbor.push_back(vector3D<int64_t>(0,0,0)); //! adding self to list of neighbors
+  neighbor_census(); //! populate all possible inter-cluster neighbor vectors from site-position differences
+  if(clusters.size() == 1) prepare_tiling_data(); //! build tiling connectivity for compact_tiling()
   spatial_dimension = (int)superlattice.D;
   
   //..............................................................................
@@ -162,6 +164,126 @@ void lattice_model::find_second_site(int s1, const vector3D<int64_t>& link, int&
   ni_opp = neighbor_index(R2);
 
 }
+
+//===============================================================================
+/**
+ Adds all possible neighbor vectors to the neighbor list by examining every
+ position difference r2-r1 between sites of the super unit cell and applying
+ that displacement to every site in the super unit cell.
+
+ Algorithm:
+   (1) Loop over sites i1 (position r1) of the super unit cell.
+   (2) Loop over sites i2 (position r2) of the super unit cell.
+   (3) For each site s of the super unit cell, call find_second_site with
+       link = r2-r1: this folds the displaced position back into the SUC,
+       computes the neighbor vector, and registers it via neighbor_index if new.
+ */
+void lattice_model::neighbor_census()
+{
+  size_t Ns = sites.size();
+  for(size_t i1 = 0; i1 < Ns; ++i1){
+    for(size_t i2 = 0; i2 < Ns; ++i2){
+      vector3D<int64_t> delta = sites[i2].position - sites[i1].position;
+      for(size_t s = 0; s < Ns; ++s){
+        int s2, ni, ni_opp;
+        find_second_site((int)s, delta, s2, ni, ni_opp);
+        // neighbor_index (called inside find_second_site) handles deduplication
+      }
+    }
+  }
+}
+
+
+//===============================================================================
+/**
+ Builds tiling_data: for each distinct spatial displacement d between intra-cluster
+ site pairs, stores the list of (s1, s2, n) triplets where s1, s2 are site indices
+ and n is the neighbor label (n=0 for intra-cluster, n>0 for inter-cluster wrapping).
+ The intra entries (n=0) are placed first; n_intra records their count.
+ */
+void lattice_model::prepare_tiling_data()
+{
+  size_t ns = clusters[0].n_sites;
+
+  // Build one group per distinct displacement d, seeding with intra-cluster pairs
+  map<vector3D<int64_t>, tile_group> grp_map;
+  for(size_t s1 = 0; s1 < ns; ++s1)
+    for(size_t s2 = 0; s2 < ns; ++s2)
+      grp_map[sites[s2].position - sites[s1].position].entries.push_back({s1, s2, 0});
+
+  // For each displacement, add inter-cluster entries (n>0) from all sites
+  for(auto& kv : grp_map){
+    const vector3D<int64_t>& d = kv.first;
+    auto& grp = kv.second;
+    grp.n_intra = grp.entries.size();  // all entries so far are intra (n=0)
+
+    for(size_t s = 0; s < ns; ++s){
+      int s2, ni, ni_opp;
+      find_second_site((int)s, d, s2, ni, ni_opp);
+      if(s2 < 0) continue;   // no site at that position (non-Bravais cluster)
+      if(ni == 0) continue;  // intra-cluster, already in the list
+      grp.entries.push_back({s, (size_t)s2, (size_t)ni});
+    }
+  }
+
+  tiling_data.reserve(grp_map.size());
+  for(auto& kv : grp_map)
+    tiling_data.push_back(std::move(kv.second));
+}
+
+
+//===============================================================================
+/**
+ Compact-tiling of a dim_GF x dim_GF matrix at wavevector k.
+
+ For each displacement d, all intra-cluster elements A[s,s'] with the same d are
+ averaged (step 1), then inter-cluster elements A[s, f(s+d)] are added with the
+ Bloch phase exp(i*k*R*2*pi) for the wrapping vector R (step 2). Uses tiling_data
+ pre-computed by prepare_tiling_data().
+
+ @param A [in] matrix to compact-tile, of size dim_GF x dim_GF
+ @param k [in] wavevector in the superdual basis (same convention as M.k and periodize())
+ @returns the compact-tiled matrix Act of size dim_GF x dim_GF
+ */
+matrix<Complex> lattice_model::compact_tiling(const matrix<Complex>& A, const vector3D<double>& k)
+{
+  QCM_ASSERT(clusters.size() == 1);
+
+  size_t ns = clusters[0].n_sites;
+  size_t nb = dim_GF / ns;           // number of spin/Nambu blocks
+
+  // phase[n] = exp(i * k * neighbor[n] * 2*pi)
+  vector<Complex> phase(neighbor.size());
+  for(size_t n = 0; n < neighbor.size(); ++n){
+    double z = k * neighbor[n] * 2 * M_PI;
+    phase[n] = Complex(cos(z), sin(z));
+  }
+
+  matrix<Complex> Act(dim_GF);
+  for(size_t b1 = 0; b1 < nb; ++b1){
+    for(size_t b2 = 0; b2 < nb; ++b2){
+      for(auto& grp : tiling_data){
+        // Step 1: average A over intra-cluster (n=0) entries for this displacement
+        Complex avg = 0.0;
+        double iave = 1.0/grp.n_intra;
+        if(global_bool("compact_tiling_per_site")) iave = 1.0/ns;
+
+        for(size_t i = 0; i < grp.n_intra; ++i){
+          auto& e = grp.entries[i];
+          avg += A(e[0] + b1*ns, e[1] + b2*ns);
+        }
+        avg *= iave;
+
+        // Step 2: add avg*phase[n] for all entries (intra: phase=1, inter: Bloch factor)
+        for(auto& e : grp.entries)
+          Act(e[0] + b1*ns, e[1] + b2*ns) += avg * phase[e[2]];
+      }
+    }
+  }
+
+  return Act;
+}
+
 
 /**
  Adds the chemical potential to the model (this operator is always present)

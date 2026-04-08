@@ -8,7 +8,7 @@ pyqcm.set_global_parameter('verb_Hilbert')
 pyqcm.set_global_parameter('Ground_state_method', 'L')
 pyqcm.set_global_parameter('PRIMME_algorithm', 1)
 pyqcm.set_global_parameter('parallel_sectors')
-# pyqcm.set_global_parameter('Davidson_states', 2)
+# pyqcm.set_global_parameter('n_states', 2)
 # pyqcm.set_global_parameter('PRIMME_preconditionning', 1)
 
 # pyqcm.set_global_parameter('CSR_sym_store')

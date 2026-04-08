@@ -276,7 +276,17 @@ pair<double, string> model_instance<HilbertField>::low_energy_states()
     Hamiltonian<HilbertField> *H = create_hamiltonian(the_model, value, s);
     if(H->dim == 0) continue;
     
-    vector<shared_ptr<state<HilbertField>>> gs = H->states(GS_energy); // finds the low-energy states for this sector and adds them to the list
+    vector<shared_ptr<state<HilbertField>>> gs;
+    try {
+      gs = H->states(GS_energy); // finds the low-energy states for this sector and adds them to the list
+    }
+    catch (const qcm_error& e) {
+      delete H;
+      qcm_ED_throw(string(e.what())
+                   + "\n  in cluster model '" + the_model->name
+                   + "', instance '" + full_name()
+                   + "', sector '" + s.name() + "'");
+    }
     for(auto& x : gs) states.insert(x);
     delete H;
   }

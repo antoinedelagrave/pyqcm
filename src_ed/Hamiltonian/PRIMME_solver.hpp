@@ -7,6 +7,7 @@ Interface to use PRIMME eigensolver for Exact Diagonalisation
 
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include "global_parameter.hpp"
 #include "primme.h"
 #include <Eigen/SparseCore>
@@ -74,30 +75,32 @@ void PRIMME_CSR_matmul(
 }
 
 /**
- Compute the ground state of the Hamiltonian using PRIMME eigensolver
+ Compute the lowest eigenpair(s) of the Hamiltonian using PRIMME eigensolver.
+ The number of requested eigenpairs is given by numEvals.
+ evals and evecs must be pre-sized to numEvals; evecs[0] is used as the initial guess.
  */
 template<typename T, typename HilbertField>
 void PRIMME_state_solver(
     T* H, //hamiltonian in its different format
     const size_t &dim,
-    double &eval, //the returned eigenvalue
-    std::vector<HilbertField> &evec, //the returned eigenvector
+    const size_t numEvals, //number of wanted eigenpairs
+    std::vector<double> &evals, //the returned eigenvalues (pre-sized to numEvals)
+    std::vector<std::vector<HilbertField>> &evecs, //the returned eigenvectors (pre-sized to numEvals)
     const bool verb=false
 ) {
     /* Solver arrays and parameters */
-    double rnorm;   /* Array with the computed eigenpairs residual norms */
+    std::vector<double> rnorms(numEvals);   /* Array with the computed eigenpairs residual norms */
     primme_params primme; /* PRIMME configuration struct */
-    
+
     /* Other miscellaneous items */
     int ret;
-    int i;
 
     /* Set default values in PRIMME configuration struct */
     primme_initialize(&primme);
-  
+
    /* Set problem parameters */
    primme.n = (long int) dim; /* set problem dimension */
-   primme.numEvals = 1;   /* Number of wanted eigenpairs */
+   primme.numEvals = (int) numEvals;   /* Number of wanted eigenpairs */
    primme.eps = global_double("accur_lanczos"); /* ||r|| <= eps * ||matrix|| */
    primme.target = primme_smallest;  /* Wanted the smallest eigenvalues */
    primme.maxMatvecs = global_int("max_iter_lanczos");
@@ -105,12 +108,18 @@ void PRIMME_state_solver(
        primme.outputFile = stdout;
        primme.printLevel = 5;
    }
-   primme.maxBasisSize = 14;
-   primme.minRestartSize = 4;
-   primme.maxBlockSize = 1;
-   
-   //The initial vector have already been set to random or previous values, so:
+   /* Scale basis/block sizes with the number of requested eigenpairs */
+   primme.minRestartSize = (int) std::max((size_t) 4, numEvals + 2);
+   primme.maxBasisSize   = (int) std::max((size_t) 14, 2*numEvals + 4);
+   primme.maxBlockSize   = (int) std::max((size_t) 1, numEvals);
+
+   //The initial vector has already been set to random or previous values, so:
    primme.initSize = 1;
+
+   /* PRIMME expects eigenvectors as a contiguous column-major (n x numEvals) buffer */
+   std::vector<HilbertField> evec_buffer(dim * numEvals, HilbertField(0));
+   /* Copy the initial guess (in evecs[0]) into the first column */
+   std::copy(evecs[0].begin(), evecs[0].end(), evec_buffer.begin());
 
     /* Set problem matrix */
     if (Hamiltonian_format == H_format_eigen) {
@@ -135,12 +144,21 @@ void PRIMME_state_solver(
     primme_set_method((primme_preset_method) global_int("PRIMME_algorithm"), &primme);
 
     /* Call primme */
-    ret = call_primme(&eval, evec.data(), &rnorm, &primme);
-   
-   
+    ret = call_primme(evals.data(), evec_buffer.data(), rnorms.data(), &primme);
+
+    /* Copy the converged eigenvectors out of the contiguous buffer */
+    for (size_t k = 0; k < numEvals; k++) {
+        evecs[k].assign(
+            evec_buffer.begin() + k*dim,
+            evec_buffer.begin() + (k+1)*dim
+        );
+    }
+
    /* Reporting (optional) */
    if (verb) {
-       std::cout << "Eval: " << eval << ", rnorm: " << rnorm << std::endl;
+       for (size_t k = 0; k < numEvals; k++) {
+           std::cout << "Eval[" << k << "]: " << evals[k] << ", rnorm: " << rnorms[k] << std::endl;
+       }
        std::cout << "Tolerance : " << primme.aNorm*primme.eps << std::endl;
        std::cout << "Iterations : " << primme.stats.numOuterIterations << std::endl;
        std::cout << "Restarts : " << primme.stats.numRestarts << std::endl;
@@ -156,7 +174,22 @@ void PRIMME_state_solver(
    primme_free(&primme);
 
    if (ret != 0) {
-      qcm_ED_throw("Error: primme returned with nonzero exit status: " + to_string(ret));
+      std::string explanation;
+      switch (ret) {
+         case -1: explanation = "unexpected internal error"; break;
+         case -2: explanation = "memory allocation failure"; break;
+         case -3: explanation = "reached maxOuterIterations or maxMatvecs (" + std::to_string(global_int("max_iter_lanczos")) + ") before convergence"; break;
+         case -4: explanation = "argument primme is NULL"; break;
+         case -5: explanation = "primme.n <= 0 or primme.nLocal <= 0 or primme.nLocal > primme.n"; break;
+         case -6: explanation = "primme.numProcs < 1"; break;
+         case -7: explanation = "primme.matrixMatvec is NULL"; break;
+         case -8: explanation = "primme.applyPreconditioner is NULL and precondition is requested"; break;
+         case -10: explanation = "primme.numEvals > primme.n"; break;
+         case -11: explanation = "primme.numEvals < 0"; break;
+         case -17: explanation = "maxBasisSize < 2"; break;
+         default:  explanation = "see PRIMME documentation"; break;
+      }
+      qcm_ED_throw("PRIMME eigensolver failed (exit status " + to_string(ret) + "): " + explanation);
    }
    
 }

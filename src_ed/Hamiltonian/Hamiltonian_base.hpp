@@ -139,12 +139,24 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
     }
 #endif
 
-    if (method == 'D' or global_int("Davidson_states") > 1) { //Davidson method
-        size_t Davidson_states = global_int("Davidson_states");
-        Davidson(*this, dim, Davidson_states, evalues, evectors, global_double("accur_Davidson"),  global_bool("verb_ED"));
-        if(Davidson_states > 1) {
+    size_t n_states = (size_t) global_int("n_states");
+    if (n_states < 1) n_states = 1;
+    if (n_states > dim) n_states = dim;
+
+    // Lanczos can only return one eigenpair; auto-promote to Davidson if more are requested
+    if (method == 'L' and n_states > 1) {
+        if (global_bool("verb_warning")) {
+            cout << "ED WARNING! : Lanczos returns a single state; switching to Davidson because n_states = "
+                 << n_states << endl;
+        }
+        method = 'D';
+    }
+
+    if (method == 'D') { //Davidson method
+        Davidson(*this, dim, n_states, evalues, evectors, global_double("accur_Davidson"),  global_bool("verb_ED"));
+        if(n_states > 1) {
             if(evalues.back()-evalues[0] < max_gap and global_bool("verb_warning")) {
-                cout << "ED WARNING! : not enough Davidson states (" << Davidson_states << ") in sector " << sec.name() << endl;
+                cout << "ED WARNING! : not enough states (" << n_states << ") in sector " << sec.name() << endl;
             }
         }
     }
@@ -153,7 +165,15 @@ vector<shared_ptr<state<HilbertField>>> Hamiltonian<HilbertField>::states(double
     }
 #ifdef WITH_PRIMME
     else if (method == 'P') { //call PRIMME eigensolver
-        PRIMME_state_solver(this, dim, evalues[0], evectors[0],  global_bool("verb_ED"));
+        evalues.resize(n_states);
+        evectors.resize(n_states);
+        for (size_t k = 1; k < n_states; k++) evectors[k].resize(dim);
+        PRIMME_state_solver(this, dim, n_states, evalues, evectors, global_bool("verb_ED"));
+        if(n_states > 1) {
+            if(evalues.back()-evalues[0] < max_gap and global_bool("verb_warning")) {
+                cout << "ED WARNING! : not enough states (" << n_states << ") in sector " << sec.name() << endl;
+            }
+        }
     }
 #endif
     else {

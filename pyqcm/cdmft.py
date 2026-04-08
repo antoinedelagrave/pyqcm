@@ -345,8 +345,9 @@ class CDMFT:
 
         # -------------- first define the frequency grid for the distance function ---------
         print("frequency grid type = ", grid_type)
-        print("fictitious inverse temperature = ", beta)
-        print("frequency cutoff = ", wc)
+        if grid_type != 'legendre':
+            print("fictitious inverse temperature = ", beta)
+            print("frequency cutoff = ", wc)
         if alpha is float:
             print("damping factor = ", self.alpha)
         print("-" * 100)

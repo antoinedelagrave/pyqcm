@@ -34,7 +34,7 @@ Integer-valued options
     :header: "name", "default", "description"
     :widths: 15, 10, 50
 
-    "Davidson_states", "1", "Number of states requested in the Davidson-Liu algorithm"
+    "n_states", "1", "Number of low-lying states requested from the eigensolver (Davidson-Liu or PRIMME)"
     "GF_lookup_depth", "64", "depth of the look-up table for the cluster Green function"
     "GK_min_regions", "8", "minimum number of regions in the Gauss-Kronrod method"
     "PRIMME_algorithm", "1", "PRIMME algorithm to solve ground state (if qcm_wed was compiled with PRIMME): 1 (PRIMME_DYNAMIC - default), 2 (PRIMME_DEFAULT_MIN_TIME), 3 (PRIMME_DEFAULT_MIN_MATVECS), 4 (PRIMME_Arnoldi), 5 (PRIMME_GD), 6 (PRIMME_GD_plusK), 7 (PRIMME_GD_Olsen_plusK), 8 (PRIMME_JD_Olsen_plusK), 9 (PRIMME_RQI), 10 (PRIMME_JDQR), 11 (PRIMME_JDQMR), 12 (PRIMME_JDQMR_ETol), 13 (PRIMME_STEEPEST_DESCENT), 14 (PRIMME_LOBPCG_OrthoBasis), 15 (PRIMME_LOBPCG_OrthoBasis_Window). See PRIMME documentation for more information"

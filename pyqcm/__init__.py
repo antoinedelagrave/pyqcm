@@ -290,6 +290,7 @@ class lattice_model:
                     "The argument 'clus' of 'model' should be of type 'cluster' or a sequence thereof"
                 )
             x.index = c
+            x.site0 = self.nsites  # index of first site of cluster
             self.nsites += x.nsites
             if x.ref != None:
                 ref = x.ref.index

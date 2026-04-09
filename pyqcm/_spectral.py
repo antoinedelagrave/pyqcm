@@ -838,7 +838,7 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
     :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
     :param bool spin_down: true is the spin down sector is to be computed (applies if mixing = 4)
     :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
-    :param str opt: The quantity to plot. 'GF' = Green function, 'self' = self-energy, 'Z' = quasi-particle weight
+    :param str opt: The quantity to plot. 'GF' = Green function, 'self' = self-energy, 'Z' = quasi-particle weight, 'anom_phase' = complex phase of the anomalous Green function element (requires mixing = 1 and orb as a tuple of two orbital indices)
     :param float k_perp: momentum component in the third direction (in multiple of pi)
     :param float freq: frequency at which the spectral function is computed (0 by default)
     :param float max: maximum value of the plotting range (if None, maximum of the data)
@@ -869,7 +869,16 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
     d = self.model.dimGF_red
     nbands = self.model.nband
 
-    orbs = pyqcm.orbital_manager(orb, from_zero=True)
+    if opt == 'anom_phase':
+        if self.model.mixing != 1:
+            raise ValueError("opt='anom_phase' in mdc() requires mixing = 1")
+        if not isinstance(orb, tuple) or len(orb) != 2:
+            raise ValueError("opt='anom_phase' in mdc() requires orb to be a tuple of two orbital indices")
+        if not (1 <= orb[0] <= nbands and 1 <= orb[1] <= nbands):
+            raise ValueError("orb indices are out of range in mdc() with opt='anom_phase'")
+        orbs = None
+    else:
+        orbs = pyqcm.orbital_manager(orb, from_zero=True)
 
     # computes the spectral function
     if opt == 'self':
@@ -878,8 +887,13 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
             A += -g[:, l, l].imag
 
     elif opt == 'Z':
-        for l in orbs: 
+        for l in orbs:
             A = self.QP_weight(k, eta, l+1)
+
+    elif opt == 'anom_phase':
+        d = self.model.dimGF_red // 2
+        g = self.periodized_Green_function(freq + eta * 1j, k)
+        A = np.angle(g[:, orb[0]-1, orb[1]+d-1])
 
     elif band_basis:
         for l in orbs: 
@@ -892,7 +906,7 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
     A = np.reshape(A, (nk, nk))
 
     # acting with symmetries
-    if sym != None:
+    if sym != None and opt != 'anom_phase':
         if 'R' in sym:
             A = 0.5*(A + A.T)
         if 'X' in sym:
@@ -923,16 +937,21 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
         title = r"$\Sigma''(k)$ : "+title
     elif opt == 'Z':
         title = r"$Z(k)$ : "+title
+    elif opt == 'anom_phase':
+        title = r"$\arg F_{{{:d},{:d}}}(k)$ : ".format(orb[0], orb[1])+title
     else:
         title = r"$A(k)$ : "+title
 
 
-    if max is None:
-        max = A.max()
-    else:
-        print('maximum level = ', A.max()/max)
     # plot per se
-    CS = ax.contourf(x, y, A, np.linspace(0, max, 40), extend="max", cmap='jet', **kwargs)
+    if opt == 'anom_phase':
+        CS = ax.contourf(x, y, A, np.linspace(-np.pi, np.pi, 40), cmap='hsv', **kwargs)
+    else:
+        if max is None:
+            max = A.max()
+        else:
+            print('maximum level = ', A.max()/max)
+        CS = ax.contourf(x, y, A, np.linspace(0, max, 40), extend="max", cmap='jet', **kwargs)
 
     if plt_ax is None:
         title = _set_legend_mdc(plane, k_perp)

@@ -804,10 +804,10 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     if plot == False: return
     
     if colors != None:
-        plt.rc('axes', prop_cycle=cycler(color=colors))
+        ax.set_prop_cycle(color=colors)
     if labels is None:
         labels = [str(i+1) for i in range(nband)]
-    plt.xlim(w[0].real, w[-1].real)
+    ax.set_xlim(w[0].real, w[-1].real)
     for i in range(nband):
         plt.plot(np.real(w), A[:, i], '-', label=labels[i], linewidth=1.6, **kwargs)
     if mix>0 and spin_up==False:
@@ -815,13 +815,13 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
             plt.plot(np.real(w), A[:, i+nband], '-', label=labels[i]+'$\\downarrow$', linewidth=0.8, **kwargs)
     if sum:
         plt.plot(np.real(w), np.sum(A, 1), 'r-', label = 'total', **kwargs)
-    plt.xlabel(r'$\omega$')
-    plt.ylabel(r'$\rho(\omega)$')
-    plt.ylim(0)
-    plt.axvline(0, c='r', ls='solid', lw=0.5)
-    plt.legend()
+    ax.set_xlabel(r'$\omega$')
+    ax.set_ylabel(r'$\rho(\omega)$')
+    ax.set_ylim(0)
+    ax.axvline(0, c='r', ls='solid', lw=0.5)
+    ax.legend()
 
-    if file is not None:
+    if file is not None and (plt_ax is None):
         plt.savefig(file)
         plt.close()
     elif plt_ax is None:

@@ -20,6 +20,17 @@ from . import qcm
 # Internal functions
 
 #---------------------------------------------------------------------------------------------------
+def _promote_to_3d(ax):
+    """Replace a 2D Axes by a 3D Axes at the same figure position. Returns the new 3D Axes.
+    If ax is already 3D, it is returned unchanged."""
+    if getattr(ax, 'name', None) == '3d':
+        return ax
+    fig = ax.figure
+    spec = ax.get_subplotspec()
+    ax.remove()
+    return fig.add_subplot(spec, projection='3d')
+
+#---------------------------------------------------------------------------------------------------
 def _color(z):
     x = np.modf(np.angle(z) / (2 * np.pi) + 1.66667)[0]
     return hsv_to_rgb(np.array([x, 0.8, 0.8]))
@@ -278,10 +289,10 @@ def plot_spectral_function(self, w, A, A_down, path=None, nk=32, offset=2, opt='
             ax.set_xlabel(r'$\omega$')
             plt.tight_layout()
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
@@ -471,10 +482,10 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', 
             ax.set_xlabel(r'$\omega$')
             plt.tight_layout()
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
@@ -530,11 +541,9 @@ def plot_hybridization_function(self, wmax=6, eta=0.01, imaginary=False, clus = 
         plt.xlabel(r'$\omega$')
         plt.ylabel(r'$\Gamma(\omega)$')
         plt.title(r'$\Gamma(\omega)$: '+self.model.parameter_string(sys=0))
-
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 
@@ -585,10 +594,10 @@ def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0,
         for j in range(d):
             for k in range(d):
                 T.append('({0:d},{1:d})'.format(O[j],O[k]))
-        plt.yticks(offset*np.arange(0, dd), T)
+        ax.set_yticks(offset*np.arange(0, dd), T)
     else:
         dd = d
-        plt.yticks(offset*np.arange(0, d), [str(O[i]) for i in range(d)])
+        ax.set_yticks(offset*np.arange(0, d), [str(O[i]) for i in range(d)])
 
     A = np.zeros((len(w), dd), dtype=complex)
     for i in range(len(w)):
@@ -611,27 +620,27 @@ def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0,
                 A[i, j] += g[O[j], O[j]]
 
     max = np.max(np.abs(A))
-    plt.ylim(0, dd * offset + max)
+    ax.set_ylim(0, dd * offset + max)
 
     if imaginary:
         ax.set_xlim(np.imag(w[0]), np.imag(w[-1]))
         for j in range(dd):
-            if real_part: plt.plot(np.imag(w), A[:, j].real + offset * j, '-', lw=0.5, color=color, **kwargs)
-            else: plt.plot(np.imag(w), -A[:, j].imag + offset * j, '-', lw=0.5, color=color, **kwargs)
+            if real_part: ax.plot(np.imag(w), A[:, j].real + offset * j, '-', lw=0.5, color=color, **kwargs)
+            else: ax.plot(np.imag(w), -A[:, j].imag + offset * j, '-', lw=0.5, color=color, **kwargs)
     else:
         ax.set_xlim(np.real(w[0]), np.real(w[-1]))
         for j in range(dd):
-            if real_part: plt.plot(np.real(w), A[:, j].real + offset * j, '-', lw=0.5, color=color, **kwargs)
-            else: plt.plot(np.real(w), -A[:, j].imag + offset * j, '-', lw=0.5, color=color, **kwargs)
+            if real_part: ax.plot(np.real(w), A[:, j].real + offset * j, '-', lw=0.5, color=color, **kwargs)
+            else: ax.plot(np.real(w), -A[:, j].imag + offset * j, '-', lw=0.5, color=color, **kwargs)
 
-    plt.xlabel(r'$\omega$')
-    plt.axvline(0, ls='solid', lw=0.5)
-    plt.title(self.model.parameter_string(sys=0), fontsize=6)
+    ax.set_xlabel(r'$\omega$')
+    ax.axvline(0, ls='solid', lw=0.5)
+    ax.set_title(self.model.parameter_string(sys=0), fontsize=6)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
     # return w.real, A    # why returning this? check. Could be triggered by optional argument.
@@ -671,22 +680,22 @@ def spectral_function_Lehmann(self, path=None, nk=32, orb=1, offset=0.1, lims=No
     assert (orb <= self.model.nband and orb > 0), 'The orbital index in spectral_function_Lehmann() must vary from 1 to {:d}'.format(self.model.nband)
 
     if lims is not None:
-        plt.xlim(lims[0], lims[1])
-    plt.title(self.model.parameter_string(sys=0), fontsize=6)
-    plt.yticks(offset * tick_pos, tick_str)
+        ax.set_xlim(lims[0], lims[1])
+    ax.set_title(self.model.parameter_string(sys=0), fontsize=6)
+    ax.set_yticks(offset * tick_pos, tick_str)
     G = self.Lehmann_Green_function(k, orb)
     for i in range(len(k)):
-        plt.vlines(G[i][0], i*offset, G[i][1]+i*offset, lw=0.8, color='b')
-        plt.axhline(i*offset, lw=0.25, color='grey')
+        ax.vlines(G[i][0], i*offset, G[i][1]+i*offset, lw=0.8, color='b')
+        ax.axhline(i*offset, lw=0.25, color='grey')
 
-    plt.xlabel(r'$\omega$')
-    plt.axvline(0, ls='solid', lw=0.5)
-    plt.tight_layout()
+    ax.set_xlabel(r'$\omega$')
+    ax.axvline(0, ls='solid', lw=0.5)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        plt.tight_layout()
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 
@@ -809,22 +818,22 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
         labels = [str(i+1) for i in range(nband)]
     ax.set_xlim(w[0].real, w[-1].real)
     for i in range(nband):
-        plt.plot(np.real(w), A[:, i], '-', label=labels[i], linewidth=1.6, **kwargs)
+        ax.plot(np.real(w), A[:, i], '-', label=labels[i], linewidth=1.6, **kwargs)
     if mix>0 and spin_up==False:
         for i in range(nband):
-            plt.plot(np.real(w), A[:, i+nband], '-', label=labels[i]+'$\\downarrow$', linewidth=0.8, **kwargs)
+            ax.plot(np.real(w), A[:, i+nband], '-', label=labels[i]+'$\\downarrow$', linewidth=0.8, **kwargs)
     if sum:
-        plt.plot(np.real(w), np.sum(A, 1), 'r-', label = 'total', **kwargs)
+        ax.plot(np.real(w), np.sum(A, 1), 'r-', label = 'total', **kwargs)
     ax.set_xlabel(r'$\omega$')
     ax.set_ylabel(r'$\rho(\omega)$')
     ax.set_ylim(0)
     ax.axvline(0, c='r', ls='solid', lw=0.5)
     ax.legend()
 
-    if file is not None and (plt_ax is None):
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
     return w, A
@@ -967,10 +976,10 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
         np.savetxt(data_file, A, delimiter='\t', fmt='%1.6g')
 
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
     
     return CS
@@ -1022,13 +1031,13 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, zone=((0,0),1), opt='spin', freq =
         A = S[:,3]
     elif opt=='spinp':
         A = np.sqrt(S[:,1]*S[:,1] + S[:,2]*S[:,2])
-    elif opt == 'spins':
+    elif opt == 'spin' or opt == 'spins':
         Sx = S[:,1]
         Sy = S[:,2]
         if opt == 'spins':
             Smod = np.sqrt(Sx*Sx+Sy*Sy)
             Sx /= (Smod + 0.000001)
-            Sy /= (Smod + 0.000001)        
+            Sy /= (Smod + 0.000001)
 
     #...............................................................................................
 
@@ -1059,7 +1068,7 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, zone=((0,0),1), opt='spin', freq =
         title = r"$Z(k)$ : "+title
 
     #...............................................................................................
-    if opt == 'spins':
+    if opt == 'spin' or opt == 'spins':
         X, Y = np.meshgrid(x, y)
         CS = ax.quiver(X, Y, Sx, Sy, pivot='mid', angles='xy', scale_units='xy', scale=10, width=0.003, headlength = 4.5, **kwargs)
     elif opt == 'sz':
@@ -1087,11 +1096,9 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, zone=((0,0),1), opt='spin', freq =
         if (opt == 'sz') or (opt == 'spinp'):
             plt.colorbar(CS, shrink=0.8)
         plt.tight_layout()
-
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
     return CS
@@ -1165,13 +1172,13 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
 
 
     # plot per se
-    CS = plt.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
-    plt.colorbar(CS, shrink=0.8)
+    CS = ax.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
+    plt.colorbar(CS, ax=ax, shrink=0.8)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
@@ -1208,7 +1215,9 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
             ax = plt.axes(projection='3d')
     else:
         ax = plt_ax
-    
+        if not contour:
+            ax = _promote_to_3d(ax)
+
     if view_angle is not None:
         ax.view_init(*view_angle) # adjusts viewing angle if specified
 
@@ -1229,7 +1238,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     if contour:
         if len(orbs) > 1:
             print('Contour plots of the dispersion with more than one orbital make no sense visually! first label used only')
-        CS = plt.contour(x, x, e[:, :, orbs[0]], linewidths=0.5)
+        CS = ax.contour(x, x, e[:, :, orbs[0]], linewidths=0.5)
         ax.clabel(CS, inline=True, fontsize=6)
     else:
         x, y = np.meshgrid(x, y)
@@ -1239,12 +1248,12 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     if plt_ax is None:
         axis = _set_legend_mdc(plane, k_perp)
         plt.title(axis+' '+self.model.parameter_string(sys=0), fontsize=6)
-
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
+
+    return ax
 
 #---------------------------------------------------------------------------------------------------
 def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = None, band_assign = False, diff_coeff=0.0, colors=None, **kwargs):
@@ -1314,10 +1323,10 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
     ax.set_xticklabels(tick_str)
     ax.set_xlim(0,len(k)-1)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
@@ -1418,12 +1427,12 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, band_assign 
     ax.set_xticklabels(tick_str)
     ax.set_xlim(0,len(k)-1)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
-        plt.show()
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         if width is False: plt.colorbar(lc, label="weight")
+        plt.show()
     
     if width: return None
     else: return lc
@@ -1465,12 +1474,10 @@ def Fermi_surface(self, nk=64, orb=None, zone=((0,0),1), plane='xy', k_perp=0.0,
 
     if plt_ax is None:
         axis = _set_legend_mdc('xy', 0.0)
-        plt.title('Fermi surface: '+axis+' '+self.model.parameter_string(sys=0), fontsize=6)
-    
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        plt.title('Fermi surface: '+axis+' '+self.model.parameter_string(sys=0), fontsize=6)    
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
@@ -1509,6 +1516,8 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
         plt.title('G dispersion: '+self.model.parameter_string(sys=0), fontsize=6)
     else:
         ax = plt_ax
+        if not contour:
+            ax = _promote_to_3d(ax)
 
     freq = 0.1j
 
@@ -1551,11 +1560,13 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
         for j in orbs:
             ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    else:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
+
+    return ax
 
 
 #---------------------------------------------------------------------------------------------------
@@ -1589,12 +1600,12 @@ def Luttinger_surface(self, nk=200, orb=1, zone=((0,0),1), k_perp = 0, plane = '
     A = g[:,orb-1,orb-1].real
     A = np.reshape(A, (nk, nk))
     A = 1.0/A
-    CS = plt.contour(x, y, A, levels=[0], **kwargs)
+    CS = ax.contour(x, y, A, levels=[0], **kwargs)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    else:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 
@@ -1633,13 +1644,13 @@ def plot_momentum_profile(self, op, nk=50, zone=((0,0),1), k_perp=0.0, plane='xy
     max = np.abs(A).max()
 
     # plot per se
-    CS = plt.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
-    plt.colorbar(CS, shrink=0.8)
+    CS = ax.contourf(x, y, A, np.linspace(-max, max, 40), extend="max", cmap='bwr')
+    plt.colorbar(CS, ax=ax, shrink=0.8)
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    else:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
 
@@ -1767,17 +1778,17 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
     CS = ax.imshow(np.flip(B,0), vmin=-max, vmax = max, cmap='bwr', extent=ext, **kwargs)
     if plt_ax is None:
         axis = _set_legend_mdc(plane, k_perp)
-        plt.colorbar(CS, shrink=0.8, extend='neither')
+        plt.colorbar(CS, ax=ax, shrink=0.8, extend='neither')
         ax.set_title(axis, fontsize=6)
 
     if data_file is not None:
         np.savetxt(data_file, B, delimiter='\t', fmt='%1.9g')
 
 
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+    if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
     
     return CS
@@ -1920,10 +1931,9 @@ def monopole_map(self, nk=40, nk_cube=5, orb=None, plane='z', k_perp=0.0, file=N
         plt.yticks((-1, 0, 1), ('$-\\pi$', '$0$', '$\\pi$'))
         plt.colorbar(CS, shrink=0.8, extend='neither')
         plt.title('monopole map, '+axis, fontsize=6)
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
     return CS
 
@@ -1973,17 +1983,15 @@ def Berry_flux_map(self, nk=40, plane='z', dir='z', k_perp=0.0, orb=None, npoint
     B2[:, nk] = B2[:, 0]
     B2[nk,nk] = B2[0, 0]
     max = np.abs(B).max()
-    CS = plt.imshow(np.flip(B2,0), vmin=-max, vmax = max, cmap='bwr', extent=ext)
+    CS = ax.imshow(np.flip(B2,0), vmin=-max, vmax = max, cmap='bwr', extent=ext)
     if plt_ax is None:
         plt.xticks((-1, 0, 1), ('$-\\pi$', '$0$', '$\\pi$'))
         plt.yticks((-1, 0, 1), ('$-\\pi$', '$0$', '$\\pi$'))
         plt.colorbar(CS, shrink=0.8, extend='neither')
         plt.title(axis, fontsize=6)
-
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
 
     return CS
@@ -2064,11 +2072,9 @@ def Berry_field_map(self, nk=40, nsides = 4, plane='z', k_perp=0.0, orb=None, fi
         ax.set_title(axis, fontsize=6)
         plt.xticks((-1, 0, 1), (r'$-\pi$', '$0$', r'$\pi$'))
         plt.yticks((-1, 0, 1), (r'$-\pi$', '$0$', r'$\pi$'))
-
-    if file is not None:
-        plt.savefig(file)
-        plt.close()
-    elif plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
         plt.show()
     
     return CS, SP

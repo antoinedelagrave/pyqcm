@@ -429,7 +429,7 @@ class lattice_model:
 
     # -----------------------------------------------------------------------------------------------
     def density_wave(self, name, t, Q, **kwargs):
-        """
+        r"""
         Defines a density wave
 
         :param str name: name of operator
@@ -1836,8 +1836,6 @@ class model_instance:
         :returns:depending on the shape of k, a nd.array(3) of nd.array(N,3)
 
         """
-        orbs = orbital_manager(orb, from_zero=True)
-
         ds = qcm.reduced_Green_function_dimension()
         if self.model.mixing != 2 and self.model.mixing != 3:
             raise RuntimeError(
@@ -1847,6 +1845,11 @@ class model_instance:
             ds //= 2
         elif self.model.mixing == 3:
             ds //= 4
+
+        if orb is None:
+            orbs = list(range(ds))
+        else:
+            orbs = orbital_manager(orb, from_zero=True)
 
         G = self.periodized_Green_function(freq, k, False)
 

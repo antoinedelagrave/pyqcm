@@ -464,7 +464,7 @@ void lattice_model::post_parameter_consolidate(size_t label)
 	mixing = HS_mixing::normal;
 	for(size_t s=0; s<nsys; s++){
     clusters[systems[s].clus].mixing |= ED::mixing(s+label*nsys);
-		mixing |= clusters[s].mixing;
+		mixing |= clusters[systems[s].clus].mixing;
 	}
 	if(mixing > 5) mixing = mixing & HS_mixing::full;
 	if(mixing == 5) mixing = HS_mixing::anomalous;

@@ -19,6 +19,7 @@ except ImportError:
 
 des_dict = {}  # use to store description lines in output files. filename->current description line
 json_output = False
+warnings = False
 
 ####################################################################################################
 # INITIALIZATION
@@ -1992,13 +1993,14 @@ class model_instance:
             ng = self.Green_function_density(s)
             diffGS = ave["mu"][0] - ng
             if np.abs(diffGS) > threshold:
-                banner(
-                    "GROUND STATE INCONSISTENCY FOR SYSTEM {:d}: {:1.7g} (WF) vs {:1.7g} (GF) [diff = {:1.7g} > {:1.7g}]".format(
-                        s + 1, ave["mu"][0], ng, diffGS, threshold
-                    ),
-                    "+",
-                    skip=1,
-                )
+                if warnings:
+                    banner(
+                        "GROUND STATE INCONSISTENCY FOR SYSTEM {:d}: {:1.7g} (WF) vs {:1.7g} (GF) [diff = {:1.7g} > {:1.7g}]".format(
+                            s + 1, ave["mu"][0], ng, diffGS, threshold
+                        ),
+                        "+",
+                        skip=1,
+                    )
                 if check_ground_state:
                     raise ValueError(
                         "failed GS consistency for cluster {:d}".format(s + 1)

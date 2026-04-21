@@ -556,6 +556,8 @@ static PyObject *CDMFT_variational_set_python(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &v))
       qcm_throw("failed to read parameters in call to CDMFT_variational_set "
                 "(python)");
+    if (qcm_model->param_set == nullptr)
+      qcm_throw("The parameters have not been specified yet.");
     qcm_model->param_set->CDMFT_variational_set(strings_from_DoublePyList(v));
   } catch (const std::exception &e) {
     qcm_catch(e);

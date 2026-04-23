@@ -75,7 +75,7 @@ def __kgrid(ax, nk, zone=((0,0),1), k_perp=0.0, plane='xy'):
 # Additional methods of the model_instance class
 
 #---------------------------------------------------------------------------------------------------
-def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', orb=None, opt='A', Nambu_redress=True, inverse_path=False, verb=False):
+def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb=None, opt='A', Nambu_redress=True, inverse_path=False, verb=False):
     r"""Computes the spectral function :math:`A(\mathbf{k},\omega)` along a wavevector path in the Brillouin zone.
     This version plots the spin-down part with the correct sign of the frequency in the Nambu formalism.
     This is a shared-memory implementation. The arrays A and A_down are shared across multiple processes.
@@ -83,7 +83,7 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wm
     :param (int,int) irange: range of indices of the memory array to treat
     :param  A_sh_name: name of the memory buffer for the array A
     :param  A_down_sh_name: name of the memory buffer for the array A_down
-    :param float wmax: the frequency range is from -wmax to wmax if w is a float. If wmax is a tuple then the range is (wmax[0], wmax[1]). wmax can also be an explicit list of real frequencies
+    :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (w[0], w[1]). w can also be an explicit list of real frequencies
     :param float eta: Lorentzian broadening
     :param str path: a keyword that is passed to pyqcm.wavevector_path() to produce a set of wavevectors along a path, or a tuple 
     :param str period: periodization scheme ('G' - default, 'M', 'S', 'C', 'N'). If 'N', deals with a bigger matrix (sites in the repeated unit).
@@ -120,7 +120,7 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, wm
         for o in os:
             assert (o < nmixed*self.model.nband and o > -1), 'The orbital index in spectral_function() must vary from 1 to {:d}'.format(nmixed*self.model.nband)
 
-    w = pyqcm.frequency_array(wmax, eta)
+    w = pyqcm.frequency_array(w, eta)
 
     k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
     if inverse_path:
@@ -296,11 +296,11 @@ def plot_spectral_function(self, w, A, A_down, path=None, nk=32, offset=2, opt='
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', orb=None, offset=2, opt='A', Nambu_redress=True, inverse_path=False, title=None, file=None, plt_ax=None, style = None,  data_file='spectral_data', **kwargs):
+def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb=None, offset=2, opt='A', Nambu_redress=True, inverse_path=False, title=None, file=None, plt_ax=None, style = None,  data_file='spectral_data', **kwargs):
     r"""Plots the spectral function :math:`A(\mathbf{k},\omega)` along a wavevector path in the Brillouin zone.
     This version plots the spin-down part with the correct sign of the frequency in the Nambu formalism.
 
-    :param float wmax: the frequency range is from -wmax to wmax if w is a float. If wmax is a tuple then the range is (wmax[0], wmax[1]). wmax can also be an explicit list of real frequencies
+    :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (w[0], w[1]). w can also be an explicit list of real frequencies
     :param float eta: Lorentzian broadening
     :param str path: a keyword that is passed to pyqcm.wavevector_path() to produce a set of wavevectors along a path, or a tuple 
     :param str period: periodization scheme ('G' - default, 'M', 'S', 'C', 'N'). If 'N', deals with a bigger matrix (sites in the repeated unit).
@@ -348,7 +348,7 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', 
         assert (orb <= self.model.nband and orb > 0), 'The orbital index in spectral_function() must vary from 1 to {:d}'.format(norb)
         orb -= 1
 
-    w = pyqcm.frequency_array(wmax, eta)
+    w = pyqcm.frequency_array(w, eta)
 
     k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
     if inverse_path:
@@ -489,13 +489,13 @@ def spectral_function(self, wmax=6.0, eta=0.05, path=None, nk=32, period = 'G', 
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def plot_hybridization_function(self, wmax=6, eta=0.01, imaginary=False, clus = 0, realpart=False, file=None, plt_ax=None, **kwargs):
+def plot_hybridization_function(self, w=6, eta=0.01, imaginary=False, clus = 0, realpart=False, file=None, plt_ax=None, **kwargs):
     """This function plots the imaginary part of the hybridization function Gamma as a function of frequency.
     Only the diagonal elements are plotted, but for all clusters if there is more than one.
     The arguments have the same meaning as in `plot_spectrum`, except 'realpart' which, if True, plots
     the real part instead of the imaginary part.
 
-    :param float wmax: the frequency range is from -wmax to wmax if w is a float. If wmax is a tuple then the range is (wmax[0], wmax[1]). wmax can also be an explicit list of real frequencies
+    :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (w[0], w[1]). w can also be an explicit list of real frequencies
     :param float eta: Lorentzian broadening
     :param bool imaginary: If True, the frequency range is along the imaginary frequency axis
     :param int clus: cluster index (starts at 0)
@@ -513,7 +513,7 @@ def plot_hybridization_function(self, wmax=6, eta=0.01, imaginary=False, clus = 
     else:
         ax = plt_ax
 
-    w = pyqcm.frequency_array(wmax, eta, imaginary)  # defines the array of frequencies
+    w = pyqcm.frequency_array(w, eta, imaginary)  # defines the array of frequencies
     eta = 0.05j
     d = self.model.dimGF
     A = np.zeros((len(w), d*d))
@@ -548,10 +548,10 @@ def plot_hybridization_function(self, wmax=6, eta=0.01, imaginary=False, clus = 
 
 
 #---------------------------------------------------------------------------------------------------
-def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0, offset=2, full=False, opt=None, spin_down=False, blocks=False, file=None, plt_ax=None, orbs=None, real_part=False, color = 'b', **kwargs):
+def cluster_spectral_function(self, w=6, eta = 0.05, imaginary=False, clus=0, offset=2, full=False, opt=None, spin_down=False, blocks=False, file=None, plt_ax=None, orbs=None, real_part=False, color = 'b', **kwargs):
     """Plots the spectral function of the cluster in the site basis
     
-    :param float wmax: the frequency range is from -wmax to wmax if w is a float. If wmax is a tuple then the range is (wmax[0], wmax[1]). wmax can also be an explicit list of real frequencies
+    :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (w[0], w[1]). w can also be an explicit list of real frequencies
     :param float eta: Lorentzian broadening
     :param bool imaginary: If True, the frequency range is along the imaginary frequency axis
     :param int clus: label of the cluster within the super unit cell (starts at 0)
@@ -577,7 +577,7 @@ def cluster_spectral_function(self, wmax=6, eta = 0.05, imaginary=False, clus=0,
     else:
         ax = plt_ax
 
-    w = pyqcm.frequency_array(wmax, eta, imaginary)  # defines the array of frequencies
+    w = pyqcm.frequency_array(w, eta, imaginary)  # defines the array of frequencies
     # d = self.model.dimGFC[clus]
     d = self.model.clus[clus].nsites
 
@@ -735,10 +735,10 @@ def gap(self, k, orb = 1, threshold=1e-3):
 
 
 #---------------------------------------------------------------------------------------------------
-def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors=None, file=None, data_file='dos.tsv', plt_ax=None, spin_up = False, use_grid=False, **kwargs):
+def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors=None, file=None, data_file='dos.tsv', plt_ax=None, spin_up = False, use_grid=True, **kwargs):
     """Plots the density of states (DoS) as a function of frequency
 
-    :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (wmax[0], wmax[1]). w can also be an explicit list of real frequencies, or of complex frequencies (in which case eta is ignored)
+    :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (w[0], w[1]). w can also be an explicit list of real frequencies, or of complex frequencies (in which case eta is ignored)
     :param float eta: Lorentzian broadening, if w is real
     :param bool sum: if True, the sum of the DoS of all lattice orbitals is plotted in addition to each orbital individually
     :param bool progress: if True, prints computation progress

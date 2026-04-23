@@ -128,8 +128,11 @@ void lattice_model_instance::build_H()
   if(model->mixing == HS_mixing::up_down) H_down.set_size(model->dim_GF);
   for(auto& x : model->term){
     lattice_operator& op = *x.second;
-    for(auto& e : op.GF_elem) H(e.r, e.c) += e.v*params[op.name];
-    if(model->mixing == HS_mixing::up_down) for(auto& e : op.GF_elem_down) H_down(e.r, e.c) += e.v*params[op.name];
+    auto it = params.find(op.name);
+    if(it == params.end()) continue;
+    double pv = it->second;
+    for(auto& e : op.GF_elem) H(e.r, e.c) += e.v*pv;
+    if(model->mixing == HS_mixing::up_down) for(auto& e : op.GF_elem_down) H_down(e.r, e.c) += e.v*pv;
   }
   
   // building the cluster one-body matrices

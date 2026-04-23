@@ -26,11 +26,11 @@ def define_model():
 def test(M, mix):
     pyqcm.set_global_parameter('GF_method', 'B')
     I = pyqcm.model_instance(M)
-    I.cluster_spectral_function(wmax = 4, plt_ax=plt.gca(), file="test_mixing{:d}_nocf.pdf".format(mix))
+    I.cluster_spectral_function(w = 4, plt_ax=plt.gca(), file="test_mixing{:d}_nocf.pdf".format(mix))
 
     pyqcm.set_global_parameter('GF_method', 'C')
     I = pyqcm.model_instance(M)
-    I.cluster_spectral_function(wmax = 4, plt_ax=plt.gca(), file="test_mixing{:d}_cf.pdf".format(mix), color='r')
+    I.cluster_spectral_function(w = 4, plt_ax=plt.gca(), file="test_mixing{:d}_cf.pdf".format(mix), color='r')
 
 
 #--------------------------------------------------------------------------------

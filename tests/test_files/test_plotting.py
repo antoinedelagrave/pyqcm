@@ -43,9 +43,9 @@ w = np.arange(-5, 5, 0.1)
 live = False
 
 if live:
-    I.spectral_function(wmax=6, nk=32, period='G')
+    I.spectral_function(w=6, nk=32, period='G')
     I.mdc()
-    I.cluster_spectral_function(wmax=6)
+    I.cluster_spectral_function(w=6)
     I.spectral_function_Lehmann(nk=16)
     I.plot_DoS(np.arange(-2, 2, 0.1), eta=0.2, progress=True)
     I.spin_mdc(nk=64)
@@ -65,9 +65,9 @@ else:
     fig.set_size_inches(ncols * 8 / 2.54, nrows * 6 / 2.54)
     ax = ax.flatten()
 
-    I.spectral_function(wmax=6, nk=32, period='G', plt_ax=ax[0]); ax[0].set_title('spectral_function', fontsize=9)
+    I.spectral_function(w=6, nk=32, period='G', plt_ax=ax[0]); ax[0].set_title('spectral_function', fontsize=9)
     I.mdc(plt_ax=ax[1]); ax[1].set_title('mdc', fontsize=9)
-    I.cluster_spectral_function(wmax=6, plt_ax=ax[2]); ax[2].set_title('cluster_spectral_function', fontsize=9)
+    I.cluster_spectral_function(w=6, plt_ax=ax[2]); ax[2].set_title('cluster_spectral_function', fontsize=9)
     I.spectral_function_Lehmann(nk=16, plt_ax=ax[3]); ax[3].set_title('spectral_function_Lehmann', fontsize=9)
     I.plot_DoS(np.arange(-2, 2, 0.1), eta=0.2, progress=True, plt_ax=ax[4]); ax[4].set_title('plot_DoS', fontsize=9)
     I.spin_mdc(nk=64, plt_ax=ax[5]); ax[5].set_title('spin_mdc', fontsize=9)

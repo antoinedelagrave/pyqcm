@@ -179,38 +179,61 @@ void QCM::wk_integral_grid(const vector<double> &w, const vector<double> &weight
 	cout << "computing integrals from a grid of " << w.size() << " frequencies and " << nk_side << "**" << dim << " k-points" << endl;
 	int nv = (int)Iv.size();
 	vector<double> I(nv);
-	vector<double> Ik(nv);
 	for(int iw=0; iw<w.size(); iw++){
 		Complex wc(0, w[iw]);
 		to_zero(I);
 		double ikside = 1.0/nk_side;
 		if(dim==1){
-			for(int ikx = 0; ikx < nk_side; ikx++){
-				vector3D<double> k(ikx*ikside, 0.0, 0.0);
-				f(wc, k, &nv, Ik.data());
-				I += Ik;
+			#pragma omp parallel
+			{
+				vector<double> Ik(nv);
+				vector<double> Ip(nv, 0.0);
+				#pragma omp for nowait
+				for(int ikx = 0; ikx < nk_side; ikx++){
+					vector3D<double> k(ikx*ikside, 0.0, 0.0);
+					f(wc, k, &nv, Ik.data());
+					Ip += Ik;
+				}
+				#pragma omp critical
+				I += Ip;
 			}
 			I *= ikside;
 		}
 		else if (dim==2){
-			for(int ikx = 0; ikx < nk_side; ikx++){
-				for(int iky = 0; iky < nk_side; iky++){
-					vector3D<double> k(ikx*ikside, iky*ikside, 0.0);
-					f(wc, k, &nv, Ik.data());
-					I += Ik;
+			#pragma omp parallel
+			{
+				vector<double> Ik(nv);
+				vector<double> Ip(nv, 0.0);
+				#pragma omp for collapse(2) nowait
+				for(int ikx = 0; ikx < nk_side; ikx++){
+					for(int iky = 0; iky < nk_side; iky++){
+						vector3D<double> k(ikx*ikside, iky*ikside, 0.0);
+						f(wc, k, &nv, Ik.data());
+						Ip += Ik;
+					}
 				}
+				#pragma omp critical
+				I += Ip;
 			}
 			I *= ikside*ikside;
 		}
 		else if (dim==3){
-			for(int ikx = 0; ikx < nk_side; ikx++){
-				for(int iky = 0; iky < nk_side; iky++){
-					for(int ikz = 0; ikz < nk_side; ikz++){
-						vector3D<double> k(ikx*ikside, iky*ikside, ikz*ikside);
-						f(wc, k, &nv, Ik.data());
-						I += Ik;
+			#pragma omp parallel
+			{
+				vector<double> Ik(nv);
+				vector<double> Ip(nv, 0.0);
+				#pragma omp for collapse(3) nowait
+				for(int ikx = 0; ikx < nk_side; ikx++){
+					for(int iky = 0; iky < nk_side; iky++){
+						for(int ikz = 0; ikz < nk_side; ikz++){
+							vector3D<double> k(ikx*ikside, iky*ikside, ikz*ikside);
+							f(wc, k, &nv, Ik.data());
+							Ip += Ik;
+						}
 					}
 				}
+				#pragma omp critical
+				I += Ip;
 			}
 			I *= ikside*ikside*ikside;
 		}
@@ -233,35 +256,58 @@ void QCM::k_integral_grid(int dim, int nk_side, function<void (vector3D<double> 
 	// cout << "computing integral on a grid of " << nk_side << "**" << dim << " k-points" << endl;
 	int nv = (int)Iv.size();
 	vector<double> I(nv, 0.0);
-	vector<double> Ik(nv);
 	double ikside = 1.0/nk_side;
 	if(dim==1){
-		for(int ikx = 0; ikx < nk_side; ikx++){
-			vector3D<double> k(ikx*ikside, 0.0, 0.0);
-			f(k, &nv, Ik.data());
-			I += Ik;
+		#pragma omp parallel
+		{
+			vector<double> Ik(nv);
+			vector<double> Ip(nv, 0.0);
+			#pragma omp for nowait
+			for(int ikx = 0; ikx < nk_side; ikx++){
+				vector3D<double> k(ikx*ikside, 0.0, 0.0);
+				f(k, &nv, Ik.data());
+				Ip += Ik;
+			}
+			#pragma omp critical
+			I += Ip;
 		}
 		I *= ikside;
 	}
 	else if (dim==2){
-		for(int ikx = 0; ikx < nk_side; ikx++){
-			for(int iky = 0; iky < nk_side; iky++){
-				vector3D<double> k(ikx*ikside, iky*ikside, 0.0);
-				f(k, &nv, Ik.data());
-				I += Ik;
+		#pragma omp parallel
+		{
+			vector<double> Ik(nv);
+			vector<double> Ip(nv, 0.0);
+			#pragma omp for collapse(2) nowait
+			for(int ikx = 0; ikx < nk_side; ikx++){
+				for(int iky = 0; iky < nk_side; iky++){
+					vector3D<double> k(ikx*ikside, iky*ikside, 0.0);
+					f(k, &nv, Ik.data());
+					Ip += Ik;
+				}
 			}
+			#pragma omp critical
+			I += Ip;
 		}
 		I *= ikside*ikside;
 	}
 	else if (dim==3){
-		for(int ikx = 0; ikx < nk_side; ikx++){
-			for(int iky = 0; iky < nk_side; iky++){
-				for(int ikz = 0; ikz < nk_side; ikz++){
-					vector3D<double> k(ikx*ikside, iky*ikside, ikz*ikside);
-					f(k, &nv, Ik.data());
-					I += Ik;
+		#pragma omp parallel
+		{
+			vector<double> Ik(nv);
+			vector<double> Ip(nv, 0.0);
+			#pragma omp for collapse(3) nowait
+			for(int ikx = 0; ikx < nk_side; ikx++){
+				for(int iky = 0; iky < nk_side; iky++){
+					for(int ikz = 0; ikz < nk_side; ikz++){
+						vector3D<double> k(ikx*ikside, iky*ikside, ikz*ikside);
+						f(k, &nv, Ik.data());
+						Ip += Ik;
+					}
 				}
 			}
+			#pragma omp critical
+			I += Ip;
 		}
 		I *= ikside*ikside*ikside;
 	}

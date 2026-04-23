@@ -15,6 +15,7 @@ pyqcm : documentation (|version|)
    defining_cluster_models
    defining_models
    parameters
+   spectral
    cdmft
    vca
    hartree

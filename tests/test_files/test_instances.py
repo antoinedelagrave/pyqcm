@@ -28,4 +28,4 @@ for i,u in enumerate(U):
     I.append(pyqcm.model_instance(model))
 
 for i,u in enumerate(U):
-    I[i].spectral_function(wmax=6, path='line', plt_ax=plt.gca(), file=f"test_instances_U{u}.pdf")
+    I[i].spectral_function(w=6, path='line', plt_ax=plt.gca(), file=f"test_instances_U{u}.pdf")

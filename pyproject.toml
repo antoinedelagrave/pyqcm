@@ -48,3 +48,4 @@ sdist.include = ["pyqcm/_version.py"]
 
 [tool.isort]
 profile = "black"
+

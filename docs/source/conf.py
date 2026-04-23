@@ -44,6 +44,10 @@ extensions = [
 autodoc_member_order = 'bysource'
 napoleon_use_rtype = True
 
+# The C++ extension is not built in the Read the Docs environment; mock it so
+# autodoc can still import pyqcm and its submodules.
+autodoc_mock_imports = ['pyqcm.qcm', 'nlopt']
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable', None),
@@ -72,8 +76,13 @@ author = 'David Sénéchal'
 # built documents.
 #
 # The short X.Y version.
-print(subprocess.check_output(['git', 'describe']).decode().split()[0])
-version = subprocess.check_output(['git', 'describe']).decode().split()[0]
+try:
+    version = subprocess.check_output(
+        ['git', 'describe'], stderr=subprocess.DEVNULL
+    ).decode().split()[0]
+except (subprocess.CalledProcessError, FileNotFoundError):
+    version = 'unknown'
+print(version)
 # The full version, including alpha/beta/rc tags.
 release = version
 

@@ -27,8 +27,6 @@ namespace QCM {
     new_global_double(5e-8,"accur_SEF", "Accuracy of the Potthoff functional");
     
     new_global_int(0,"seed","seed of the random number generator");
-    new_global_int(1024,"cuba2D_mineval","minimum number of integrand evaluations in CUBA (2D)");
-    new_global_int(16000,"cuba3D_mineval","minimum number of integrand evaluations in CUBA (3D)");
     new_global_int(32,"kgrid_side","number of wavevectors on the side in a fixed wavevector grid");
     new_global_int(60,"max_iter_QN","maximum number of iterations in the quasi-Newton method");
     new_global_int(64,"max_dim_print","Maximum dimension for printing vectors and matrices");

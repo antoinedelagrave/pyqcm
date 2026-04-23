@@ -97,17 +97,17 @@ int k_cb(unsigned ndim, size_t npts, const double *x, void *fdata, unsigned fdim
 void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb)
 {
 	int ndim = dim+1;
-	int cuba_maxpoints;
+	int maxpoints;
 
 	auto cubature = global_bool("use_pcubature") ? pcubature_v : hcubature_v;
 	if(verb) cout << "Cubature integration (" << (global_bool("use_pcubature") ? "p" : "h") << "-adaptive)" << endl;
 
 	int ncomp = (int)Iv.size();
 
-	if(ndim==2)      cuba_maxpoints = 500000;
-	else if(ndim==3) cuba_maxpoints = 10000000;
-	else if(ndim==4) cuba_maxpoints = 20000000;
-	else             cuba_maxpoints = 10000;
+	if(ndim==2)      maxpoints = 500000;
+	else if(ndim==3) maxpoints = 10000000;
+	else if(ndim==4) maxpoints = 20000000;
+	else             maxpoints = 10000;
 
 	int fail;
 	const double xmin[] = {0,0,0,0};
@@ -125,7 +125,7 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 		vector<double> value(ncomp, 0.0), err(ncomp, 0.0);
 		WkContext ctx{f, w_domain, 0.0, iw_cutoff, false, verb, count};
 		auto t1 = std::chrono::high_resolution_clock::now();
-		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)cuba_maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
+		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
 		if(fail) qcm_throw("error in Cubature integral : fail = "+to_string<int>(fail));
 		if(verb) cout << "region 1 : " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
 		double fac = w_domain*M_1_PI;
@@ -139,7 +139,7 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 		vector<double> value(ncomp, 0.0), err(ncomp, 0.0);
 		WkContext ctx{f, w_domain, small_scale, iw_cutoff, false, verb, count};
 		auto t1 = std::chrono::high_resolution_clock::now();
-		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)cuba_maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
+		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
 		if(fail) qcm_throw("error in Cubature integral : fail = "+to_string<int>(fail));
 		if(verb) cout << "region 2 : " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
 		double fac = w_domain*M_1_PI;
@@ -153,7 +153,7 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 		vector<double> value(ncomp, 0.0), err(ncomp, 0.0);
 		WkContext ctx{f, w_domain, 0.0, iw_cutoff, true, verb, count};
 		auto t1 = std::chrono::high_resolution_clock::now();
-		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)cuba_maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
+		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
 		if(fail) qcm_throw("error in Cubature integral : fail = "+to_string<int>(fail));
 		if(verb) cout << "region 3 : " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
 		double fac = w_domain*M_1_PI;
@@ -326,10 +326,10 @@ void QCM::k_integral_grid(int dim, int nk_side, function<void (vector3D<double> 
  */
 void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb)
 {
-	int cuba_maxpoints;
-	if(dim==1)       cuba_maxpoints = 100000;
-	else if(dim==2)  cuba_maxpoints = 300000;
-	else             cuba_maxpoints = 4000000;
+	int maxpoints;
+	if(dim==1)       maxpoints = 100000;
+	else if(dim==2)  maxpoints = 300000;
+	else             maxpoints = 4000000;
 
 	int ncomp = (int)Iv.size();
 	vector<double> value(ncomp, 0.0), err(ncomp, 0.0);
@@ -341,7 +341,7 @@ void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv,
 
 	KContext ctx{f};
 	auto t1 = std::chrono::high_resolution_clock::now();
-	fail = cubature(ncomp, k_cb, &ctx, dim, xmin, xmax, (size_t)cuba_maxpoints, accuracy, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
+	fail = cubature(ncomp, k_cb, &ctx, dim, xmin, xmax, (size_t)maxpoints, accuracy, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
 	if(verb) cout << "Cubature : done in " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
 	for(int i=0; i<ncomp; ++i) Iv[i] += value[i];
 }

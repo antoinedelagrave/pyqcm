@@ -6,13 +6,12 @@ Generality
 ==========
 
 Pyqcm could benefit from various methods to perform parallel processing in shared memory systems.
-Three parallelization methods could be used in theory:
+Two parallelization methods could be used in theory:
 
 * Those implemented in BLAS/LAPACK,
-* Those implemented in the CUBA numerical integration library
 * And those implemented in QCM library (with OpenMP).
 
-By default, pyqcm (and QCM) disable parallelization using BLAS/LAPACK and CUBA, to use its own implementation using OpenMP with all the cores available on the machine. 
+By default, pyqcm (and QCM) disable parallelization using BLAS/LAPACK, to use its own implementation using OpenMP with all the cores available on the machine.
 
 
 OpenMP parallelization
@@ -28,18 +27,6 @@ Therefore, if users only choose a subset of processors of a server, there will b
 In SLURM, the number of OpenMP thread could be set to::
 
     export OMP_NUM_THREADs=$SLURM_CPUS_PER_TASK #use the same number of core asked to SLURM
-    
-
-CUBA parallelization
---------------------
-
-User can also choose to rely on the CUBA library parallelization by setting the environment variable CUBACORES. 
-QCM OpenMP parallelization must also be unset::
-
-    export CUBACORES=X #use X cubacores
-    export OMP_NUM_THREADs=1 #unset OpenMP
-    
-However, using this method, only the integration section would be treated in parallel. 
 
 
 BLAS parallelization
@@ -88,13 +75,9 @@ Test was performed on a 2 x 48 cores AMD EPYC 7463 @ 2.30GHz server and with 3 d
 
     Figure 2: Parallel performance of pyqcm integration part (version 2.2.4) using OpenMP via the OMP_NUM_THREADS environment variable and with different BLAS library.
 
-Results show the parallelization of the integration section is beneficial up to an optimal number of threads. 
+Results show the parallelization of the integration section is beneficial up to an optimal number of threads.
 In the present case, using more than 12 threads will increase the calculation time and is therefore not recommended.
 The optimal number of threads depends on the problem and its size.
-
-Note that the integration section can use the Cuba parallelization capability.
-However, while OpenMP uses the same object in memory to perform calculation in parallel, CUBA rather duplicates the object in the memory, resulting in a significant memory consumption.
-Cuba parallelization is therefore not recommended.
 
 
 Concurrent use of resources
@@ -117,7 +100,7 @@ This result illustrates that on shared system, a higher load could increase the 
 Conclusion
 ==========
 
-* It is recommended to use OpenMP parallelization and controlling the number of thread using the environment variable ``OMP_NUM_THREADS=X``, and set no BLAS parallelization with ``[MKL,OPENBLAS,BLIS]_NUM_THREADS=1``. CUBA parallelization is disabled by default.
+* It is recommended to use OpenMP parallelization and controlling the number of thread using the environment variable ``OMP_NUM_THREADS=X``, and set no BLAS parallelization with ``[MKL,OPENBLAS,BLIS]_NUM_THREADS=1``.
 * Because of bad performance with BLIS implementation of BLAS operation, user might use either MKL or OpenBLAS library.
 * There is always an optimal number of threads depending on the problem and its size.
 * Exact diagonalisation solver and integration optimal number of threads might be different so user can conduct a parallel study to know the right number of threads to choose.

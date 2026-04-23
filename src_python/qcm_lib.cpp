@@ -171,10 +171,6 @@ PyMODINIT_FUNC PyInit_qcm(void) {
   */
 void QCM::qcm_init() {
   qcm_model = make_shared<lattice_model>();
-  // Initialize environment variable
-  // May be overwrite by the user
-  setenv("CUBACORES", "0", 0);
-  // setenv("OMP_NUM_THREADS","1",0);
   QCM::global_parameter_init();
 
 #ifdef _OPENMP

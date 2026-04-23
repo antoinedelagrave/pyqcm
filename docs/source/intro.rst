@@ -21,15 +21,13 @@ Dependencies
 ------------
 
 Pyqcm is written in Python but requires the compilation of its core C++ library
-(**qcm**) provided with the distribution, and depends on **CUBA** for numerical
-integration, **BLAS-LAPACK** for elementary (non sparse) linear algebra, the **Eigen** library for linear algebra and sparse linear algebra, and the **PRIMME** eigensolver (optional).
+(**qcm**) provided with the distribution, and depends on **BLAS-LAPACK** for elementary (non sparse) linear algebra, the **Eigen** library for linear algebra and sparse linear algebra, and the **PRIMME** eigensolver (optional). Numerical integration is provided by the **cubature** library, which is bundled with the distribution.
 
 
 Minimal installation
 --------------------
 
-These instructions are for installing Pyqcm, its core library, and automatically
-downloading and compiling the numerical integration library CUBA.
+These instructions are for installing Pyqcm and its core library.
 
 The source code can be cloned with the following command::
 
@@ -53,8 +51,6 @@ export CMAKE_ARGS="[BUILD_ARG1]=[VALUE1] [BUILD_ARG2]=[VALUE2] ..."
 
 Optional build arguments and their values include:
 
-* ``-DDOWNLOAD_CUBA=0/1``: Specify to download and compile automatically the CUBA integration library (default not downloaded: ``0``).
-* ``-DCUBA_DIR=[path_to_CUBA_root_dir]``: If CUBA not downloaded from above, specify the path to CUBA directory for linking Pyqcm against (must contain compiled Cuba library ``libcuba.a`` along with the header ``cuba.h``, empty by default).
 * ``-DBLA_VENDOR=[value]``: BLAS implementation to use. See `CMake vendor documentation <https://cmake.org/cmake/help/latest/module/FindBLAS.html?highlight=bla_vendor#blas-lapack-vendors>`_ for more information (recommended: do not specify or ``FlexiBLAS`` on `Alliance cluster <https://docs.alliancecan.ca/wiki/BLAS_and_LAPACK>`_).
 * ``-DWITH_PRIMME=0/1``: Whether to use or not the PRIMME library and its eigensolver for finding ground state of the Hamiltonian (needs ``-DEIGEN_HAMILTONIAN=1``, default not used).
 * ``-DDOWNLOAD_PRIMME=0/1``: Specify to download and compile automatically the PRIMME eigensolver library (needs ``-DWITH_PRIMME=1``, not downloaded by default).
@@ -68,7 +64,7 @@ Optional build arguments and their values include:
 
 For a full-capability build, use::
 
-    export CMAKE_ARGS="-DDOWNLOAD_CUBA=1 -DEIGEN_HAMILTONIAN=1 -DWITH_PRIMME=1 -DDOWNLOAD_PRIMME=1 -DWITH_GF_OPT_KERNEL=1 -DUSE_OPENMP=1"
+    export CMAKE_ARGS="-DEIGEN_HAMILTONIAN=1 -DWITH_PRIMME=1 -DDOWNLOAD_PRIMME=1 -DWITH_GF_OPT_KERNEL=1 -DUSE_OPENMP=1"
 
 Lastly, compile with::
 

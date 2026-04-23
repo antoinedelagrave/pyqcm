@@ -41,8 +41,6 @@ Integer-valued options
     "GF_lookup_depth", "64", "depth of the look-up table for the cluster Green function"
     "PRIMME_algorithm", "1", "PRIMME algorithm to solve ground state (if qcm_wed was compiled with PRIMME): 1 (PRIMME_DYNAMIC - default), 2 (PRIMME_DEFAULT_MIN_TIME), 3 (PRIMME_DEFAULT_MIN_MATVECS), 4 (PRIMME_Arnoldi), 5 (PRIMME_GD), 6 (PRIMME_GD_plusK), 7 (PRIMME_GD_Olsen_plusK), 8 (PRIMME_JD_Olsen_plusK), 9 (PRIMME_RQI), 10 (PRIMME_JDQR), 11 (PRIMME_JDQMR), 12 (PRIMME_JDQMR_ETol), 13 (PRIMME_STEEPEST_DESCENT), 14 (PRIMME_LOBPCG_OrthoBasis), 15 (PRIMME_LOBPCG_OrthoBasis_Window). See PRIMME documentation for more information"
     "PRIMME_preconditionning", "0", "Choose of preconditionner to solve ground state (if qcm_wed was compiled with PRIMME): 0 (No preconditionning), 1 (Jacobi preconditionner)"
-    "cuba2D_mineval", "1024", "minimum number of integrand evaluations in CUBA (2D)"
-    "cuba3D_mineval", "16000", "minimum number of integrand evaluations in CUBA (3D)"
     "kgrid_side", "32", "number of wavevectors on the side in a fixed wavevector grid"
     "max_dim_full", "256", "Maximum dimension for using full diagonalization"
     "max_dim_print", "64", "Maximum dimension for printing vectors and matrices"

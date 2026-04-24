@@ -1,0 +1,7 @@
+sphinx
+myst-parser
+furo
+sphinx-copybutton
+numpy>=2
+matplotlib
+scipy

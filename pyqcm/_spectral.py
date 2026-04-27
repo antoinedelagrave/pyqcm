@@ -99,11 +99,13 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, w=
 
     from os import getpid
 
+    # spin_split=True: each orbital list indexes the spin-up block only; the
+    # spin-down block is summed separately below at offset norb when mixing != 0.
     if pyqcm.is_sequence(orb) and pyqcm.is_sequence(orb[0]):
         n_orbs = len(orb)
-        orbs = [pyqcm.orbital_manager(orb[i], from_zero=True) for i in range(n_orbs)]        
+        orbs = [pyqcm.orbital_manager(orb[i], from_zero=True, spin_split=True) for i in range(n_orbs)]
     else:
-        orbs = [pyqcm.orbital_manager(orb, from_zero=True)]
+        orbs = [pyqcm.orbital_manager(orb, from_zero=True, spin_split=True)]
         n_orbs = 1
 
     if path==None:
@@ -320,8 +322,6 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
 
     """
 
-    orbs = pyqcm.orbital_manager(orb, from_zero=True)
-
     if path==None:
         if self.model.dim == 1 : path = 'line'
         else : path = 'triangle'
@@ -332,7 +332,7 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
         else:
             ax = plt.gca()
             plt.gcf().set_size_inches(13.5/2.54, 9/2.54)
-        
+
     else:
         ax = plt_ax
 
@@ -344,9 +344,12 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
 
     mix = self.model.mixing
 
+    # spin_split=True: orbs indexes the spin-up block only; the spin-down block
+    # is summed separately below at offset norb when mixing != 0.
+    orbs = pyqcm.orbital_manager(orb, from_zero=True, spin_split=True)
+
     if orb is not None:
         assert (orb <= self.model.nband and orb > 0), 'The orbital index in spectral_function() must vary from 1 to {:d}'.format(norb)
-        orb -= 1
 
     w = pyqcm.frequency_array(w, eta)
 

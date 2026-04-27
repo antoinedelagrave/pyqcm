@@ -58,6 +58,9 @@ model.density_wave('M', 'Z', (1,1,0)) # Spin density wave at Q = (pi,pi)
 # model.draw_operator('t')
 # model.draw_cluster_operator(model.clus[0], 'tperim')
 
+W, P = pyqcm.legendre_frequency_grid(2,10,5)
+pyqcm.discrete_integration_grid(W, P)
+
 # Setting target sectors with S=1 and S=-1 such that S_total = 0
 model.set_target_sectors(['R0:N9:S-1/R0:N9:S1','R0:N9:S-1/R0:N9:S1'])
 model.set_parameters("""
@@ -67,9 +70,9 @@ mu = 0.5*U
 M = 0
 M_1 = 0.1
 M_2 = 1*M_1
-# t_1 = 1
+t_1 = 1
 # t_2 = 1*t_1
-# tperim_1 = 1e-9
+tperim_1 = 1e-9
 # tperim_2 = 1*tperim_1
 """)
 
@@ -98,7 +101,7 @@ def run_vca():
     return V.I
 
 # controlled_loop performs successive VCAs with starting value prediction
-model.controlled_loop(run_vca, varia=["M_1"], loop_param="U", loop_range=(10, -0.1, -0.5)) # loops from 10 to 0 in increments of 0.5
+model.controlled_loop(run_vca, varia=["M_1"], loop_param="U", loop_range=(10, 0.1, -0.5)) # loops from 10 to 0 in increments of 0.5
 
 
 #---------------------------------------------------------------------------------------------------

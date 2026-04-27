@@ -54,13 +54,33 @@ vector<pair<string,double>> lattice_model_instance::averages(const vector<string
       auto F = [this] (Complex w, vector3D<double> &k, const int *nv, double *I) mutable {average_integrand_per(w, k, nv, I);};
       QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
     }
+    else if(grid_freqs.size() > 0){
+      // Frequency-momentum grid. The cluster Green function depends only on w,
+      // so build it once per frequency (sequential), then parallelize only over k
+      // via k_integral_grid. The lambda captures G_up (and G_dn) by value: the
+      // captured copies live in the lambda object, are read-only inside the parallel
+      // section, and contain no shared mutable state.
+      int nk_side = global_int("kgrid_side");
+      cout << "computing integrals from a grid of " << grid_freqs.size() << " frequencies and "
+           << nk_side << "**" << model->spatial_dimension << " k-points" << endl;
+      bool has_dn = (model->mixing == HS_mixing::up_down);
+      for(int iw = 0; iw < (int)grid_freqs.size(); iw++){
+        Complex wc(0, grid_freqs[iw]);
+        Green_function G_up = cluster_Green_function(wc, false, false);
+        Green_function G_dn;
+        if(has_dn) G_dn = cluster_Green_function(wc, false, true);
+
+        auto F_k = [this, G_up, G_dn, has_dn] (vector3D<double> &k, const int *nv, double *I) mutable {
+          average_integrand_k(G_up, has_dn ? &G_dn : nullptr, k, nv, I);
+        };
+        to_zero(Iw);
+        QCM::k_integral_grid(model->spatial_dimension, nk_side, F_k, Iw);
+        Iv += Iw*grid_weights[iw];
+      }
+    }
     else{
       auto F = [this] (Complex w, vector3D<double> &k, const int *nv, double *I) mutable {average_integrand(w, k, nv, I);};
-      if(grid_freqs.size() > 0){
-        int nk_side = global_int("kgrid_side");
-        QCM::wk_integral_grid(grid_freqs, grid_weights, model->spatial_dimension, nk_side, F, Iv);
-      }
-      else QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
+      QCM::wk_integral(model->spatial_dimension, F, Iv, accur_OP, global_bool("verb_integrals"));
     }
   }
   
@@ -105,36 +125,60 @@ vector<pair<string,double>> lattice_model_instance::averages(const vector<string
 void lattice_model_instance::average_integrand(Complex w, vector3D<double> &k, const int *nv, double *I)
 {
   check_signals();
+  Green_function G_up = cluster_Green_function(w, false, false);
+  if(model->mixing == HS_mixing::up_down){
+    Green_function G_dn = cluster_Green_function(w, false, true);
+    average_integrand_k(G_up, &G_dn, k, nv, I);
+  }
+  else average_integrand_k(G_up, nullptr, k, nv, I);
+}
 
+
+//==============================================================================
+/**
+ per-k integrand for averages, with the cluster Green function precomputed.
+ Used to hoist the frequency-dependent (and k-independent) cluster Green function
+ build out of the parallel k-loop in k_integral_grid: with G_up (and G_down)
+ supplied as read-only inputs, the integrand contains no shared mutable state and
+ is safe to call concurrently.
+ @param G_up cluster Green function at the current frequency (taken by non-const
+ reference because Green_function_k stores a non-const reference; only read)
+ @param G_down cluster Green function for the spin-down sector when mixing is
+ up_down, otherwise nullptr
+ @param k wavevector
+ @param nv number of components
+ @param I values of the components of the integrand
+ */
+void lattice_model_instance::average_integrand_k(Green_function &G_up, Green_function *G_down, vector3D<double> &k, const int *nv, double *I)
+{
+  Complex w = G_up.w;
   const double w_offset = 2.0;
   Complex G_pole = 1.0/(w - w_offset);
 
-  Green_function G = cluster_Green_function(w, false, false);
-	Green_function_k K(G,k);
-	set_Gcpt(K);
-	K.Gcpt.add(-G_pole); // regulates the Green function at high frequency (subtracts G_pole times the identity matrix)
-	
-	size_t i = 0;
-	for(auto& op : ops){
-		Complex z(0.0);
-		for(auto &x : op->GF_elem) z += K.Gcpt(x.c,x.r)*x.v;
-		for(auto &x : op->IGF_elem) z += K.Gcpt(x.c,x.r)*x.v*K.phase[x.n];
+  Green_function_k K(G_up,k);
+  set_Gcpt(K);
+  K.Gcpt.add(-G_pole); // regulates the Green function at high frequency
 
-		I[i++] = real<double>(z);
-	}
-	i = 0;
-	if(model->mixing == HS_mixing::up_down){
-    Green_function G = cluster_Green_function(w, false, true);
-    Green_function_k K(G,k);
-    set_Gcpt(K);
-    K.Gcpt.add(-G_pole); // regulates the Green function at high frequency (subtracts G_pole times the identity matrix)
-		for(auto& op : ops){
-			Complex z(0.0);
-			for(auto &x : op->GF_elem_down) z += K.Gcpt(x.c,x.r)*x.v;
-			for(auto &x : op->IGF_elem_down) z += K.Gcpt(x.c,x.r)*x.v*K.phase[x.n];
-			I[i++] += real<double>(z);
-		}
-	}
+  size_t i = 0;
+  for(auto& op : ops){
+    Complex z(0.0);
+    for(auto &x : op->GF_elem) z += K.Gcpt(x.c,x.r)*x.v;
+    for(auto &x : op->IGF_elem) z += K.Gcpt(x.c,x.r)*x.v*K.phase[x.n];
+    I[i++] = real<double>(z);
+  }
+
+  if(G_down){
+    Green_function_k K_dn(*G_down,k);
+    set_Gcpt(K_dn);
+    K_dn.Gcpt.add(-G_pole);
+    i = 0;
+    for(auto& op : ops){
+      Complex z(0.0);
+      for(auto &x : op->GF_elem_down) z += K_dn.Gcpt(x.c,x.r)*x.v;
+      for(auto &x : op->IGF_elem_down) z += K_dn.Gcpt(x.c,x.r)*x.v*K_dn.phase[x.n];
+      I[i++] += real<double>(z);
+    }
+  }
   if(model->mixing == HS_mixing::normal) for(size_t i=0; i<ops.size(); i++) I[i] *= 2;
 }
 

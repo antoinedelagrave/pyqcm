@@ -37,7 +37,7 @@ model.set_parameters("""
 
 # Plotting the spectral function
 I = pyqcm.model_instance(model)
-I.spectral_function(wmax=2.5, path="line", nk=64, orb=1)
+I.spectral_function(w=2.5, path="line", nk=64, orb=1)
 
 
 ####################################################################################################

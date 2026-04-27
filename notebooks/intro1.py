@@ -38,10 +38,10 @@ print('ground_state sector:', I.ground_state())
 I.cluster_averages(pr=True)
 
 # draws the spectral function of the cluster model
-I.cluster_spectral_function(wmax=6)
+I.cluster_spectral_function(w=6)
 
 # draws the spectral function of the lattice model, for wavevectors along a line from -pi to pi
-I.spectral_function(wmax=6, path='line')
+I.spectral_function(w=6, path='line')
 
 # draws the density of states of the lattice model, from w = -6 to 6
 I.plot_DoS(w = 6)

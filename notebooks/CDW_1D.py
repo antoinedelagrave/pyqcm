@@ -41,7 +41,7 @@ MF1 = pyqcm.hartree(model, 'Vm1', 'V', 1, accur=1e-2, lattice=True) # lattice=Tr
 ############################## - Range for sweep over V - ###############################
 
 V_start = 1e-9
-V_stop = 4
+V_stop = 3.8
 V_step = 0.1
 U = model.parameters()['U']
 

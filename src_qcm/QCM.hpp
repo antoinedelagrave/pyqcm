@@ -99,7 +99,6 @@ namespace QCM{
   void set_multiplier(const string& name, double value);
   void set_parameters(vector<pair<string,double>>&, vector<tuple<string, double, string>>&);
   void wk_integral(int dim, function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy,bool verb=false);
-  void wk_integral_grid(const vector<double> &w, const vector<double> &weight, int dim, int nk_side, function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv);
   void Green_function_solve(int label);
   void CDMFT_variational_set(vector<vector<string>>& varia);
   void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label);

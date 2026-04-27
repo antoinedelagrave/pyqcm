@@ -217,8 +217,8 @@ class cluster:
     """
     Class describing a geometric cluster, part of the repeated unit (or super unit cell)
 
-    :param cluster_model X: abstract cluster model (or sequence thereof) the current cluster is hosting OR other cluster object to which the current cluster is equivalent
-    :param list[list[int]] sites: sequence of 3-component integer vectors, the geometric sites of the cluster
+    :param cluster_model X: abstract cluster model (or sequence thereof) the current cluster is hosting OR another cluster object of which the current cluster is a replica. If X is a sequence, this sequences defines different *systems* associated to the same cluster. If X is a cluster object, then this cluster is just a replica of the original cluster and its Green function is simply copied from the original, without solving any new impurity problem.
+    :param list[list[int]] sites: sequence of 3-component integer vectors, the geometric sites of the cluster. If the cluster is a replica, then the sites are different from the original cluster, but the Green function is simply remapped from the original cluster.
     :param [int] pos: base position of the cluster; all site vectors are added this position (for convenience)
 
     :ivar int index: index of the cluster within the set of clusters forming the repeated unit (starts at 1)
@@ -2703,12 +2703,20 @@ def wavevector_grid(n=100, orig=[-1.0, -1.0], side=2, k_perp=0, plane="z"):
 
 
 # ---------------------------------------------------------------------------------------------------
-def orbital_manager(orbitals, from_zero=False):
-    """ """
+def orbital_manager(orbitals, from_zero=False, spin_split=False):
+    """Returns a list of orbital indices into the Green function / dispersion matrix.
+
+    With mixing == 2 (spin flip) the matrix is 2*nband × 2*nband, with both
+    spin sectors entangled. By default, when orbitals=None this returns indices
+    over the full 2*nband range so that callers summing diagonal elements pick
+    up both spin sectors. Set spin_split=True to get only the up-block indices
+    (range(1, nband+1)); the caller is then responsible for adding the spin-down
+    sector at offset nband.
+    """
 
     if orbitals is None:
         nbands = qcm.model_size()[1]
-        if qcm.mixing() == 2:
+        if qcm.mixing() == 2 and not spin_split:
             nbands *= 2
         orb_list = range(1, nbands + 1)
 

@@ -72,6 +72,8 @@ struct lattice_model_instance{
 	void average_integrand_per(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void average_integrand(Complex w, vector3D<double> &k, const int *nv, double *I);
 	void average_integrand(int iw, int ik, vector<double> &I);
+	//! per-k integrand for averages, given a precomputed cluster Green function (and optionally its spin-down counterpart for up_down mixing)
+	void average_integrand_k(Green_function &G_up, Green_function *G_down, vector3D<double> &k, const int *nv, double *I);
 	void build_cluster_H();
 	void build_H();
 	void CDMFT_host(const vector<double>& freqs, const vector<double>& weights);

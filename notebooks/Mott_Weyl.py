@@ -61,25 +61,26 @@ model.set_parameters("""
 print("plotting different Fermi surface plots at U=0...")
 model.set_parameter("U", 1e-9)
 I = pyqcm.model_instance(model)
-I.mdc(plane="xy")
-I.mdc(plane="yz")
+I.mdc(plane="xy", file='mdcU0_xy.pdf')
+I.mdc(plane="yz", file='mdcU0_yz.pdf')
 
 print("plotting different Fermi surface plots at U=6...")
 model.set_parameter("U", 6)
 I = pyqcm.model_instance(model)
-I.mdc(plane="xy")
-I.mdc(plane="yz")
+I.mdc(plane="xy", file='mdcU6_xy.pdf')
+I.mdc(plane="yz", file='mdcU6_yz.pdf')
+
 
 
 print("plotting the spectral function along a high-symmetry path at U=0...")
 model.set_parameter("U", 1e-9)
 I = pyqcm.model_instance(model)
-I.spectral_function(path="cubic")
+I.spectral_function(path="cubic", file='spectrumU0.pdf')
 
-print("plotting the spectral function along a high-symmetry path at U=0...")
+print("plotting the spectral function along a high-symmetry path at U=6...")
 model.set_parameter("U", 6)
 I = pyqcm.model_instance(model)
-I.spectral_function(path="cubic")
+I.spectral_function(path="cubic", file='spectrumU6.pdf')
 
 print("plotting the Berry curvature...")
 I.Berry_curvature(nk=100, eta=0.0, period='G', range=None, label=0, orb=1, subdivide=False, plane='xy', k_perp=0.1, file=None, plt_ax=None)

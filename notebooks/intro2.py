@@ -37,10 +37,10 @@ print('ground_state sector:', I.ground_state())
 I.cluster_averages(pr=True)
 
 # draws the spectral function of the cluster model
-I.cluster_spectral_function(wmax=6)
+I.cluster_spectral_function(w=6)
 
 # draws the spectral function of the lattice model, for wavevectors along a line from -pi to pi
-I.spectral_function(wmax=6, path='triangle')
+I.spectral_function(w=6, path='triangle')
 
 # draws a Fermi surface plot (spectral function as a function of wavevector, at zero frequency)
 I.mdc(eta=0.05)

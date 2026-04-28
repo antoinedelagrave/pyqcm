@@ -3073,6 +3073,7 @@ def read_model_instance(filename):
 
     :param str filename: path to the HDF5 file
     :returns: the reconstructed :class:`model_instance`
+    
     """
     import h5py, sys as _sys
     caller_globals = _sys._getframe(1).f_globals
@@ -3131,8 +3132,11 @@ from scipy.optimize import linear_sum_assignment
 
 def track_bands_with_overlaps(E, psi, diff_coeff=0.0):
     """
-    E[k, n]    energies
-    psi[k, n, :] eigenvectors (normalized)
+    Helper function used in plotting fat bands in order to identify band crossings
+
+    :para E[k, n]    energies
+    :param psi[k, n, :] eigenvectors (normalized)
+
     """
     Nk, Nb = E.shape
     bands = np.zeros_like(E)
@@ -3144,7 +3148,6 @@ def track_bands_with_overlaps(E, psi, diff_coeff=0.0):
         O = -(np.abs(psi[k].conj().T @ psi[k + 1]) ** 2)
         D = np.outer(E[k], np.ones(Nb))
         O += diff_coeff * (D - D.T) ** 2
-        # maximize overlap → minimize O
         row, col = linear_sum_assignment(O)
 
         psi[k + 1] = ((psi[k + 1].T)[col]).T
@@ -3155,27 +3158,16 @@ def track_bands_with_overlaps(E, psi, diff_coeff=0.0):
     return bands, psi
 
 
-def track_bands(E, psi):
-    """
-    E[k, n]    energies
-    psi[k, n, :] eigenvectors (normalized)
-    """
-    Nk, Nb = E.shape
-    bands = np.zeros_like(E)
-    bands = -2 * E + np.roll(E, 1, 0) + +np.roll(E, -1, 0)
-    # bands = E - np.roll(E,1,1)
-    return bands
-
-
 def legendre_frequency_grid(w1, w2, n1, n2, n3):
     """
     returns a frequency grid (along the positive imaginary axis) tailored for integration.
     It is a Gauss-Legendre grid of n1, n2 and n3 points in each of the intervals [0,w1], [w1,w2] and [w2,infinity]
-    param float w1 : low-frequency boundary
-    param float w2 : high-frequency boundary
-    param int n1: number of points from 0 to w1
-    param int n2: number of points from w1 to w2
-    param int n3: number of points from w2 to infinity
+    
+    :param float w1 : low-frequency boundary
+    :param float w2 : high-frequency boundary
+    :param int n1: number of points from 0 to w1
+    :param int n2: number of points from w1 to w2
+    :param int n3: number of points from w2 to infinity
     """
 
     nodes, weights = np.polynomial.legendre.leggauss(n1)
@@ -3200,9 +3192,11 @@ def regular_frequency_grid(wc, n1, n2):
     returns a frequency grid (along the positive imaginary axis) tailored for integration.
     It is a uniform grid of n1 points in the interval [0,wc] and n2 points in the inverse interval [0,1/wc] for 1/w
     Uses the trapezoidal rule.
-    param float wc : frequency boundary
-    param int n1 : number of points in the low-frequency interval
-    param int n2 : number of points in the high-frequency interval
+    
+    :param float wc : frequency boundary
+    :param int n1 : number of points in the low-frequency interval
+    :param int n2 : number of points in the high-frequency interval
+    
     """
 
     w = np.zeros(n1 + n2)
@@ -3219,9 +3213,11 @@ def regular_frequency_grid(wc, n1, n2):
 def discrete_integration_grid(freqs, weights):
     """
     Defines a frequency grid and associated weights for fixed-grid integration instead of using cubature
-    param array freqs: array of frequencies along the Matsubara axis
-    param array weights: associated weights
+
+    :param array freqs: array of frequencies along the Matsubara axis
+    :param array weights: associated weights
     """
+
     qcm.frequency_grid(freqs, weights)
 
 

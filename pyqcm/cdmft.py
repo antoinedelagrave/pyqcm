@@ -669,7 +669,7 @@ class CDMFT:
         for i in range(self.grid.nw):
             for c in range(self.model.nclus):
                 self.Hyb[c][i, :, :] = self.I.hybridization_function(
-                    self.grid.w[i], c, spin_down=False
+                    self.grid.wr[i] * 1j, c, spin_down=False
                 )
 
         if self.model.mixing == 4:
@@ -684,7 +684,7 @@ class CDMFT:
             for i in range(self.grid.nw):
                 for c in range(self.model.nclus):
                     self.Hyb_down[c][i, :, :] = self.I.hybridization_function(
-                        self.grid.w[i], c, spin_down=True
+                        self.grid.wr[i] * 1j, c, spin_down=True
                     )
 
     # -----------------------------------------------------------------------------------------------
@@ -743,7 +743,7 @@ class CDMFT:
         for i in range(self.grid.nw):
             for c in range(self.model.nclus):
                 self.sigma[c][i, :, :] = self.I.cluster_self_energy(
-                    self.grid.w[i], c, spin_down=False
+                    self.grid.wr[i] * 1j, c, spin_down=False
                 )
 
         if self.model.mixing == 4:
@@ -758,7 +758,7 @@ class CDMFT:
             for i in range(self.grid.nw):
                 for c in range(self.model.nclus):
                     self.sigma_down[c][i, :, :] = self.I.cluster_self_energy(
-                        self.grid.w[i], c, spin_down=True
+                        self.grid.wr[i] * 1j, c, spin_down=True
                     )
 
     # -----------------------------------------------------------------------------------------------
@@ -791,7 +791,6 @@ class frequency_grid:
     :param tuple specs: specific parameters for each grid type. For 'legendre', specs=(w1, w2, n1, n2, n3) where w1 and w2 define 3 regions along the imaginary frequency axis. Below w1, n1 grid points are used; between w1 and w2, n2 grid points are used, and n3 grid points are used between w2 and infinity. For 'matsubara', specs=(wc, beta), where wc is the frequency cutoff and beta the inverse effective temperature. For 'regular', specs=(wc, n1, n2), where wc is the boundary between the low- and high-frequency regions, and n1 and n2 the number of points in each region, respectively.
     :param str opt: if opt='self', the cdmft weights (not the integration weights) are not the same as the integration weights, but scale like the norm of the self-energy at the corresponding frequency (the Hartree-Fock part of the self-energy is subtracted). If opt = 'ifreq', the cdmft weights are rather scaled like 1/frequency.
     :ivar wr: (real array) the frequencies along the imaginary axis
-    :ivar w: the complex version of wr (=wr*1j)
     :ivar weight: the weight associated to each frequency in an integral
     :ivar cdmft_weight: the weight associated to each frequency in the CDMFT distance function
     :ivar name: the name of the frequency array scheme chosen (for reference)
@@ -820,8 +819,6 @@ class frequency_grid:
             raise ValueError('Unknown type of frequency grid ' + grid_type)
 
         self.nw = self.wr.shape[0]
-        self.w = np.ones(len(self.wr), dtype=np.complex128)
-        self.w = self.wr * 1j
         self.cdmft_weight = np.ones_like(self.wr)
 
         self.self_norm = False
@@ -847,7 +844,7 @@ class frequency_grid:
         """
         if self.self_norm:
             Sig_inf = I.cluster_self_energy(1.0e6j)
-            for i, x in enumerate(self.w):
+            for i, x in enumerate(self.wr * 1j):
                 self.cdmft_weight[i] = np.linalg.norm(I.cluster_self_energy(x) - Sig_inf)
             self.cdmft_weight = self.cdmft_weight / self.cdmft_weight.sum()
         else:

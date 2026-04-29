@@ -821,7 +821,7 @@ class frequency_grid:
 
         self.nw = self.wr.shape[0]
         self.w = np.ones(len(self.wr), dtype=np.complex128)
-        self.w = self.w * 1j
+        self.w = self.wr * 1j
         self.cdmft_weight = np.ones_like(self.wr)
 
         self.self_norm = False

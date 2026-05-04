@@ -734,7 +734,7 @@ class lattice_model:
         qcm.print_model(filename)
 
     # -----------------------------------------------------------------------------------------------
-    def set_params_from_file(self, out_file, n=0):
+    def set_params_from_file(self, out_file, n=0, pr=False):
         """
         sets the parameters in the parameter_set object from a file
 
@@ -761,7 +761,7 @@ class lattice_model:
             if par[x][1] != None:
                 continue
             if x in D.dtype.names:
-                self.set_parameter(x, D[x][n], pr=True)
+                self.set_parameter(x, D[x][n], pr=pr)
             for x in D.dtype.names:
                 data[x] = D[x][n]
         return data
@@ -1385,7 +1385,7 @@ class model_instance:
         return qcm.Green_integral(spin_down, clus, self.label)
 
     # -----------------------------------------------------------------------------------------------
-    def dispersion(self, k, spin_down=False, label=0):
+    def dispersion(self, k, spin_down=False):
         r"""
         Computes the dispersion relation for a single or an array of wavevectors
 
@@ -2269,7 +2269,7 @@ def set_wavevector_grid(nkx, nky, nkz):
 
 
 # ---------------------------------------------------------------------------------------------------
-def get_global_parameter(name, value=None):
+def get_global_parameter(name):
     """
     Gets the value of a global parameter.
 

@@ -6,6 +6,7 @@ import numpy as np
 import pyqcm
 import time
 import nlopt
+import warnings
 
 from scipy.optimize import minimize
 
@@ -106,6 +107,13 @@ def _quasi_newton(func=None, start=None, step=None, accur=None, max=10, gtol=1e-
 
     """
     global root, verbose
+
+    # FIXME: `max` (parameter clamping) and `max_iter_diff` (step size limiting) are
+    # accepted but not yet implemented in _quasi_newton; they need to be wired in.
+    if max != 10:
+        warnings.warn("_quasi_newton: 'max' is not implemented and will be ignored.", stacklevel=2)
+    if max_iter_diff is not None:
+        warnings.warn("_quasi_newton: 'max_iter_diff' is not implemented and will be ignored.", stacklevel=2)
 
     n = len(start)
     gradient = np.zeros(n)
@@ -325,6 +333,11 @@ def _newton_raphson(func=None, start=None, step=None, accur=None, max=10, gtol=1
     """
     global current_instance, root, verbose
 
+    # FIXME: `max` (parameter clamping) is accepted but not yet implemented in
+    # _newton_raphson; it needs to be wired in.
+    if max != 10:
+        warnings.warn("_newton_raphson: 'max' is not implemented and will be ignored.", stacklevel=2)
+
     n = len(start)
     gradient = np.zeros(n)
     dx = np.zeros(n)
@@ -449,6 +462,16 @@ def _altNR(func=None, start=None, step=None, accur=None, max=10, gtol=1e-4, max_
 
     """
     global verbose
+
+    # FIXME: `max` (parameter clamping), `max_iter_diff` (step size limiting), and
+    # `hartree` (Hartree self-consistency loop, present in _quasi_newton/_newton_raphson)
+    # are accepted but not yet implemented in _altNR; they need to be wired in.
+    if max != 10:
+        warnings.warn("_altNR: 'max' is not implemented and will be ignored.", stacklevel=2)
+    if max_iter_diff is not None:
+        warnings.warn("_altNR: 'max_iter_diff' is not implemented and will be ignored.", stacklevel=2)
+    if hartree is not None:
+        warnings.warn("_altNR: 'hartree' self-consistency is not implemented and will be ignored.", stacklevel=2)
 
     # initial three points
     X = np.zeros(3)
@@ -792,7 +815,12 @@ class VCA:
         """
 
         global current_instance
-    
+
+        # FIXME: `max` (parameter clamping) is accepted but not yet implemented in
+        # _minimax; it needs to be wired in.
+        if max != 10:
+            warnings.warn("_minimax: 'max' is not implemented and will be ignored.", stacklevel=2)
+
         ftol = 10*pyqcm.qcm.get_global_parameter('accur_SEF')
         nvar_max = len(names) - var_max_start
         nvar_min = var_max_start

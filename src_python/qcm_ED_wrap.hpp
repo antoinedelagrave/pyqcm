@@ -98,6 +98,7 @@ const char *Green_function_average_help =
     R"(
 arguments:
 1. label of model_instance (optional, default=0)
+2. True for the spin down sector (optional, default=False)
 returns:
 the average of c^\dagger_i c_j (matrix)
 )";
@@ -325,7 +326,9 @@ const char *hopping_matrix_help =
 Computes the hopping matrix of the model
 arguments:
 1. True for the spin down sector (optional)
-2. label of model_instance (optional, default=0)
+2. True to include the bath diagonal contribution (optional, default=False)
+3. label of model_instance (optional, default=0)
+4. True to return the full (sites + bath) matrix via hopping_matrix_full (optional, default=False)
 returns:
 The hopping matrix
 )";

@@ -193,7 +193,7 @@ static PyObject *Berry_curvature_python(PyObject *self, PyObject *args) {
   PyArrayObject *k1_pyobj = nullptr;
   PyArrayObject *k2_pyobj = nullptr;
   int nk;
-  int dir;
+  int dir = 3;
 
   try {
     if (!PyArg_ParseTuple(args, "OOi|ipii", &k1_pyobj, &k2_pyobj, &nk, &orb,

@@ -1,5 +1,11 @@
 #ifndef lattice_hybrid_h
 #define lattice_hybrid_h
+
+/**
+ * @file lattice_hybrid.hpp
+ * @brief Declaration of the lattice_hybrid struct (external hybridization function).
+ */
+
 #include <iostream>
 
 #include <complex>
@@ -10,6 +16,7 @@
 
 using namespace std;
 
+//! External hybridization function loaded from an HDF5 file (frequencies, k-points, mixing).
 struct lattice_hybrid {
   vector<double> w; //!< array of frequencies (along the imaginary axis)
   vector<double> weight; //!< weight of each frequency in an integral over frequencies

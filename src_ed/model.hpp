@@ -1,6 +1,11 @@
 #ifndef model_h
 #define model_h
 
+/**
+ * @file model.hpp
+ * @brief Declaration of the cluster model struct (parameter-independent ED model definition).
+ */
+
 #include <map>
 #include <mutex>
 #include <set>

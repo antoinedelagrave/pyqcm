@@ -1,3 +1,7 @@
+/**
+ * @file continued_fraction_set.cpp
+ * @brief Implementation of continued_fraction_set (Green function from per-irrep CF blocks).
+ */
 #include "continued_fraction_set.hpp"
 #include "hdf5_io.hpp"
 

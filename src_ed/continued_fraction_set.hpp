@@ -1,6 +1,11 @@
 #ifndef continued_fraction_set_h
 #define continued_fraction_set_h
 
+/**
+ * @file continued_fraction_set.hpp
+ * @brief Declaration of continued_fraction_set (set of scalar Jacobi CFs forming the GF).
+ */
+
 #include "Green_function_set.hpp"
 #include "continued_fraction.hpp"
 

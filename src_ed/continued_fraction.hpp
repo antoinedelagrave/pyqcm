@@ -5,6 +5,11 @@
 #ifndef continued_fraction_h
 #define continued_fraction_h
 
+/**
+ * @file continued_fraction.hpp
+ * @brief Declaration of the continued_fraction struct (scalar Jacobi continued fraction).
+ */
+
 #include <cstdio>
 
 #include "block_matrix.hpp"

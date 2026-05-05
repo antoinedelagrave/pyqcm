@@ -1,3 +1,7 @@
+/**
+ * @file model.cpp
+ * @brief Implementation of the model class (cluster model definition and basis provision).
+ */
 #include "model.hpp"
 #include "Operators/Hermitian_operator.hpp"
 #include <fstream>

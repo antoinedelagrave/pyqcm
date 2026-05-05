@@ -1,6 +1,11 @@
 #ifndef qcm_ED_h
 #define qcm_ED_h
 
+/**
+ * @file qcm_ED.hpp
+ * @brief Public C++ API of the ED solver (namespace ED): models, instances, Green functions.
+ */
+
 #include <iostream>
 #include <string>
 #include <vector>

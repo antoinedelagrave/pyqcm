@@ -6,6 +6,11 @@
 //  Copyright © 2016 David Sénéchal. All rights reserved.
 //
 
+/**
+ * @file symmetry_group.cpp
+ * @brief Implementation of the symmetry_group class (Abelian point group of clusters).
+ */
+
 #include "symmetry_group.hpp"
 	
 /**

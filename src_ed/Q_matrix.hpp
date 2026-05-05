@@ -1,6 +1,11 @@
 #ifndef Q_matrix_h
 #define Q_matrix_h
 
+/**
+ * @file Q_matrix.hpp
+ * @brief Definition of the Q_matrix template (Lehmann representation of a Green function block).
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <cstdio>

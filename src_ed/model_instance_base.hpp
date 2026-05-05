@@ -1,6 +1,11 @@
 #ifndef model_instance_base_h
 #define model_instance_base_h
 
+/**
+ * @file model_instance_base.hpp
+ * @brief Abstract base class model_instance_base for ED model instances.
+ */
+
 #include "model.hpp"
 #include "Green_function_set.hpp"
 #include "hdf5_io.hpp"

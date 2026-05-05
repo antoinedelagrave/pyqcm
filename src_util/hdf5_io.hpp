@@ -2,6 +2,11 @@
 #define hdf5_io_h
 
 /**
+ * @file hdf5_io.hpp
+ * @brief Utility helpers for reading/writing common qcm_wed types to HDF5 groups.
+ */
+
+/**
  hdf5_io.hpp
  Utility helpers for reading/writing common qcm_wed types to HDF5 groups.
  Uses the HDF5 C++ API (H5Cpp.h).

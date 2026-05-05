@@ -1,6 +1,11 @@
 #ifndef index_pair_h
 #define index_pair_h
 
+/**
+ * @file index_pair.hpp
+ * @brief Definition of the index_pair struct (row/column locator for matrix elements).
+ */
+
 #include <iostream>
 
 using namespace std;

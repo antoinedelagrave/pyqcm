@@ -1,6 +1,11 @@
 #ifndef sparse_matrix_h
 #define sparse_matrix_h
 
+/**
+ * @file sparse_matrix.hpp
+ * @brief Definition of the sparse_matrix template (element-enumeration sparse storage).
+ */
+
 #include "index_pair.hpp"
 #include <map>
 #include <string>

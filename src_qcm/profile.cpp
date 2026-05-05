@@ -1,3 +1,7 @@
+/**
+ * @file profile.cpp
+ * @brief Computation of site and bond density/correlation profiles.
+ */
 #include "global_parameter.hpp"
 #include "lattice_model_instance.hpp"
 #include "QCM.hpp"

@@ -1,6 +1,11 @@
 #ifndef Q_matrix_set_h
 #define Q_matrix_set_h
 
+/**
+ * @file Q_matrix_set.hpp
+ * @brief Definition of the Q_matrix_set template (Lehmann form of the full Green function).
+ */
+
 #include "Green_function_set.hpp"
 #include "Q_matrix.hpp"
 

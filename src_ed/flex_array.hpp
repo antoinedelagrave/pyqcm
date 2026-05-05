@@ -1,6 +1,11 @@
 #ifndef flex_array_h
 #define flex_array_h
 
+/**
+ * @file flex_array.hpp
+ * @brief Definition of the flex_array template (growable linked-segment array).
+ */
+
 #include <iostream>
 #include <cstdio>
 #include <cstring>

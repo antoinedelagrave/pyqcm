@@ -1,6 +1,11 @@
 #ifndef Green_function_hpp
 #define Green_function_hpp
 
+/**
+ * @file Green_function.hpp
+ * @brief Definitions of the Green_function and Green_function_k structs.
+ */
+
 #include "vector3D.hpp"
 #include "block_matrix.hpp"
 

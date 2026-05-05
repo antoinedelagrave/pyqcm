@@ -1,6 +1,11 @@
 #ifndef latticeOperator_h
 #define latticeOperator_h
 
+/**
+ * @file lattice_operator.hpp
+ * @brief Declaration of the lattice_operator struct (terms in the lattice Hamiltonian).
+ */
+
 #include <iomanip>
 #include <vector>
 #include <map>

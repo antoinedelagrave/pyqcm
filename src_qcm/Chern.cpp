@@ -1,3 +1,7 @@
+/**
+ * @file Chern.cpp
+ * @brief Computation of Chern numbers, Berry curvature and related topological quantities.
+ */
 #include <iostream>
 #include <fstream>
 

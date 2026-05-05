@@ -1,3 +1,7 @@
+/**
+ * @file binary_state.cpp
+ * @brief Implementation of binary_state operations (one-body and pair creation/annihilation).
+ */
 #include <vector>
 #include <iostream>
 

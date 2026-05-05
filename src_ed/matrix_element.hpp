@@ -1,6 +1,11 @@
 #ifndef matrix_element_h
 #define matrix_element_h
 
+/**
+ * @file matrix_element.hpp
+ * @brief Definitions of the matrix_element template and diagonal_matrix_element struct.
+ */
+
 #include <iostream>
 #include <string>
 

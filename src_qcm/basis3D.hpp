@@ -1,6 +1,11 @@
 #ifndef basis3D_h
 #define basis3D_h
 
+/**
+ * @file basis3D.hpp
+ * @brief Declaration of the basis3D struct (3D vector basis with dual/inverse).
+ */
+
 #include <iostream>
 
 #include "vector3D.hpp"

@@ -2,6 +2,8 @@ sphinx
 myst-parser
 furo
 sphinx-copybutton
+breathe
+exhale
 numpy>=2
 matplotlib
 scipy

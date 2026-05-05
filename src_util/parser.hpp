@@ -1,6 +1,11 @@
 #ifndef parser_h
 #define parser_h
 
+/**
+ * @file parser.hpp
+ * @brief Declarations of input-parsing helpers, error utilities and conversion templates.
+ */
+
 #include <iostream>
 #include <vector>
 #include <string>

@@ -1,6 +1,11 @@
 #ifndef BinaryState_h
 #define BinaryState_h
 
+/**
+ * @file binary_state.hpp
+ * @brief Definition of the binary_state struct (bitmask representation of basis states).
+ */
+
 #include <cstdio>
 #include <string>
 #include <map>

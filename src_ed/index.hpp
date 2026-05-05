@@ -1,6 +1,11 @@
 #ifndef qcm_index_h
 #define qcm_index_h
 
+/**
+ * @file index.hpp
+ * @brief Definition of the Index struct (multi-dimensional index labelling).
+ */
+
 #include <iostream>
 
 #include "vector_num.hpp"

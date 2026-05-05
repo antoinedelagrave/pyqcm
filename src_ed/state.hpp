@@ -1,6 +1,11 @@
 #ifndef state_h
 #define state_h
 
+/**
+ * @file state.hpp
+ * @brief Definition of the state template (eigenstate plus its Green-function representations).
+ */
+
 #include <cstdio>
 
 #include "sector.hpp"

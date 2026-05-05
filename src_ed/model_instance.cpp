@@ -1,3 +1,7 @@
+/**
+ * @file model_instance.cpp
+ * @brief Implementation of model_instance (Green function construction via CF/Q/MCF).
+ */
 #ifdef _OPENMP
   #include <omp.h>
 #endif

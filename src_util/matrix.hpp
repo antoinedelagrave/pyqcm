@@ -1,5 +1,11 @@
 #ifndef matrix_h
 #define matrix_h
+
+/**
+ * @file matrix.hpp
+ * @brief Definition of the matrix template (column-major dense matrix).
+ */
+
 #include <iostream>
 
 #include <complex>

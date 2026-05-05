@@ -1,6 +1,11 @@
 #ifndef fraction_h
 #define fraction_h
 
+/**
+ * @file fraction.hpp
+ * @brief Definition of the fraction struct (simple integer fractions for pretty printing).
+ */
+
 //! simple fractions
 /**
  This is only used in the pretty printing of the basis, for debugging purposes.

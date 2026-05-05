@@ -1,6 +1,11 @@
 #ifndef Green_function_set_h
 #define Green_function_set_h
 
+/**
+ * @file Green_function_set.hpp
+ * @brief Abstract base class Green_function_set for cluster Green-function representations.
+ */
+
 #include <memory>
 
 #include "block_matrix.hpp"

@@ -1,3 +1,7 @@
+/**
+ * @file sector.cpp
+ * @brief Comparison operators for the sector struct.
+ */
 #include "sector.hpp"
 
 bool operator!=(const sector &S1, const sector &S2){

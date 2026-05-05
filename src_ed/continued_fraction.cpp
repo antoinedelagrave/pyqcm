@@ -1,3 +1,7 @@
+/**
+ * @file continued_fraction.cpp
+ * @brief Implementation of the scalar Jacobi continued_fraction class.
+ */
 #include "continued_fraction.hpp"
 
 /** default constructor

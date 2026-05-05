@@ -1,6 +1,11 @@
 #ifndef sector_h
 #define sector_h
 
+/**
+ * @file sector.hpp
+ * @brief Definition of the sector struct and HS_mixing namespace (Hilbert-space sectors).
+ */
+
 #include <cstring>
 #include "parser.hpp"
 

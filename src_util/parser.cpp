@@ -1,3 +1,7 @@
+/**
+ * @file parser.cpp
+ * @brief Implementation of input-stream parsing helpers and qcm error/warning utilities.
+ */
 #include <cstring>
 
 #include "parser.hpp"

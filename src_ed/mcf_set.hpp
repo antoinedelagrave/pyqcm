@@ -1,6 +1,11 @@
 #ifndef mcf_set_h
 #define mcf_set_h
 
+/**
+ * @file mcf_set.hpp
+ * @brief Definition of the mcf_set template (set of matrix-valued continued fractions).
+ */
+
 #include "Green_function_set.hpp"
 #include "matrix_continued_fraction.hpp"
 #include "global_parameter.hpp"

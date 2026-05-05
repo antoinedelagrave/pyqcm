@@ -1,3 +1,7 @@
+/**
+ * @file VDVH_kernel.cpp
+ * @brief Implementation of V D V^H kernels (naive and AVX2) used by Q_matrix.
+ */
 #include <VDVH_kernel.hpp>
 #include <vector>
 #include <cstring>

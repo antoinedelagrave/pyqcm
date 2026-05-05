@@ -1,3 +1,7 @@
+/**
+ * @file lattice_operator.cpp
+ * @brief Implementation of the lattice_operator class (Hamiltonian terms).
+ */
 #include "lattice_operator.hpp"
 #include "lattice_model.hpp"
 

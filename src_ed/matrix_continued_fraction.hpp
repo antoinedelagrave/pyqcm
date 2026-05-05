@@ -1,6 +1,11 @@
 #ifndef matrix_continued_fraction_h
 #define matrix_continued_fraction_h
 
+/**
+ * @file matrix_continued_fraction.hpp
+ * @brief Definition of the matrix_continued_fraction template (block Lanczos MCF).
+ */
+
 /*
  matrix_continued_fraction.hpp
 

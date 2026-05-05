@@ -1,3 +1,7 @@
+/**
+ * @file average.cpp
+ * @brief Computation of lattice expectation values of operators.
+ */
 #include <fstream>
 #include "lattice_model_instance.hpp"
 #include "integrate.hpp"

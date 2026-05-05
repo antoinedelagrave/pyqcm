@@ -1,3 +1,7 @@
+/**
+ * @file ED_global_parameter.cpp
+ * @brief Storage and accessors for global parameters used by the ED solver.
+ */
 #include <fstream>
 
 #include "global_parameter.hpp"

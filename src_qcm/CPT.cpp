@@ -1,3 +1,7 @@
+/**
+ * @file CPT.cpp
+ * @brief Implementation of cluster perturbation theory (CPT) Green-function methods.
+ */
 #include "lattice_model_instance.hpp"
 #include "matrix_continued_fraction.hpp"
 

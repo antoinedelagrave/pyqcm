@@ -1,6 +1,11 @@
 #ifndef lattice_matrix_element_h
 #define lattice_matrix_element_h
 
+/**
+ * @file lattice_matrix_element.hpp
+ * @brief Definitions of lattice_matrix_element and related index/GF element structs.
+ */
+
 #include "types.hpp"
 
 using namespace std;

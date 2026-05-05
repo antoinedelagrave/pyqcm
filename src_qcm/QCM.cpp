@@ -5,6 +5,12 @@
 //  Created by David Sénéchal on 16-11-22.
 //  Copyright © 2016 David Sénéchal. All rights reserved.
 //
+
+/**
+ * @file QCM.cpp
+ * @brief Implementation of the public QCM-namespace interface.
+ */
+
 #include <memory>
 #include <iostream>
 #include <fstream>

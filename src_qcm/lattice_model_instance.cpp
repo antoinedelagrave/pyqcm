@@ -1,3 +1,7 @@
+/**
+ * @file lattice_model_instance.cpp
+ * @brief Implementation of lattice_model_instance (parameter-bound model instance).
+ */
 #include <iomanip>
 #include <fstream>
 

@@ -1,6 +1,11 @@
 #ifndef lattice_model_instance_hpp
 #define lattice_model_instance_hpp
 
+/**
+ * @file lattice_model_instance.hpp
+ * @brief Declaration of lattice_model_instance (parameter-bound model instance).
+ */
+
 #include <array>
 #include "lattice_model.hpp"
 #include "block_matrix.hpp"

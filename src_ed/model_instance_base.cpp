@@ -1,3 +1,7 @@
+/**
+ * @file model_instance_base.cpp
+ * @brief Implementation of model_instance_base (mixing setup, GF format selection).
+ */
 #include <fstream>
 #include "model_instance_base.hpp"
 #include "Operators/Hermitian_operator.hpp"

@@ -1,3 +1,7 @@
+/**
+ * @file global_parameter.cpp
+ * @brief Initialization and printing of QCM global parameters and options.
+ */
 #include <cstring>
 #include <fstream>
 

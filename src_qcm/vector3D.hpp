@@ -1,6 +1,11 @@
 #ifndef vector3D_h
 #define vector3D_h
 
+/**
+ * @file vector3D.hpp
+ * @brief Declaration of the vector3D template (3D vectors with arithmetic and I/O).
+ */
+
 #include <ostream>
 #include <istream>
 #include <iomanip>

@@ -1,6 +1,11 @@
 #ifndef lattice_model_hpp
 #define lattice_model_hpp
 
+/**
+ * @file lattice_model.hpp
+ * @brief Declaration of the lattice_model struct describing the lattice Hamiltonian.
+ */
+
 #include <string>
 #include <map>
 #include <memory>

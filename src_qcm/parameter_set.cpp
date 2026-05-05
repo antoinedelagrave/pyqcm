@@ -1,3 +1,7 @@
+/**
+ * @file parameter_set.cpp
+ * @brief Implementation of parameter and parameter_set (model parameters and dependencies).
+ */
 #include <fstream>
 #include <set>
 

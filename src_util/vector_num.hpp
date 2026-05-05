@@ -1,6 +1,11 @@
 #ifndef vector_num_h
 #define vector_num_h
 
+/**
+ * @file vector_num.hpp
+ * @brief Numerical operations on std::vector (BLAS-backed dot, axpy, norms, etc.).
+ */
+
 #include <cstring>
 #include <cstdlib>
 #include <vector>

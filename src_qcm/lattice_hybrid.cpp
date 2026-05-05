@@ -1,3 +1,7 @@
+/**
+ * @file lattice_hybrid.cpp
+ * @brief Implementation of lattice_hybrid: load external hybridization from HDF5.
+ */
 #include <H5Cpp.h>
 #include "lattice_hybrid.hpp"
 

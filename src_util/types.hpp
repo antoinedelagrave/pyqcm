@@ -1,6 +1,10 @@
 #ifndef types_h
 #define types_h
 
+/**
+ * @file types.hpp
+ * @brief Common scalar typedefs and helpers (Complex, conjugate, fold_type, run_statistics).
+ */
 
 #include <complex>
 

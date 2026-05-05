@@ -6,6 +6,11 @@
 //  Copyright © 2016 David Sénéchal. All rights reserved.
 //
 
+/**
+ * @file lattice_model.cpp
+ * @brief Implementation of the lattice_model class (model setup and consolidation).
+ */
+
 #include <iostream>
 #include <fstream>
 

@@ -1,6 +1,10 @@
 #ifndef symmetric_orbital_h
 #define symmetric_orbital_h
 
+/**
+ * @file symmetric_orbital.hpp
+ * @brief Definition of the symmetric_orbital struct (orbital labelled by irrep/spin/Nambu).
+ */
 
 #include <vector>
 

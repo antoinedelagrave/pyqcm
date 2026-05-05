@@ -1,3 +1,7 @@
+/**
+ * @file hdf5_io.cpp
+ * @brief Implementation of HDF5 I/O helpers for qcm_wed types.
+ */
 #include "hdf5_io.hpp"
 
 // ---------------------------------------------------------------------------

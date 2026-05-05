@@ -25,6 +25,7 @@ pyqcm : documentation (|version|)
    other_functions
    options
    parallel
+   cpp_api/library_root
 
 
 Indices and tables

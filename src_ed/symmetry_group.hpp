@@ -1,6 +1,11 @@
 #ifndef symmetry_group_h
 #define symmetry_group_h
 
+/**
+ * @file symmetry_group.hpp
+ * @brief Declaration of the symmetry_group struct (Abelian cluster point group).
+ */
+
 #include <iostream>
 #include <vector>
 #include <typeinfo>

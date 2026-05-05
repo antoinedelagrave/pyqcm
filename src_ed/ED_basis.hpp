@@ -1,6 +1,11 @@
 #ifndef ED_basis_h
 #define ED_basis_h
 
+/**
+ * @file ED_basis.hpp
+ * @brief Declarations of ED_basis and derived basis classes for Hilbert-space sectors.
+ */
+
 #include <cstdio>
 #include <string>
 #include <map>

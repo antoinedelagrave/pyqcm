@@ -1,6 +1,11 @@
 #ifndef parameter_h
 #define parameter_h
 
+/**
+ * @file parameter_set.hpp
+ * @brief Declarations of the parameter and parameter_set structs.
+ */
+
 #include <string>
 #include <set>
 #include <map>

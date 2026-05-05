@@ -1,6 +1,11 @@
 #ifndef block_matrix_h
 #define block_matrix_h
 
+/**
+ * @file block_matrix.hpp
+ * @brief Definition of the block_matrix template (block-diagonal matrix storage).
+ */
+
 #include <iostream>
 #include <vector>
 

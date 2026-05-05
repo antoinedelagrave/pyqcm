@@ -1,6 +1,11 @@
 #ifndef lattice_h
 #define lattice_h
 
+/**
+ * @file lattice3D.hpp
+ * @brief Declaration of the lattice3D struct (integer-valued 3D Bravais lattice).
+ */
+
 #include <iostream>
 #include <vector>
 

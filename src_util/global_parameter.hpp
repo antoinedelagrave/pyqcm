@@ -1,6 +1,11 @@
 #ifndef global_parameter_h
 #define global_parameter_h
 
+/**
+ * @file global_parameter.hpp
+ * @brief Declarations of the global_parameter template and accessor functions.
+ */
+
 #include <iostream>
 #include <string>
 #include <vector>

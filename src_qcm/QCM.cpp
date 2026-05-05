@@ -87,10 +87,9 @@ void great_reset(){
 
 
 void erase_lattice_model_instance(size_t label){
-    size_t n_clus = qcm_model->clusters.size();
-    for(size_t i=0; i < n_clus; i++){
-      model_instances.erase(label*n_clus+i);
-      // cout << "cluster instance " << label*n_clus+i << " deleted" << endl;
+    size_t nsys = qcm_model->nsys;
+    for(size_t i=0; i < nsys; i++){
+      model_instances.erase(label*nsys+i);
     }
     lattice_model_instances.erase(label);
 }

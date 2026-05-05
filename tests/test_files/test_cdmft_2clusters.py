@@ -50,4 +50,7 @@ convergence=['self-energy', 'distance']; accur=[1e-4, 1e-5]
 
 varia = ['tb1_1', 'eb1_1', 'tb2_1', 'eb2_1', 'tb1_2', 'eb1_2', 'tb2_2', 'eb2_2']
 
-sol = CDMFT(model, varia=varia, accur=accur, convergence=convergence, method='PRAXIS', maxiter=64, depth=1, iteration='fixed_point')
+def test_post_min(I):
+	print("coucou ! " , I.parameters()['U'])
+
+sol = CDMFT(model, varia=varia, accur=accur, convergence=convergence, method='PRAXIS', maxiter=64, depth=1, iteration='fixed_point', post_min=test_post_min)

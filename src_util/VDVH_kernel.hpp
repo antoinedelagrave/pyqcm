@@ -1,6 +1,11 @@
 #ifndef VDVH_kernel_h
 #define VDVH_kernel_h
 
+/**
+ * @file VDVH_kernel.hpp
+ * @brief Declarations of V D V^H kernels (naive and optional AVX2).
+ */
+
 #include "types.hpp"
 #include <vector>
 

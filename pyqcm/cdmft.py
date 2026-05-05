@@ -178,6 +178,7 @@ class CDMFT:
     :param function pre_host: function to be executed before computing the host. Takes a model instance as argument
     :param float max_value: maximum absolute value of variational parameters
     :param bias_field bias: bias field (for spontaneous symmetry breaking) that decreases with iterations
+    :param function post_min: function to be executed before writing to the progress file
     :ivar lattice_model model: (unique) model on which the computation is based
     :ivar ndarray Hyb: host function
     :ivar ndarray Hyb_down: host function for the spin down component in the case of mixing=4
@@ -214,6 +215,7 @@ class CDMFT:
         pre_host=None,
         max_value=100,
         bias = None,
+        post_min = None
     ):
 
         self.accur_bath = accur_bath
@@ -238,6 +240,7 @@ class CDMFT:
         self.sigma_down = None  # internal : self-energy (spin downs, when mixing=4)
         self.varia = varia
         self.bias = bias
+        self.post_min = post_min
 
         if pyqcm.is_sequence(accur) == False:
             accur = (accur,)
@@ -571,6 +574,8 @@ class CDMFT:
         # --------------------------------------------------------------------------------
         t3 = timeit.default_timer()
         time_MIN = t3 - t2
+
+        if self.post_min != None: self.post_min(self.I)
 
         # writing the parameters in a progress file
         self.I.props["opt_method"] = self.method

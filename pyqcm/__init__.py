@@ -2320,8 +2320,8 @@ def wavevector_path(n=32, shape="triangle"):
         return __wavevector_line(shape[0], shape[1], n)
 
     elif shape == "line":
-        k = np.zeros((2 * n + 1, 3))
-        for i in range(2 * n + 1):
+        k = np.zeros((2 * n + 2, 3))
+        for i in range(2 * n + 2):
             k[i, 0] = (i - n) / n
         ticks = np.array([0, n, 2 * n + 1])
         tick_labels = [r"$-\pi$", r"$0$", r"$\pi$"]

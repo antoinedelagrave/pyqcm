@@ -801,7 +801,7 @@ class frequency_grid:
     :ivar name: the name of the frequency array scheme chosen (for reference)
     """
 
-    def __init__(self, grid_type = 'legendre', specs=(1,10,5,10,5), opt=""):
+    def __init__(self, grid_type = 'legendre', specs=(1,10,4,10,4), opt=""):
         if grid_type == 'legendre' or grid_type == 'Legendre':
             self.grid_type = 'legendre'
             w1, w2, n1, n2, n3 = specs

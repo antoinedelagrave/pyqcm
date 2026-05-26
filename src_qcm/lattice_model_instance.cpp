@@ -197,11 +197,16 @@ matrix<complex<double>> lattice_model_instance::cluster_Green_function_remix(siz
 {
   if(model->clusters[c].nsys == 1) return ED::Green_function(w, spin_down, model->nsys*label + model->clusters[c].sys_start, blocks);
   else{
-    matrix<Complex> g(model->GF_dims[c]);
+    // g is sized from the first system's GF (cluster-mixing dim, which may be
+    // smaller than GF_dims[c] when the lattice has anomalous/spin-flip mixing
+    // beyond what the cluster itself carries — the upgrade to lattice mixing
+    // happens later in cluster_Green_function()).
+    matrix<Complex> g;
     for(int s=0; s<model->clusters[c].nsys; s++){
       // ATTENTION : ICI ON DEVRAIT MOYENNER AVEC DES POIDS QUI DÉPENDENT de K
       auto gs = ED::Green_function(w, spin_down, model->nsys*label + s + model->clusters[c].sys_start, blocks);
       gs.inverse();
+      if(s == 0) g.set_size(gs.r, gs.c);
       g.v += gs.v;
     }
     g.v *= 1.0/model->clusters[c].nsys;
@@ -266,10 +271,13 @@ matrix<complex<double>> lattice_model_instance::cluster_self_energy_remix(size_t
 {
   if(model->clusters[c].nsys == 1) return ED::self_energy(w, spin_down, model->nsys*label + model->clusters[c].sys_start);
   else{
-    matrix<Complex> g(model->GF_dims[c]);
+    // g is sized from the first system's self-energy (cluster-mixing dim).
+    matrix<Complex> g;
     for(int s=0; s<model->clusters[c].nsys; s++){
       // ATTENTION : ICI ON DEVRAIT MOYENNER AVEC DES POIDS QUI DÉPENDENT de K
-      g += ED::self_energy(w, spin_down, model->nsys*label + s + model->clusters[c].sys_start);
+      auto gs = ED::self_energy(w, spin_down, model->nsys*label + s + model->clusters[c].sys_start);
+      if(s == 0) g.set_size(gs.r, gs.c);
+      g += gs;
     }
     g.v *= 1.0/model->clusters[c].nsys;
     return g;
@@ -332,10 +340,13 @@ matrix<complex<double>> lattice_model_instance::hybridization_function_remix(siz
 {
   if(model->clusters[c].nsys==1) return ED::hybridization_function(w, spin_down, model->nsys*label + model->clusters[c].sys_start);
   else{
-    matrix<Complex> g(model->GF_dims[c]);
+    // g is sized from the first system's hybridization (cluster-mixing dim).
+    matrix<Complex> g;
     for(int s=0; s<model->clusters[c].nsys; s++){
       // ATTENTION : ICI ON DEVRAIT MOYENNER AVEC DES POIDS QUI DÉPENDENT de K
-      g += ED::hybridization_function(w, spin_down, model->nsys*label + s + model->clusters[c].sys_start);
+      auto gs = ED::hybridization_function(w, spin_down, model->nsys*label + s + model->clusters[c].sys_start);
+      if(s == 0) g.set_size(gs.r, gs.c);
+      g += gs;
     }
     g.v *= 1.0/model->clusters[c].nsys;
     return g;

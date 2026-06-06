@@ -6,12 +6,13 @@
 
 #include "numpy/arrayobject.h"
 #include <Python.h>
-// #include "ndarrayobject.h"
 #include "common_Py.hpp"
 #include "float.h"
 #include "model_instance.hpp"
 #include "parser.hpp"
 #include "qcm_ED.hpp"
+
+#include "qcm_nb.hpp"
 
 extern map<string, shared_ptr<model>> models;
 extern map<size_t, shared_ptr<model_instance_base>> model_instances;
@@ -19,1172 +20,365 @@ extern map<size_t, shared_ptr<model_instance_base>> model_instances;
 static PyObject *qcm_ED_Error;
 
 //==============================================================================
-// Wrappers
+// Registration of the QCM_ED part of the `qcm` module.
 //==============================================================================
-const char *ED_complex_HS_help =
-    R"(
-return 1 if the Hilbert space is complex, 0 if it is real
-arguments:
-1. label of model_instance (optional, default=0)
-)";
-//------------------------------------------------------------------------------
-static PyObject *ED_complex_HS_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  int result = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to hopping_matrix (python)");
-    result = (int)ED::complex_HS((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("i", result);
-}
-//==============================================================================
-const char *density_matrix_help =
-    R"(
-computes the density_matrix from the ground state
-arguments:
-1. list of sites indices defining subsystem A (starting from 0)
-2. label of model instance
-returns:
-the density matrix and the basis used
-)";
-//------------------------------------------------------------------------------
-static PyObject *density_matrix_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  PyArrayObject *sites;
-  npy_intp dims[2];
-  pair<matrix<complex<double>>, vector<uint64_t>> g;
-
-  try {
-    if (!PyArg_ParseTuple(args, "O|i", &sites, &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to density_matrix (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  try {
-    vector<int> sitesI = intarray_from_Py(sites);
-    g = ED::density_matrix(sitesI, label);
-
-    dims[0] = dims[1] = g.first.r;
-
-  } catch (const std::exception &e) {
-    cerr << e.what() << "(in density_matrix)" << endl;
-    qcm_ED_catch(e); return nullptr;
-  }
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.first.data(),
-         g.first.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-
-  PyObject *out2 = PyArray_SimpleNew(1, dims, NPY_UINT64);
-  memcpy(PyArray_DATA((PyArrayObject *)out2), g.second.data(),
-         g.second.size() * sizeof(uint64_t));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out2, NPY_ARRAY_OWNDATA);
-
-  PyObject *out3 = PyTuple_New(2);
-  PyTuple_SetItem(out3, 0, out);
-  PyTuple_SetItem(out3, 1, out2);
-
-  return out3;
-}
-//==============================================================================
-const char *Green_function_average_help =
-    R"(
-arguments:
-1. label of model_instance (optional, default=0)
-2. True for the spin down sector (optional, default=False)
-returns:
-the average of c^\dagger_i c_j (matrix)
-)";
-//------------------------------------------------------------------------------
-static PyObject *Green_function_average_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  int spin_down = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|ii", &label, &spin_down))
-      qcm_ED_throw("failed to read parameters in call to "
-                   "Green_function_average (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  matrix<complex<double>> g;
-  try {
-    g = ED::Green_function_average((bool)spin_down, (size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  dims[0] = dims[1] = g.r;
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-//==============================================================================
-const char *Green_function_density_help =
-    R"(
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-the density of the cluster, computed from the trace of the Green function average
-)";
-//------------------------------------------------------------------------------
-static PyObject *Green_function_density_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  double dens = 0.0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw("failed to read parameters in call to "
-                   "Green_function_average (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  try {
-    dens = ED::Green_function_density((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  return Py_BuildValue("d", dens);
-}
-//==============================================================================
-const char *Green_function_dimensionC_help =
-    R"(
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-the dimension of the Green function matrix (int)
-)";
-//------------------------------------------------------------------------------
-static PyObject *Green_function_dimensionC_python(PyObject *self,
-                                                  PyObject *args) {
-  int label = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw("failed to read parameters in call to "
-                   "Green_function_dimension (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  size_t d;
-  try {
-    d = ED::Green_function_dimension((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("i", d);
-}
-//==============================================================================
-const char *Green_function_solveC_help =
-    R"(
-
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-)";
-//------------------------------------------------------------------------------
-static PyObject *Green_function_solveC_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to Green_function_solve (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  try {
-    ED::Green_function_solve((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-
-//==============================================================================
-const char *Green_function_help =
-    R"(
-computes the Green function matrix at a given complex frequency
-arguments:
-1. frequency (complex)
-2. True for the spin down sector (optional)
-3. label of model_instance (optional, default=0)
-returns:
-Green function matrix
-)";
-//------------------------------------------------------------------------------
-static PyObject *Green_function_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  int spin_down = 0;
-  int blocks = 0;
-  complex<double> z;
-
-  try {
-    if (!PyArg_ParseTuple(args, "D|iii", &z, &spin_down, &label, &blocks))
-      qcm_ED_throw(
-          "failed to read parameters in call to Green_function (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  vector<complex<double>> g;
-  size_t d;
-  try {
-    g = ED::Green_function(z, (bool)spin_down, (size_t)label, (bool)blocks).v;
-    d = ED::Green_function_dimension((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  dims[0] = dims[1] = d;
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-
-//==============================================================================
-const char *cluster_averages_help =
-    R"(
-computes the ground state averages of the operators defined in the model
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-A dictionnary string : tuple(average, variance)
-)";
-//------------------------------------------------------------------------------
-static PyObject *cluster_averages_python(PyObject *self, PyObject *args) {
-  vector<tuple<string, double, double>> ave;
-  int label = 0;
-
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to cluster_averages (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  try {
-    ave = ED::cluster_averages((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  PyObject *lst = PyDict_New();
-  for (auto &x : ave) {
-    PyDict_SetItem(lst, Py_BuildValue("s", get<0>(x).c_str()),
-                   Py_BuildValue("dd", get<1>(x), get<2>(x)));
-  }
-  return lst;
-}
-//==============================================================================
-const char *ground_state_solve_help =
-    R"(
-computes the ground state of the model
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-the ground state energy and the ground state Hilbert space sector
-)";
-//------------------------------------------------------------------------------
-static PyObject *ground_state_solve_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to ground_state_solve (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  pair<double, string> result;
-  try {
-    result = ED::ground_state_solve((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  return Py_BuildValue("ds#", result.first, result.second.c_str(),
-                       result.second.size());
-}
-//==============================================================================
-const char *hopping_matrix_help =
-    R"(
-Computes the hopping matrix of the model
-arguments:
-1. True for the spin down sector (optional)
-2. True to include the bath diagonal contribution (optional, default=False)
-3. label of model_instance (optional, default=0)
-4. True to return the full (sites + bath) matrix via hopping_matrix_full (optional, default=False)
-returns:
-The hopping matrix
-)";
-//------------------------------------------------------------------------------
-static PyObject *hopping_matrix_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  int spin_down = 0;
-  int full = 0;
-  int diag = 0;
-
-  try {
-    if (!PyArg_ParseTuple(args, "|iiii", &spin_down, &diag, &label, &full))
-      qcm_ED_throw(
-          "failed to read parameters in call to hopping_matrix (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  size_t d;
-  vector<complex<double>> g;
-  if (full) {
-    g = ED::hopping_matrix_full((bool)spin_down, (bool)diag, (size_t)label).v;
-    d = (size_t)sqrt(g.size());
-  } else {
-    g = ED::hopping_matrix((bool)spin_down, (size_t)label).v;
-    try {
-      d = ED::Green_function_dimension((size_t)label);
-    } catch (const std::exception &e) {
-      qcm_ED_catch(e);
-    }
-  }
-
-  npy_intp dims[2];
-  dims[0] = dims[1] = d;
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-//==============================================================================
-const char *interactions_help =
-    R"(
-Computes the hopping matrix of the model
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-The list of density-density interactions
-)";
-//------------------------------------------------------------------------------
-static PyObject *interactions_python(PyObject *self, PyObject *args) {
-  int label = 0;
-
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to interactions (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  auto E = ED::interactions((size_t)label);
-  PyObject *lst = PyList_New(E.size());
-  for (size_t i = 0; i < E.size(); i++) {
-    PyObject *elem = PyTuple_New(3);
-    PyTuple_SetItem(elem, 0, Py_BuildValue("i", get<0>(E[i])));
-    PyTuple_SetItem(elem, 1, Py_BuildValue("i", get<1>(E[i])));
-    PyTuple_SetItem(elem, 2, Py_BuildValue("d", get<2>(E[i])));
-    PyList_SET_ITEM(lst, i, elem);
-  }
-
-  return Py_BuildValue("O", lst);
-}
-//==============================================================================
-const char *hybridization_functionC_help =
-    R"(
-Computes the hybridization function (for models with baths)
-arguments:
-1. A complex frequency
-2. True for the spin down sector (optional)
-3. label of model_instance (optional, default=0)
-returns:
-the hybridization matrix
-)";
-//------------------------------------------------------------------------------
-static PyObject *hybridization_functionC_python(PyObject *self,
-                                                PyObject *args) {
-  int label = 0;
-  int spin_down = 0;
-  complex<double> z;
-
-  try {
-    if (!PyArg_ParseTuple(args, "D|ii", &z, &spin_down, &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to hopping_matrix (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  vector<complex<double>> g =
-      ED::hybridization_function(z, (bool)spin_down, (size_t)label).v;
-  size_t d;
-  try {
-    d = ED::Green_function_dimension((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  dims[0] = dims[1] = d;
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-//==============================================================================
-const char *matrix_elements_help =
-    R"(
-returns the list of matrix elements that defines an operator
-arguments:
-1. name of the model
-2. name of the operator
-returns:
-a list of tuples (int, int, complex)
-
-)";
-//------------------------------------------------------------------------------
-static PyObject *matrix_elements_python(PyObject *self, PyObject *args) {
-  char *S1 = nullptr;
-  char *S2 = nullptr;
-  try {
-    if (!PyArg_ParseTuple(args, "ss", &S1, &S2))
-      qcm_ED_throw(
-          "failed to read parameters in call to hopping_matrix (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  auto ET = ED::matrix_elements(string(S1), string(S2));
-  auto E = ET.second;
-  PyObject *lst = PyTuple_New(E.size());
-  for (size_t i = 0; i < E.size(); i++) {
-    PyObject *elem = PyTuple_New(3);
-    PyTuple_SetItem(elem, 0, Py_BuildValue("i", E[i].r));
-    PyTuple_SetItem(elem, 1, Py_BuildValue("i", E[i].c));
-    PyTuple_SetItem(elem, 2, Py_BuildValue("D", &E[i].v));
-    PyTuple_SET_ITEM(lst, i, elem);
-  }
-  return Py_BuildValue("sO", ET.first.c_str(), lst);
-}
-//==============================================================================
-const char *mixingC_help =
-    R"(
-return the mixing state of the model
-arguments:
-1. label of model_instance (optional, default=0)
-returns:
-an integer code for the mixing. 0 : no mixing, 1 : anomalous, 2 : spin-flip, 3 : anomalous and spin-flip
-)";
-//------------------------------------------------------------------------------
-static PyObject *mixingC_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to hopping_matrix (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  int result = ED::mixing((size_t)label);
-
-  return Py_BuildValue("i", result);
-}
-//==============================================================================
-const char *model_sizeC_help =
-    R"(
-arguments:
-The name of the model
-returns:
-a pair of integers: the number of cluster sites and the number of bath sites
-)";
-//------------------------------------------------------------------------------
-static PyObject *model_sizeC_python(PyObject *self, PyObject *args) {
-  char *S1 = nullptr;
-  try {
-    if (!PyArg_ParseTuple(args, "s", &S1))
-      qcm_ED_throw("failed to read parameters in call to model_size (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  tuple<int, int, int> d;
-  try {
-    d = ED::model_size(string(S1));
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("ii", get<0>(d), get<1>(d));
-}
-//==============================================================================
-const char *new_model_help =
-    R"(
-Initiates a new model (no operators yet)
-arguments:
-1. name to be given to the model
-2. number of cluster sites
-3. number of bath sites
-4. symmetry generators (2D array of ints)
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *new_model_python(PyObject *self, PyObject *args) {
-
-  char *S1 = nullptr;
-  int n_sites = 0;
-  int n_bath = 0;
-  vector<vector<int>> gen;
-  int bath_irrep = 0;
-  PyArrayObject *gen_pyobj = nullptr;
-  try {
-    if (!PyArg_ParseTuple(args, "sii|Oi", &S1, &n_sites, &n_bath, &gen_pyobj,
-                          &bath_irrep))
-      qcm_ED_throw("failed to read parameters in call to new_model (python)");
-    if (gen_pyobj != nullptr)
-      gen = intmatrix_from_Py(gen_pyobj);
-    int n_orb = n_sites + n_bath;
-    for (int j = 0; j < gen.size(); j++) {
-      if (gen[j].size() != n_orb)
-        qcm_ED_throw("generator " + to_string(j + 1) + " should have " +
-                     to_string(n_orb) + " elements");
-      for (int i = 0; i < n_sites; i++)
-        gen[j][i] -= 1;
-      if (bath_irrep == false)
-        for (int i = n_sites; i < n_orb; i++)
-          gen[j][i] -= 1;
-    }
-
-    ED::new_model(string(S1), n_sites, n_bath, gen, bath_irrep);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-//==============================================================================
-const char *new_model_instanceC_help =
-    R"(
-Initiates a new instance of the model
-arguments:
-1. name of the model (cluster)
-2. values of the operators (dict of names:values)
-3. target Hilbert space sectors (string)
-4. label of model_instance (optional, default=0)
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *new_model_instanceC_python(PyObject *self, PyObject *args) {
-  char *name = nullptr;
-  char *sec = nullptr;
-  int label = 0;
-  PyObject *val;
-
-  try {
-    if (!PyArg_ParseTuple(args, "sOs|i", &name, &val, &sec, &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to new_model_instance (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  map<string, double> param;
-  try {
-    param = py_dict_to_map(val);
-  } catch (const std::exception &e) {
-    cerr << e.what() << "(in new_model_instance)" << endl;
-    qcm_ED_catch(e); return nullptr;
-  }
-
-  try {
-    ED::new_model_instance(string(name), param, string(sec), (size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  return Py_BuildValue("");
-}
-//==============================================================================
-const char *new_operator_help =
-    R"(
-creates a new operator from its matrix elements
-arguments:
-1. name of the cluster to which the operator belong
-2. name of the operator
-3. type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z', 'general_interaction')
-4. array of matrix elements (real)
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *new_operator_python(PyObject *self, PyObject *args) {
-  char *name = nullptr;
-  char *op = nullptr;
-  char *type = nullptr;
-
-  vector<matrix_element<double>> elem;
-  PyObject *elem_pyobj;
-
-  try {
-    if (!PyArg_ParseTuple(args, "sssO", &name, &op, &type, &elem_pyobj))
-      qcm_ED_throw(
-          "failed to read parameters in call to new_operator (python)");
-
-    double fac = 1.0;
-    bool check_upper = true;
-    if (strcmp(type, "anomalous") == 0)
-      fac = 0.5; // correction for anomalous operators
-    if (strcmp(type, "general_interaction") == 0)
-      check_upper = false; // correction for anomalous operators
-
-    if (PyArray_Check(elem_pyobj)) {
-      size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
-      elem.resize(nelem);
-      memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
-             nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
-    } else if (PySequence_Check(elem_pyobj)) {
-      size_t n = PySequence_Size(elem_pyobj);
-      elem.assign(n, matrix_element<double>());
-      for (int i = 0; i < n; i++) {
-        PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
-        if (PyTuple_Size(pkey) == 3) {
-          elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
-          elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
-          if ((elem[i].r > elem[i].c) and check_upper)
-            qcm_ED_throw("the first index of element " + to_string<size_t>(i) +
-                         " of argument 4 of 'new_operator' cannot be bigger "
-                         "than the second index");
-          if (elem[i].r == 0 or elem[i].c == 0)
-            qcm_ED_throw("indices in matrix elements of operators are labelled "
-                         "starting at 1, not at 0.");
-          elem[i].r--;
-          elem[i].c--;
-          elem[i].v = fac * PyFloat_AsDouble(PyTuple_GetItem(pkey, 2));
-        } else {
-          qcm_ED_throw("element " + to_string<size_t>(i) +
-                       " of argument 4 of 'new_operator' should be a 3-tuple");
-        }
-      }
-    } else
-      qcm_ED_throw("argument 4 of new_operator() must be a list or an array");
-
-    ED::new_operator(string(name), string(op), string(type), elem);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-//==============================================================================
-const char *new_operator_complex_help =
-    R"(
-creates a new operator from its matrix elements (complex matrix elements)
-arguments:
-1. name of the cluster to which the operator belong
-2. name of the operator
-3. type of operator ('one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg', 'X', 'Y', 'Z', 'general_interaction')
-4. array of matrix elements (complex)
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *new_operator_complex_python(PyObject *self, PyObject *args) {
-  char *name = nullptr;
-  char *op = nullptr;
-  char *type = nullptr;
-
-  vector<matrix_element<complex<double>>> elem;
-  PyObject *elem_pyobj;
-
-  try {
-    if (!PyArg_ParseTuple(args, "sssO", &name, &op, &type, &elem_pyobj))
-      qcm_ED_throw(
-          "failed to read parameters in call to new_operator (python)");
-
-    double fac = 1.0;
-    if (strcmp(type, "anomalous") == 0)
-      fac = 0.5; // correction for anomalous operators
-
-    if (PyArray_Check(elem_pyobj)) {
-      size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
-      elem.resize(nelem);
-      memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
-             nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
-    } else if (PySequence_Check(elem_pyobj)) {
-      size_t n = PySequence_Size(elem_pyobj);
-      elem.assign(n, matrix_element<complex<double>>());
-      for (int i = 0; i < n; i++) {
-        PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
-        if (PyTuple_Size(pkey) == 3) {
-          elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
-          elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
-          if (elem[i].r > elem[i].c)
-            qcm_ED_throw("the first index of element " + to_string<size_t>(i) +
-                         " of argument 4 of 'new_operator' cannot be bigger "
-                         "than the second index");
-          if (elem[i].r == 0 or elem[i].c == 0)
-            qcm_ED_throw("indices in matrix elements of operators are labelled "
-                         "starting at 1, not at 0.");
-          elem[i].r--;
-          elem[i].c--;
-          Py_complex z = PyComplex_AsCComplex(PyTuple_GetItem(pkey, 2));
-          elem[i].v = {fac * z.real, fac * z.imag};
-        } else {
-          qcm_ED_throw("element " + to_string<size_t>(i) +
-                       " of argument 4 of 'new_operator' should be a 3-tuple");
-        }
-      }
-    } else
-      qcm_ED_throw("argument 4 of new_operator() must be a list or an array");
-
-    ED::new_operator(string(name), string(op), string(type), elem);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-
-//==============================================================================
-const char *parametersC_help =
-    R"(
-returns a dict of the parameters
-arguments:
-1. label of model_instance (optional, default=0)
-returns: a dict of the parameters, the model name
-)";
-//------------------------------------------------------------------------------
-static PyObject *parametersC_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw("failed to read parameters in call to parameters (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  string model_name;
-  map<string, double> M;
-  try {
-    if (model_instances.find(label) == model_instances.end())
-      qcm_ED_throw("The label " + to_string(label) + " is out of range.");
-    M = model_instances.at(label)->value;
-    model_name = model_instances.at(label)->the_model->name;
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  PyObject *lst = PyDict_New();
-  for (auto &x : M) {
-    PyDict_SetItem(lst, Py_BuildValue("s#", x.first.c_str(), x.first.length()),
-                   Py_BuildValue("d", x.second));
-  }
-  return Py_BuildValue("Os", lst, model_name.c_str());
-}
-
-//==============================================================================
-const char *print_models_help =
-    R"(
-prints the model description to the screen
-arguments: None
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *print_models_python(PyObject *self, PyObject *args) {
-
-  try {
-    ED::print_models(cout);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-
-//==============================================================================
-const char *print_graph_help =
-    R"(
-prints a graphiz file for the model specified
-arguments: 
-1. name of the model
-2. vector of positions
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *print_graph_python(PyObject *self, PyObject *args) {
-  char *name = nullptr;
-  PyArrayObject *pos_pyobj = nullptr;
-
-  try {
-    if (!PyArg_ParseTuple(args, "sO", &name, &pos_pyobj))
-      qcm_ED_throw("failed to read parameters in call to print_graph (python)");
-    vector<vector<double>> pos = pos_from_Py(pos_pyobj);
-    auto model_name = string(name);
-    if (models.find(model_name) == models.end())
-      qcm_ED_throw("model " + model_name + " does not exist!");
-    models[model_name]->print_graph(pos);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-
-//==============================================================================
-const char *self_energyC_help =
-    R"(
-computes the self-energy matrix at a given complex frequency
-arguments:
-1. frequency (complex)
-2. True for the spin down sector (optional)
-3. label of model_instance (optional, default=0)
-returns:
-self-energy matrix
-)";
-//------------------------------------------------------------------------------
-static PyObject *self_energyC_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  int spin_down = 0;
-  complex<double> z;
-
-  try {
-    if (!PyArg_ParseTuple(args, "D|ii", &z, &spin_down, &label))
-      qcm_ED_throw("failed to read parameters in call to self_energy (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  vector<complex<double>> g =
-      ED::self_energy(z, (bool)spin_down, (size_t)label).v;
-  size_t d;
-  try {
-    d = ED::Green_function_dimension((size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  dims[0] = dims[1] = d;
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-
-//==============================================================================
-const char *set_global_parameterC_help =
-    R"(
-sets the value of a global parameter
-arguments:
-1. name of the parameter
-2. value (leave out if it is a boolean parameter)
-returns: None
-)";
-//------------------------------------------------------------------------------
-static PyObject *set_global_parameterC_python(PyObject *self, PyObject *args) {
-  char *S1 = nullptr;
-  PyObject *obj = nullptr;
-
-  try {
-    if (!PyArg_ParseTuple(args, "s|O", &S1, &obj))
-      qcm_ED_throw(
-          "failed to read parameters in call to set_global_parameter (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  string name(S1);
-  try {
-    if (obj == nullptr) {
-      set_global_bool(name, true);
-      cout << "global parameter " << name << " set to true" << endl;
-    } else {
-      if (PyLong_Check(obj)) {
-        size_t I = (int)PyLong_AsLong(obj);
-        set_global_int(name, I);
-        cout << "global parameter " << name << " set to " << I << endl;
-      } else if (PyFloat_Check(obj)) {
-        double I = (double)PyFloat_AsDouble(obj);
-        set_global_double(name, I);
-        cout << "global parameter " << name << " set to " << I << endl;
-      } else
-        qcm_ED_throw("unknown type of global_parameter");
-    }
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-
-//==============================================================================
-const char *susceptibility_poles_help =
-    R"(
-computes the dynamic susceptibility of an operator
-arguments:
-1. name of the operator
-2. label of model_instance (optional, default=0)
-returns:
-array of pairs (residue, pole)
-)";
-//------------------------------------------------------------------------------
-static PyObject *susceptibility_poles_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  char *op = nullptr;
-
-  try {
-    if (!PyArg_ParseTuple(args, "s|i", &op, &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to susceptibility_poles (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  vector<pair<double, double>> g;
-  try {
-    g = ED::susceptibility_poles(string(op), (size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  dims[0] = g.size();
-  dims[1] = 2;
-
-  PyObject *out = PyArray_SimpleNew(2, dims, NPY_DOUBLE);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(pair<double, double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-
-//==============================================================================
-const char *susceptibility_help =
-    R"(
-computes the dynamic susceptibility of an operator
-arguments:
-1. name of the operator
-2. array of complex frequencies
-3. label of model_instance (optional, default=0)
-returns:
-array of complex susceptibilities
-)";
-//------------------------------------------------------------------------------
-static PyObject *susceptibility_python(PyObject *self, PyObject *args) {
-  int label = 0;
-  char *op = nullptr;
-  PyArrayObject *w_pyobj = nullptr;
-
-  try {
-    if (!PyArg_ParseTuple(args, "sO|i", &op, &w_pyobj, &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to susceptibility (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  size_t nw = PyArray_DIMS(w_pyobj)[0];
-  vector<complex<double>> w(nw);
-  memcpy(w.data(), PyArray_DATA((PyArrayObject *)w_pyobj),
-         w.size() * sizeof(complex<double>));
-
-  vector<complex<double>> g;
-  try {
-    g = ED::susceptibility(string(op), w, (size_t)label);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[1];
-  dims[0] = nw;
-
-  PyObject *out = PyArray_SimpleNew(1, dims, NPY_COMPLEX128);
-  memcpy(PyArray_DATA((PyArrayObject *)out), g.data(),
-         g.size() * sizeof(complex<double>));
-  PyArray_ENABLEFLAGS((PyArrayObject *)out, NPY_ARRAY_OWNDATA);
-  return out;
-}
-
-//==============================================================================
-const char *print_wavefunction_help =
-    R"{(
-Prints the ground state wavefunction(s) on the screen 
-argument:
-1. label of model_instance (optional, default=0)
-){";
-//------------------------------------------------------------------------------
-static PyObject *print_wavefunction_python(PyObject *self, PyObject *args) {
-  int lab = 0;
-  string out;
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &lab))
-      qcm_ED_throw("failed to read parameters in call to print_model (python)");
-    out = ED::print_wavefunction(lab);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("z#", out.c_str(), out.length());
-}
-
-//==============================================================================
-const char *qmatrix_help =
-    R"{(
-Returns the Lehmann representation of the Green function
-returns a tuple:
-  1. the array of M real eigenvalues, M being the number of poles in the representation
-  2. a rectangular (L x M) matrix (real of complex), L being the dimension of the Green function
-){";
-//------------------------------------------------------------------------------
-static PyObject *qmatrix_python(PyObject *self, PyObject *args) {
-  int label = 0;
-
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw("failed to read parameters in call to qmatrix (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  PyObject *out1, *out2;
-  try {
-    auto Q = ED::qmatrix(false, label);
-    dims[0] = Q.first.size();
-    out1 = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    memcpy(PyArray_DATA((PyArrayObject *)out1), Q.first.data(),
-           Q.first.size() * sizeof(double));
-    PyArray_ENABLEFLAGS((PyArrayObject *)out1, NPY_ARRAY_OWNDATA);
-    dims[1] = Q.second.size() / Q.first.size();
-    dims[0] = Q.first.size();
-    out2 = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-    memcpy(PyArray_DATA((PyArrayObject *)out2), Q.second.data(),
-           Q.second.size() * sizeof(complex<double>));
-    PyArray_ENABLEFLAGS((PyArrayObject *)out2, NPY_ARRAY_OWNDATA);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("OO", out1, out2);
-}
-
-//==============================================================================
-const char *hybridization_help =
-    R"{(
-Returns the Lehmann representation of the hybridization function
-returns a tuple:
-  1. the array of M real eigenvalues, M being the number of poles in the representation
-  2. a rectangular (L x M) matrix (real of complex), L being the dimension of the Green function
-){";
-//------------------------------------------------------------------------------
-static PyObject *hybridization_python(PyObject *self, PyObject *args) {
-  int label = 0;
-
-  try {
-    if (!PyArg_ParseTuple(args, "|i", &label))
-      qcm_ED_throw(
-          "failed to read parameters in call to hybridization (python)");
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-
-  npy_intp dims[2];
-  PyObject *out1, *out2;
-  try {
-    auto Q = ED::hybridization(false, label);
-    dims[0] = Q.first.size();
-    out1 = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    memcpy(PyArray_DATA((PyArrayObject *)out1), Q.first.data(),
-           Q.first.size() * sizeof(double));
-    PyArray_ENABLEFLAGS((PyArrayObject *)out1, NPY_ARRAY_OWNDATA);
-    dims[0] = Q.second.size() / Q.first.size();
-    dims[1] = Q.first.size();
-    out2 = PyArray_SimpleNew(2, dims, NPY_COMPLEX128);
-    memcpy(PyArray_DATA((PyArrayObject *)out2), Q.second.data(),
-           Q.second.size() * sizeof(complex<double>));
-    PyArray_ENABLEFLAGS((PyArrayObject *)out2, NPY_ARRAY_OWNDATA);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("OO", out1, out2);
-}
-
-//==============================================================================
-const char *write_instance_to_hdf5_help =
-    R"{(
-Writes the solved model instance to a group inside an HDF5 file
-arguments:
-    1. name of the HDF5 file (created if absent, appended if present)
-    2. name of the HDF5 group to write into (e.g. "cluster_0")
-    3. the instance label (default = 0)
-returns None
-){";
-//------------------------------------------------------------------------------
-static PyObject *write_instance_to_hdf5_python(PyObject *self, PyObject *args) {
-  char *filename = nullptr;
-  char *group    = nullptr;
-  int   label    = 0;
-  try {
-    if(!PyArg_ParseTuple(args, "ss|i", &filename, &group, &label))
-      qcm_ED_throw("failed to read parameters in call to write_instance_to_hdf5()");
-    ED::write_instance_hdf5(string(filename), label, string(group));
-  } catch(const std::exception& e){
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-//==============================================================================
-const char *read_instance_from_hdf5_help =
-    R"{(
-Reads the solved model instance from a group inside an HDF5 file
-arguments:
-    1. name of the HDF5 file
-    2. name of the HDF5 group to read from (e.g. "cluster_0")
-    3. the instance label (default = 0)
-returns None
-){";
-//------------------------------------------------------------------------------
-static PyObject *read_instance_from_hdf5_python(PyObject *self, PyObject *args) {
-  char *filename = nullptr;
-  char *group    = nullptr;
-  int   label    = 0;
-  try {
-    if(!PyArg_ParseTuple(args, "ss|i", &filename, &group, &label))
-      qcm_ED_throw("failed to read parameters in call to read_instance_from_hdf5()");
-    ED::read_instance_hdf5(string(filename), label, string(group));
-  } catch(const std::exception& e){
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("");
-}
-
-//==============================================================================
-const char *fidelity_help =
-    R"{(
-Reads the solved model instance from a text file
-argument:
-    1. name of the file
-    2. The instance label (default=0)
-returns None
-){";
-//------------------------------------------------------------------------------
-static PyObject *fidelity_python(PyObject *self, PyObject *args) {
-  int label1 = 0;
-  int label2 = 0;
-  double fid;
-  try {
-    if (!PyArg_ParseTuple(args, "ii", &label1, &label2))
-      qcm_ED_throw("failed to read parameters in call to fidelity (*python*)");
-    fid = ED::fidelity(label1, label2);
-  } catch (const std::exception &e) {
-    qcm_ED_catch(e);
-  }
-  return Py_BuildValue("d", fid);
+inline void register_qcm_ED(nb::module_ &m) {
+
+  m.def("ED_complex_HS",
+        [](size_t label) { return (int)ED::complex_HS(label); },
+        "label"_a = 0,
+        "return 1 if the Hilbert space is complex, 0 if it is real");
+
+  m.def("density_matrix",
+        [](std::vector<int> sites, int label) {
+          auto g = ED::density_matrix(sites, label);
+          size_t r = g.first.r;
+          auto dm = nb_array_<complex<double>>(g.first.data(), {r, r});
+          auto basis = nb_array_<uint64_t>(g.second.data(), {g.second.size()});
+          return nb::make_tuple(dm, basis);
+        },
+        "sites"_a, "label"_a = 0,
+        "computes the density matrix from the ground state; returns the matrix "
+        "and the basis used");
+
+  m.def("Green_function_average",
+        [](int label, int spin_down) {
+          auto g = ED::Green_function_average((bool)spin_down, (size_t)label);
+          return nb_array_<complex<double>>(g.data(), {g.r, g.c});
+        },
+        "label"_a = 0, "spin_down"_a = 0,
+        "returns the average of c^dagger_i c_j (matrix)");
+
+  m.def("Green_function_density",
+        [](int label) { return ED::Green_function_density((size_t)label); },
+        "label"_a = 0,
+        "the density of the cluster, from the trace of the Green function average");
+
+  m.def("Green_function_dimensionC",
+        [](int label) { return (int)ED::Green_function_dimension((size_t)label); },
+        "label"_a = 0, "the dimension of the Green function matrix (int)");
+
+  m.def("Green_function_solveC",
+        [](int label) { ED::Green_function_solve((size_t)label); },
+        "label"_a = 0, "solves the cluster Green function");
+
+  m.def("Green_function",
+        [](complex<double> z, int spin_down, int label, int blocks) {
+          auto g = ED::Green_function(z, (bool)spin_down, (size_t)label,
+                                      (bool)blocks);
+          return nb_array_<complex<double>>(g.data(), {g.r, g.c});
+        },
+        "z"_a, "spin_down"_a = 0, "label"_a = 0, "blocks"_a = 0,
+        "computes the Green function matrix at a given complex frequency");
+
+  m.def("cluster_averages",
+        [](int label) {
+          auto ave = ED::cluster_averages((size_t)label);
+          nb::dict d;
+          for (auto &x : ave)
+            d[nb::str(get<0>(x).c_str())] =
+                nb::make_tuple(get<1>(x), get<2>(x));
+          return d;
+        },
+        "label"_a = 0,
+        "ground state averages; returns a dict string : (average, variance)");
+
+  m.def("ground_state_solve",
+        [](int label) {
+          auto r = ED::ground_state_solve((size_t)label);
+          return nb::make_tuple(r.first, r.second);
+        },
+        "label"_a = 0,
+        "computes the ground state; returns (energy, Hilbert space sector)");
+
+  m.def("hopping_matrix",
+        [](int spin_down, int diag, int label, int full) {
+          if (full) {
+            auto g = ED::hopping_matrix_full((bool)spin_down, (bool)diag,
+                                             (size_t)label);
+            return nb_array_<complex<double>>(g.data(), {g.r, g.c});
+          } else {
+            auto g = ED::hopping_matrix((bool)spin_down, (size_t)label);
+            return nb_array_<complex<double>>(g.data(), {g.r, g.c});
+          }
+        },
+        "spin_down"_a = 0, "diag"_a = 0, "label"_a = 0, "full"_a = 0,
+        "computes the hopping matrix of the model");
+
+  m.def("interactions",
+        [](int label) { return ED::interactions((size_t)label); },
+        "label"_a = 0,
+        "the list of density-density interactions (list of (int,int,double))");
+
+  m.def("hybridization_functionC",
+        [](complex<double> z, int spin_down, int label) {
+          auto g = ED::hybridization_function(z, (bool)spin_down, (size_t)label);
+          return nb_array_<complex<double>>(g.data(), {g.r, g.c});
+        },
+        "z"_a, "spin_down"_a = 0, "label"_a = 0,
+        "computes the hybridization function (for models with baths)");
+
+  m.def("matrix_elements",
+        [](const std::string &S1, const std::string &S2) {
+          auto ET = ED::matrix_elements(S1, S2);
+          nb::list lst;
+          for (auto &e : ET.second)
+            lst.append(nb::make_tuple(e.r, e.c, e.v));
+          return nb::make_tuple(ET.first, lst);
+        },
+        "model"_a, "op"_a,
+        "the list of matrix elements that defines an operator");
+
+  m.def("mixingC", [](int label) { return ED::mixing((size_t)label); },
+        "label"_a = 0,
+        "the mixing state of the model (0:none, 1:anomalous, 2:spin-flip, "
+        "3:both)");
+
+  m.def("model_sizeC",
+        [](const std::string &S1) {
+          auto d = ED::model_size(S1);
+          return nb::make_tuple((int)get<0>(d), (int)get<1>(d));
+        },
+        "name"_a,
+        "returns (number of cluster sites, number of bath sites)");
+
+  m.def("new_model",
+        [](const std::string &S1, int n_sites, int n_bath, nb::object gen_obj,
+           int bath_irrep) {
+          vector<vector<int>> gen;
+          if (!gen_obj.is_none())
+            gen = intmatrix_from_Py((PyArrayObject *)gen_obj.ptr());
+          int n_orb = n_sites + n_bath;
+          for (size_t j = 0; j < gen.size(); j++) {
+            if ((int)gen[j].size() != n_orb)
+              qcm_ED_throw("generator " + to_string(j + 1) + " should have " +
+                           to_string(n_orb) + " elements");
+            for (int i = 0; i < n_sites; i++) gen[j][i] -= 1;
+            if (bath_irrep == false)
+              for (int i = n_sites; i < n_orb; i++) gen[j][i] -= 1;
+          }
+          ED::new_model(S1, n_sites, n_bath, gen, bath_irrep);
+        },
+        "name"_a, "n_sites"_a, "n_bath"_a, "generators"_a = nb::none(),
+        "bath_irrep"_a = 0, "initiates a new model (no operators yet)");
+
+  m.def("new_model_instanceC",
+        [](const std::string &name, nb::object val, const std::string &sec,
+           int label) {
+          map<string, double> param = py_dict_to_map(val.ptr());
+          ED::new_model_instance(name, param, sec, (size_t)label);
+        },
+        "name"_a, "values"_a, "sectors"_a, "label"_a = 0,
+        "initiates a new instance of the model");
+
+  m.def("new_operator",
+        [](const std::string &name, const std::string &op,
+           const std::string &type, nb::object elem_obj) {
+          vector<matrix_element<double>> elem;
+          PyObject *elem_pyobj = elem_obj.ptr();
+          double fac = 1.0;
+          bool check_upper = true;
+          if (type == "anomalous") fac = 0.5;
+          if (type == "general_interaction") check_upper = false;
+          if (PyArray_Check(elem_pyobj)) {
+            size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
+            elem.resize(nelem);
+            memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
+                   nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
+          } else if (PySequence_Check(elem_pyobj)) {
+            size_t n = PySequence_Size(elem_pyobj);
+            elem.assign(n, matrix_element<double>());
+            for (size_t i = 0; i < n; i++) {
+              PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
+              if (PyTuple_Size(pkey) == 3) {
+                elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
+                elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
+                if ((elem[i].r > elem[i].c) and check_upper)
+                  qcm_ED_throw("the first index of element " + to_string(i) +
+                               " of argument 4 of 'new_operator' cannot be "
+                               "bigger than the second index");
+                if (elem[i].r == 0 or elem[i].c == 0)
+                  qcm_ED_throw("indices in matrix elements of operators are "
+                               "labelled starting at 1, not at 0.");
+                elem[i].r--;
+                elem[i].c--;
+                elem[i].v = fac * PyFloat_AsDouble(PyTuple_GetItem(pkey, 2));
+              } else {
+                qcm_ED_throw("element " + to_string(i) +
+                             " of argument 4 of 'new_operator' should be a "
+                             "3-tuple");
+              }
+            }
+          } else
+            qcm_ED_throw("argument 4 of new_operator() must be a list or array");
+          ED::new_operator(name, op, type, elem);
+        },
+        "model"_a, "op"_a, "type"_a, "elements"_a,
+        "creates a new operator from its (real) matrix elements");
+
+  m.def("new_operator_complex",
+        [](const std::string &name, const std::string &op,
+           const std::string &type, nb::object elem_obj) {
+          vector<matrix_element<complex<double>>> elem;
+          PyObject *elem_pyobj = elem_obj.ptr();
+          double fac = 1.0;
+          if (type == "anomalous") fac = 0.5;
+          if (PyArray_Check(elem_pyobj)) {
+            size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
+            elem.resize(nelem);
+            memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
+                   nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
+          } else if (PySequence_Check(elem_pyobj)) {
+            size_t n = PySequence_Size(elem_pyobj);
+            elem.assign(n, matrix_element<complex<double>>());
+            for (size_t i = 0; i < n; i++) {
+              PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
+              if (PyTuple_Size(pkey) == 3) {
+                elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
+                elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
+                if (elem[i].r > elem[i].c)
+                  qcm_ED_throw("the first index of element " + to_string(i) +
+                               " of argument 4 of 'new_operator' cannot be "
+                               "bigger than the second index");
+                if (elem[i].r == 0 or elem[i].c == 0)
+                  qcm_ED_throw("indices in matrix elements of operators are "
+                               "labelled starting at 1, not at 0.");
+                elem[i].r--;
+                elem[i].c--;
+                Py_complex z = PyComplex_AsCComplex(PyTuple_GetItem(pkey, 2));
+                elem[i].v = {fac * z.real, fac * z.imag};
+              } else {
+                qcm_ED_throw("element " + to_string(i) +
+                             " of argument 4 of 'new_operator' should be a "
+                             "3-tuple");
+              }
+            }
+          } else
+            qcm_ED_throw("argument 4 of new_operator() must be a list or array");
+          ED::new_operator(name, op, type, elem);
+        },
+        "model"_a, "op"_a, "type"_a, "elements"_a,
+        "creates a new operator from its (complex) matrix elements");
+
+  m.def("parametersC",
+        [](int label) {
+          if (model_instances.find(label) == model_instances.end())
+            qcm_ED_throw("The label " + to_string(label) + " is out of range.");
+          auto M = model_instances.at(label)->value;
+          string model_name = model_instances.at(label)->the_model->name;
+          nb::dict d;
+          for (auto &x : M) d[nb::str(x.first.c_str())] = x.second;
+          return nb::make_tuple(d, model_name);
+        },
+        "label"_a = 0, "returns (dict of parameters, model name)");
+
+  m.def("print_models", []() { ED::print_models(cout); },
+        "prints the model description to the screen");
+
+  m.def("print_graph",
+        [](const std::string &name, nb::object pos_obj) {
+          vector<vector<double>> pos =
+              pos_from_Py((PyArrayObject *)pos_obj.ptr());
+          if (models.find(name) == models.end())
+            qcm_ED_throw("model " + name + " does not exist!");
+          models[name]->print_graph(pos);
+        },
+        "name"_a, "pos"_a, "prints a graphviz file for the model specified");
+
+  m.def("self_energyC",
+        [](complex<double> z, int spin_down, int label) {
+          auto g = ED::self_energy(z, (bool)spin_down, (size_t)label);
+          return nb_array_<complex<double>>(g.data(), {g.r, g.c});
+        },
+        "z"_a, "spin_down"_a = 0, "label"_a = 0,
+        "computes the self-energy matrix at a given complex frequency");
+
+  m.def("set_global_parameterC",
+        [](const std::string &name, nb::object obj) {
+          if (obj.is_none()) {
+            set_global_bool(name, true);
+            cout << "global parameter " << name << " set to true" << endl;
+          } else {
+            PyObject *o = obj.ptr();
+            if (PyLong_Check(o)) {
+              size_t I = (int)PyLong_AsLong(o);
+              set_global_int(name, I);
+              cout << "global parameter " << name << " set to " << I << endl;
+            } else if (PyFloat_Check(o)) {
+              double I = PyFloat_AsDouble(o);
+              set_global_double(name, I);
+              cout << "global parameter " << name << " set to " << I << endl;
+            } else
+              qcm_ED_throw("unknown type of global_parameter");
+          }
+        },
+        "name"_a, "value"_a = nb::none(),
+        "sets the value of a global parameter");
+
+  m.def("susceptibility_poles",
+        [](const std::string &op, int label) {
+          auto g = ED::susceptibility_poles(op, (size_t)label);
+          return nb_array_<double>(reinterpret_cast<const double *>(g.data()),
+                                   {g.size(), 2});
+        },
+        "op"_a, "label"_a = 0,
+        "dynamic susceptibility of an operator; array of (residue, pole)");
+
+  m.def("susceptibility",
+        [](const std::string &op, std::vector<complex<double>> w, int label) {
+          auto g = ED::susceptibility(op, w, (size_t)label);
+          return nb_array_<complex<double>>(g.data(), {g.size()});
+        },
+        "op"_a, "w"_a, "label"_a = 0,
+        "dynamic susceptibility of an operator at the given frequencies");
+
+  m.def("print_wavefunction",
+        [](int label) { return ED::print_wavefunction((size_t)label); },
+        "label"_a = 0, "prints the ground state wavefunction(s) to a string");
+
+  m.def("qmatrix",
+        [](int label) {
+          auto Q = ED::qmatrix(false, label);
+          size_t M = Q.first.size();
+          size_t L = M ? Q.second.size() / M : 0;
+          auto evals = nb_array_<double>(Q.first.data(), {M});
+          auto mat = nb_array_<complex<double>>(Q.second.data(), {M, L});
+          return nb::make_tuple(evals, mat);
+        },
+        "label"_a = 0,
+        "Lehmann representation of the Green function: (eigenvalues, MxL matrix)");
+
+  m.def("hybridization",
+        [](int label) {
+          auto Q = ED::hybridization(false, label);
+          size_t M = Q.first.size();
+          size_t L = M ? Q.second.size() / M : 0;
+          auto evals = nb_array_<double>(Q.first.data(), {M});
+          auto mat = nb_array_<complex<double>>(Q.second.data(), {L, M});
+          return nb::make_tuple(evals, mat);
+        },
+        "label"_a = 0,
+        "Lehmann representation of the hybridization function: (eigenvalues, "
+        "LxM matrix)");
+
+  m.def("write_instance_to_hdf5",
+        [](const std::string &filename, const std::string &group, int label) {
+          ED::write_instance_hdf5(filename, label, group);
+        },
+        "filename"_a, "group"_a, "label"_a = 0,
+        "writes the solved model instance to a group inside an HDF5 file");
+
+  m.def("read_instance_from_hdf5",
+        [](const std::string &filename, const std::string &group, int label) {
+          ED::read_instance_hdf5(filename, label, group);
+        },
+        "filename"_a, "group"_a, "label"_a = 0,
+        "reads the solved model instance from a group inside an HDF5 file");
+
+  m.def("fidelity",
+        [](int label1, int label2) { return ED::fidelity(label1, label2); },
+        "label1"_a, "label2"_a,
+        "the fidelity between two model instances");
 }
 
 #endif

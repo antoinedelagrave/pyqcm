@@ -115,10 +115,10 @@ if(QCM_DEBUG)
 endif()
 
 # -------------
-# Define target
+# Define target sources (target itself is created below via nanobind_add_module,
+# once nanobind has been discovered)
 # -------------
-add_library(
-  qcm SHARED
+set(QCM_SOURCES
   src_qcm/CPT.cpp
   src_qcm/Chern.cpp
   src_qcm/QCM.cpp
@@ -160,13 +160,6 @@ add_library(
   src_util/VDVH_kernel.cpp
   src_util/vector_num.cpp)
 
-set_target_properties(
-  qcm
-  PROPERTIES
-  VERSION "${PROJECT_VERSION}"
-  PREFIX ""
-  SUFFIX ".so")
-
 # Find just Python interpreter and development components
 find_package(Python3 3.10
         COMPONENTS
@@ -205,6 +198,37 @@ message(STATUS "Detected NumPy include directory: ${NUMPY_INCLUDE_DIR}")
 message(STATUS "Python executable: ${Python3_EXECUTABLE}")
 message(STATUS "Python include dir: ${Python3_INCLUDE_DIRS}")
 message(STATUS "Python libs: ${Python3_LIBRARIES}")
+
+# --------
+# nanobind
+# --------
+# nanobind's config requires the `Python` (not `Python3`) package, with the
+# Development.Module component (so libpython is not linked explicitly).
+find_package(Python 3.10
+  COMPONENTS Interpreter Development.Module
+  REQUIRED)
+
+# Locate the nanobind CMake package shipped with the installed Python module.
+execute_process(
+  COMMAND "${Python3_EXECUTABLE}" -m nanobind --cmake_dir
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE nanobind_ROOT)
+find_package(nanobind CONFIG REQUIRED)
+message(STATUS "nanobind dir: ${nanobind_ROOT}")
+
+# -------------
+# Define target (Python extension module) via nanobind
+# -------------
+nanobind_add_module(qcm NB_STATIC ${QCM_SOURCES})
+
+# Preserve the historical artifact name (qcm.0.0.0.so, imported through the
+# pyqcm/qcm.so -> qcm.0.0.0.so symlink chain).
+set_target_properties(
+  qcm
+  PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "qcm.0.0.0"
+  SUFFIX ".so")
 
 # ------
 # Eigen3 (always required: used in matrix.cpp and optionally for Hamiltonian)
@@ -347,7 +371,9 @@ endif()
 # -----------------
 # Link dependencies
 # -----------------
-target_link_libraries(qcm PUBLIC ${Python3_LIBRARIES} ${LAPACK_LIBRARIES}
+# NB: do not link ${Python3_LIBRARIES} explicitly; nanobind_add_module handles
+# Python linkage (uses Development.Module / -undefined dynamic_lookup).
+target_link_libraries(qcm PUBLIC ${LAPACK_LIBRARIES}
                       ${PRIMME_LIBRARY} OpenMP::OpenMP_CXX)
 
 target_include_directories(

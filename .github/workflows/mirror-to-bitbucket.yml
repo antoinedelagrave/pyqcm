@@ -1,0 +1,34 @@
+name: Mirror to Bitbucket
+
+# Makes the Bitbucket repo an exact replica of this GitHub repo.
+# Runs on every push, tag, and branch/tag deletion, plus manual dispatch.
+# Because it uses `git push --mirror`, any branch or tag that exists on
+# Bitbucket but NOT on GitHub will be DELETED on Bitbucket.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['**']
+  delete:               # propagate branch/tag deletions
+  workflow_dispatch:    # allow manual runs from the Actions tab
+
+concurrency:
+  group: mirror-to-bitbucket
+  cancel-in-progress: false   # never interrupt a mirror mid-push
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror GitHub -> Bitbucket
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BITBUCKET_USER: ${{ secrets.BITBUCKET_USER }}
+          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --mirror \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo.git
+          cd repo.git
+          git push --mirror \
+            "https://${BITBUCKET_USER}:${BITBUCKET_TOKEN}@bitbucket.org/dsenechQCM/qcm_wed.git"

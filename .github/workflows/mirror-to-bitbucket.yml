@@ -23,12 +23,13 @@ jobs:
       - name: Mirror GitHub -> Bitbucket
         env:
           GH_TOKEN: ${{ github.token }}
-          BITBUCKET_USER: ${{ secrets.BITBUCKET_USER }}
-          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+          # Bitbucket Repository Access Token (username is the fixed literal
+          # "x-token-auth", which is not sensitive and is hardcoded below).
+          BITBUCKET_SYNC: ${{ secrets.BITBUCKET_SYNC }}
         run: |
           set -euo pipefail
           git clone --mirror \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo.git
           cd repo.git
           git push --mirror \
-            "https://${BITBUCKET_USER}:${BITBUCKET_TOKEN}@bitbucket.org/dsenechQCM/qcm_wed.git"
+            "https://x-token-auth:${BITBUCKET_SYNC}@bitbucket.org/dsenechQCM/qcm_wed.git"

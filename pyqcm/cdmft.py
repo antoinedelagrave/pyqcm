@@ -822,8 +822,8 @@ class frequency_grid:
     """
     This class contains the imaginary frequency grid data, including weights
 
-    :param str grid_type: type of frequency grid along the imaginary axis : 'legendre', 'matsubara', 'regular'
-    :param tuple specs: specific parameters for each grid type. For 'legendre', specs=(w1, w2, n1, n2, n3) where w1 and w2 define 3 regions along the imaginary frequency axis. Below w1, n1 grid points are used; between w1 and w2, n2 grid points are used, and n3 grid points are used between w2 and infinity. For 'matsubara', specs=(wc, beta), where wc is the frequency cutoff and beta the inverse effective temperature. For 'regular', specs=(wc, n1, n2), where wc is the boundary between the low- and high-frequency regions, and n1 and n2 the number of points in each region, respectively.
+    :param str grid_type: type of frequency grid along the imaginary axis : 'legendre', 'matsubara', 'matsubara+', 'regular'
+    :param tuple specs: specific parameters for each grid type. For 'legendre', specs=(w1, w2, n1, n2, n3) where w1 and w2 define 3 regions along the imaginary frequency axis. Below w1, n1 grid points are used; between w1 and w2, n2 grid points are used, and n3 grid points are used between w2 and infinity. For 'matsubara', specs=(wc, beta), where wc is the frequency cutoff and beta the inverse effective temperature. For 'regular', specs=(wc, n1, n2), where wc is the boundary between the low- and high-frequency regions, and n1 and n2 the number of points in each region, respectively. For 'Matsubara+', specs=(wc, beta, n2), like Matsubara, but with n2 points between wc and infinity.
     :param str opt: if opt='self', the cdmft weights (not the integration weights) are not the same as the integration weights, but scale like the norm of the self-energy at the corresponding frequency (the Hartree-Fock part of the self-energy is subtracted). If opt = 'ifreq', the cdmft weights are rather scaled like 1/frequency.
     :ivar wr: (real array) the frequencies along the imaginary axis
     :ivar weight: the weight associated to each frequency in an integral
@@ -844,6 +844,12 @@ class frequency_grid:
             self.weight = (2 * np.pi / beta) * np.ones_like(self.wr)
             self.cdmft_weight = self.weight
             self.name = "matsubara({:g}-{:g})".format(wc, beta)
+
+        elif grid_type == "Matsubara+" or grid_type == "matsubara+":
+            wc, beta, n2 = specs
+            n1 = int(np.ceil(wc*beta/(2*np.pi)))
+            self.wr, self.weight = pyqcm.regular_frequency_grid(wc, n1, n2)
+            self.name = "Matsubara+({:g}-{:g}-{:d})".format(wc, beta, n2)
 
         elif grid_type == "regular":
             wc, n1, n2 = specs

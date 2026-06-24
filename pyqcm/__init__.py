@@ -2521,7 +2521,7 @@ def wavevector_path(n=32, shape="triangle"):
     else:
         if ".tsv" in shape:
             try:
-                k = 2 * np.genfromtxt(shape, usecols=(0, 1, 2))
+                k = np.genfromtxt(shape, usecols=(0, 1, 2))
                 T = np.genfromtxt(shape, usecols=(3), dtype="str")
             except Exception as e:
                 raise ValueError("cannot read file " + shape + " properly") from e

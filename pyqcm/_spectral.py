@@ -1671,7 +1671,7 @@ def plot_host_hybrid(self, w, e, clus=0, sys=None, file=None, plt_ax=None, title
     Plots a comparison between the host function and the hybridization function
 
     :param [float] w: array of frequencies used
-    :param (int,int) e: matrix element to plot (zero based)
+    :param (int,int) e: matrix element to plot (zero based). If None, computes and plots the Frobenius norm of the difference between host and hybridization function and writes 'dist' field in to 'host_hybrid.tsv' summary file.
     :param int clus: cluster label (starts at 0)
     :param sys: if not None, lable of the specific system. If None, then used the remixed hybridization function
     :param str title: optional title for the plot, displayed when plt_ax is None
@@ -1695,18 +1695,29 @@ def plot_host_hybrid(self, w, e, clus=0, sys=None, file=None, plt_ax=None, title
         ax = plt_ax
 
     hyb = np.empty(H.shape, dtype=complex)
+    dist = 0.0
     if sys == None:
         for i in range(w.shape[0]):
             hyb[i,:,:] = self.hybridization_function(w[i]*1j, clus)
+
     else:
         for i in range(w.shape[0]):
             hyb[i,:,:] = self.hybridization_function_sys(w[i]*1j, sys)
 
-    # print(-H[:,e[0],e[1]].real); exit()
-    ax.plot(w, -H[:,e[0],e[1]].real,'b-',label='host (real)', lw=1, ms=2, **kwargs)
-    ax.plot(w, -H[:,e[0],e[1]].imag,'b--',label='host (imag)', lw=1, ms=2, **kwargs)
-    ax.plot(w, hyb[:,e[0],e[1]].real,'r-',label='hyb. (real)', lw=1, ms=2, **kwargs)
-    ax.plot(w, hyb[:,e[0],e[1]].imag,'r--',label='hyb. (imag)', lw=1, ms=2, **kwargs)
+    if e == None:
+        diff = np.linalg.matrix_norm(hyb +  H)
+        ax.plot(w, diff,'b-',lw=1, ms=2, **kwargs)
+        
+        dist = 0.0
+        for i in range(len(w)-1):
+            dist += (w[i+1]-w[i])*(diff[i+1]+diff[i])*0.5
+        self.props["dist"] = dist
+        self.write_summary('host_hybrid.tsv')
+    else:
+        ax.plot(w, -H[:,e[0],e[1]].real,'b-',label='host (real)', lw=1, ms=2, **kwargs)
+        ax.plot(w, -H[:,e[0],e[1]].imag,'b--',label='host (imag)', lw=1, ms=2, **kwargs)
+        ax.plot(w, hyb[:,e[0],e[1]].real,'r-',label='hyb. (real)', lw=1, ms=2, **kwargs)
+        ax.plot(w, hyb[:,e[0],e[1]].imag,'r--',label='hyb. (imag)', lw=1, ms=2, **kwargs)
     if plt_ax is None:
         ax.legend()
         ax.set_xlabel('$i\\omega_n$')

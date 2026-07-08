@@ -20,6 +20,21 @@ from . import qcm
 # Internal functions
 
 #---------------------------------------------------------------------------------------------------
+def _check_no_hybrid_file(self, funcname):
+    """Aborts if the model was defined with an external hybridization function (hybrid_file).
+
+    Such a model can only evaluate the Green function at the frequencies tabulated in the file,
+    so functions requiring the Green function at an arbitrary frequency cannot be used.
+
+    :param str funcname: name of the calling function, used in the error message
+    """
+    if getattr(self.model, 'hybrid_file', ''):
+        raise RuntimeError(
+            "{}() cannot be called when the model is defined with an external hybridization function "
+            "(hybrid_file != None): the Green function can only be evaluated at the frequencies "
+            "tabulated in the file, not at an arbitrary frequency.".format(funcname))
+
+#---------------------------------------------------------------------------------------------------
 def _promote_to_3d(ax):
     """Replace a 2D Axes by a 3D Axes at the same figure position. Returns the new 3D Axes.
     If ax is already 3D, it is returned unchanged."""
@@ -96,6 +111,7 @@ def compute_spectral_function_shared(self, irange, A_sh_name, A_down_sh_name, w=
     :returns: None
 
     """
+    _check_no_hybrid_file(self, 'compute_spectral_function_shared')
 
     from os import getpid
 
@@ -321,6 +337,7 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
     :returns: None
 
     """
+    _check_no_hybrid_file(self, 'spectral_function')
 
     if path==None:
         if self.model.dim == 1 : path = 'line'
@@ -509,6 +526,7 @@ def plot_hybridization_function(self, w=6, eta=0.01, imaginary=False, clus = 0, 
     :returns: None
 
     """
+    _check_no_hybrid_file(self, 'plot_hybridization_function')
     if plt_ax is None:
         plt.figure()
         plt.gcf().set_size_inches(13.5/2.54, 9/2.54)
@@ -574,6 +592,7 @@ def cluster_spectral_function(self, w=6, eta = 0.05, imaginary=False, clus=0, of
     :returns: the array of frequencies, the spectral weight
 
     """
+    _check_no_hybrid_file(self, 'cluster_spectral_function')
     if plt_ax is None:
         plt.figure()
         plt.gcf().set_size_inches(13.5/2.54, 9/2.54)
@@ -763,6 +782,7 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     :returns: w, A : the complex frequency array and the DoS array
 
     """
+    _check_no_hybrid_file(self, 'plot_DoS')
     from cycler import cycler
 
     plot = True
@@ -872,6 +892,7 @@ def mdc(self, nk=200, eta=0.1, orb=None, spin_down=False, zone=((0,0),1), opt='G
     :returns: the contour plot object
     
     """
+    _check_no_hybrid_file(self, 'mdc')
     if spin_down and self.model.mixing != 4:
         raise ValueError('spin_down can only be True is mixing = 4')
     if plt_ax is None:
@@ -1015,8 +1036,9 @@ def spin_mdc(self, nk=200, eta=0.1, orb=None, zone=((0,0),1), opt='spin', freq =
     :param matplotlib.axes.Axes plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :returns: The contour plot object
-    
+
     """
+    _check_no_hybrid_file(self, 'spin_mdc')
 
     if plt_ax is None:
         plt.figure()
@@ -1133,6 +1155,7 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
     :returns: None
     
     """
+    _check_no_hybrid_file(self, 'mdc_anomalous')
     if plt_ax is None:
         plt.figure()
         plt.gcf().set_size_inches(14/2.54, 14/2.54)
@@ -1512,6 +1535,7 @@ def G_dispersion(self, nk=64, orb=None, period = 'G', contour=False, inv=False, 
     
     """
 
+    _check_no_hybrid_file(self, 'G_dispersion')
     orbs = pyqcm.orbital_manager(orb, from_zero=True)
 
 
@@ -1595,6 +1619,7 @@ def Luttinger_surface(self, nk=200, orb=1, zone=((0,0),1), k_perp = 0, plane = '
     :returns: None
 
     """
+    _check_no_hybrid_file(self, 'Luttinger_surface')
 
     if plt_ax is None:
         plt.figure()
@@ -1637,6 +1662,7 @@ def plot_momentum_profile(self, op, nk=50, zone=((0,0),1), k_perp=0.0, plane='xy
     :returns: None
     
     """
+    _check_no_hybrid_file(self, 'plot_momentum_profile')
 
     if plt_ax is None:
         plt.figure()
@@ -1681,6 +1707,7 @@ def plot_host_hybrid(self, w, e, clus=0, sys=None, file=None, plt_ax=None, title
     :returns: None
 
     """
+    _check_no_hybrid_file(self, 'plot_host_hybrid')
 
     qcm.CDMFT_host(w, np.ones(len(w)), self.label)
     H = pyqcm.qcm.get_CDMFT_host(clus, False, self.label)
@@ -1763,6 +1790,7 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
     if orb is None:
         orb=0 # this is a quick and simple uniformity change across pyqcm functions
 
+    _check_no_hybrid_file(self, 'Berry_curvature')
     pyqcm.set_global_parameter('eta', eta)
     pyqcm.set_global_parameter('periodization', period)
 
@@ -1835,6 +1863,7 @@ def Chern_number(self, nk=100, eta=0.0, period='G', offset=[0., 0., 0.], orb=Non
     :returns float: The Chern number
 
     """
+    _check_no_hybrid_file(self, 'Chern_number')
 
     if orb is None:
         orb=0 # this is a quick and simple uniformity change across pyqcm functions
@@ -1865,6 +1894,7 @@ def monopole(self, k, a=0.01, nk=20, orb=None, subdivide=False):
     :rtype: float
 
     """
+    _check_no_hybrid_file(self, 'monopole')
 
     if orb is None:
         orb=0 # this is a quick and simple uniformity change across pyqcm functions
@@ -1884,6 +1914,7 @@ def Berry_flux(self, k0, R, nk=40, plane='xy', orb=None):
     :returns float: the flux
 
     """
+    _check_no_hybrid_file(self, 'Berry_flux')
 
     if orb is None:
         orb=0 # this is a quick and simple uniformity change across pyqcm functions
@@ -1940,6 +1971,7 @@ def monopole_map(self, nk=40, nk_cube=5, orb=None, plane='z', k_perp=0.0, file=N
         ax = plt_ax
     ax.set_aspect(1)
 
+    _check_no_hybrid_file(self, 'monopole_map')
     K = pyqcm.mdc_wavevector_grid(nk, orig=[-1.0, -1.0], side=2, k_perp = k_perp, plane=plane)
     B = np.zeros(nk*nk)
     for i, k in enumerate(K):
@@ -1996,6 +2028,7 @@ def Berry_flux_map(self, nk=40, plane='z', dir='z', k_perp=0.0, orb=None, npoint
         ax = plt_ax
     ax.set_aspect(1)
 
+    _check_no_hybrid_file(self, 'Berry_flux_map')
     K = pyqcm.mdc_wavevector_grid(nk, orig=[-1.0, -1.0], side=2, k_perp = k_perp, plane=plane)
     B = np.zeros(nk*nk)
     if radius is None:
@@ -2053,6 +2086,7 @@ def Berry_field_map(self, nk=40, nsides = 4, plane='z', k_perp=0.0, orb=None, fi
         ax = plt_ax
     ax.set_aspect(1)
 
+    _check_no_hybrid_file(self, 'Berry_field_map')
     K = pyqcm.mdc_wavevector_grid(nk, orig=[-1.0, -1.0], side=2, k_perp = k_perp, plane=plane)
     Bx = np.zeros(nk*nk)
     By = np.zeros(nk*nk)

@@ -360,13 +360,13 @@ void erase_lattice_model_instance(size_t label){
     lattice_hybrid& H = *mod.hybrid;
     if(iw < 0 || (size_t)iw >= H.nw) qcm_throw("frequency index iw out of range");
     if(ik < 0 || (size_t)ik >= H.nk) qcm_throw("wavevector index ik out of range");
-    Complex w(0.0, H.w[iw]);
+    // If eta == 0, the grid lies on the imaginary (Matsubara) axis: z = i*w.
+    // Otherwise the grid is on the real axis with broadening eta: z = w + i*eta.
+    Complex w = (H.eta == 0.0) ? Complex(0.0, H.w[iw]) : Complex(H.w[iw], H.eta);
     Green_function G = lattice_model_instances.at(label)->cluster_Green_function(w, false, false);
     G.iw = iw;
     Green_function_k M(G, H.k[ik], ik);
     lattice_model_instances.at(label)->set_Gcpt(M);
-    cout << "k (read) = " << H.k[ik] << "\tw = " << w << endl; // TEMPO
-    cout << "gamma = \n" << mod.lattice_hybridization(M.G.iw, M.ik) << endl; // TEMPO
     return M.Gcpt;
   }
 

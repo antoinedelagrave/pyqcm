@@ -927,7 +927,8 @@ void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool sp
     // block_Lanczos_QR=true (default) uses QR upper-triangular B; false uses polar (Hermitian B).
     vector<matrix<HilbertField>> A, B;
     int M0 = (int)(14 * p_actual * log(1.0 * H->dim));
-    if(global_bool("block_Lanczos_QR"))
+    bool use_QR = global_bool("block_Lanczos_QR");
+    if(use_QR)
       blockLanczos(*H, q, A, B, M0, global_bool("verb_ED"));
     else
       blockLanczosSVD(*H, q, A, B, M0, global_bool("verb_ED"));
@@ -938,6 +939,7 @@ void model_instance<HilbertField>::build_mcf(state<HilbertField> &Omega, bool sp
 
     // Build the matrix continued fraction with energy shift and non-square W_mcf.
     matrix_continued_fraction<HilbertField> frac(A, B, Omega.energy, W_mcf, pm == 1);
+    frac.hermitian_B = !use_QR;
 
     if(pm == -1) mcf->h[r] = frac;
     else         mcf->e[r] = frac;

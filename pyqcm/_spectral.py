@@ -337,8 +337,6 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
     :returns: None
 
     """
-    _check_no_hybrid_file(self, 'spectral_function')
-
     if path==None:
         if self.model.dim == 1 : path = 'line'
         else : path = 'triangle'
@@ -352,6 +350,14 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
 
     else:
         ax = plt_ax
+
+    # With an external hybridization (hybrid_file != None), the Green function can only be
+    # evaluated at the frequencies and wavevectors tabulated in the file. Plot the spectral
+    # function directly on that grid instead of on an arbitrary k-path.
+    if getattr(self.model, 'hybrid_file', ''):
+        _spectral_function_on_grid(self, ax, offset=offset, orb=orb, opt=opt, title=title,
+                                   file=file, plt_ax=plt_ax, style=style, data_file=data_file, **kwargs)
+        return
 
     pyqcm.set_global_parameter('periodization', period)
     if period == 'N':
@@ -503,6 +509,122 @@ def spectral_function(self, w=6.0, eta=0.05, path=None, nk=32, period = 'G', orb
             plt.tight_layout()
 
     if plt_ax is None:
+        if file is not None:
+            plt.savefig(file)
+            plt.close()
+        plt.show()
+
+#---------------------------------------------------------------------------------------------------
+def _spectral_function_on_grid(self, ax, offset=2, orb=None, opt='A', title=None, file=None, plt_ax=None, style=None, data_file='spectral_data', **kwargs):
+    r"""Plots the spectral function on the frequency/wavevector grid tabulated in the model's
+    external hybridization file (``hybrid_file``). Called by :func:`spectral_function` when the
+    model was created with a non-empty ``hybrid_file``.
+
+    The frequencies and wavevectors are read from the HDF5 file. If the file's ``eta`` field is
+    zero (or absent), the grid lies on the imaginary (Matsubara) axis and the horizontal axis is
+    :math:`\omega_n`; otherwise the grid is on the real axis (frequency :math:`\omega + i\eta`) and
+    the horizontal axis is :math:`\omega`. In both cases the plotted quantity is :math:`-\mathrm{Im}`
+    of the (traced) CPT Green function, evaluated grid point by grid point via
+    :func:`CPT_Green_function_grid`.
+
+    :param matplotlib.axes.Axes ax: axes to draw on (already created by :func:`spectral_function`)
+    :param float offset: vertical offset between the curves associated to successive wavevectors
+    :param int orb: if not None, only the diagonal element of this orbital (starting at 1); otherwise the trace
+    :param str opt: only 'A' (spectral function) is supported on the grid
+    :param str title: optional title; if None, a string with the model parameters is used
+    :param str file: if not None, saves the plot in a file with that name
+    :param matplotlib.axes.Axes plt_ax: passed through from :func:`spectral_function`
+    :param str style: None (offset curves), 'color' (colorplot) or '3D'
+    :param str data_file: name of file where spectral data is written (no extension)
+    :param kwargs: keyword arguments passed to the matplotlib 'plot'/'imshow' function
+    :returns: None
+    """
+    import h5py
+
+    if opt != 'A':
+        raise NotImplementedError(
+            "spectral_function() with an external hybridization (hybrid_file) only supports opt='A'; "
+            "the self-energy is not available on the tabulated grid.")
+
+    # Read the frequency and wavevector grids (and eta) from the external hybridization file.
+    with h5py.File(self.model.hybrid_file, 'r') as f:
+        w = np.asarray(f['w'], dtype=float)          # (nw,)
+        k = np.asarray(f['k'], dtype=float)          # (nk, 3)
+        eta = float(f['eta'][()]) if 'eta' in f else 0.0
+    nw = len(w)
+    nk = len(k)
+    imaginary_axis = (eta == 0.0)
+
+    # Evaluate -Im of the CPT Green function at each (frequency, wavevector) grid point.
+    A = np.zeros((nw, nk))
+    for iw in range(nw):
+        for ik in range(nk):
+            g = np.asarray(self.CPT_Green_function_grid(iw, ik))
+            if orb is None:
+                A[iw, ik] = -np.trace(g).imag
+            else:
+                assert 0 < orb <= g.shape[0], \
+                    'The orbital index in spectral_function() must vary from 1 to {:d}'.format(g.shape[0])
+                A[iw, ik] = -g[orb-1, orb-1].imag
+
+    k_str = self.wavevector_path_2_str(k)
+    freq_info = "\nnfreq = {:d}, wmin={:g}, wmax={:g}, eta={:g}".format(nw, w[0], w[-1], eta)
+    np.savetxt(data_file+'.tsv', A, delimiter='\t', fmt='%1.9g', header=k_str+freq_info)
+
+    xlabel = r'$\omega_n$' if imaginary_axis else r'$\omega$'
+
+    # per-wavevector labels for the vertical (offset) axis; thinned out if there are many
+    def _klabel(x):
+        if self.model.dim == 1: return '{:.3g}'.format(x[0])
+        if self.model.dim == 2: return '({:.3g}, {:.3g})'.format(x[0], x[1])
+        return '({:.3g}, {:.3g}, {:.3g})'.format(x[0], x[1], x[2])
+
+    if style == 'color':
+        aspect = nk/(w[-1]-w[0])*0.618 if w[-1] != w[0] else 'auto'
+        CS = ax.imshow(np.flip(A, 0), vmin=0, vmax=np.max(np.abs(A)), cmap='Blues', aspect=aspect,
+                       extent=[0, nk, w[0], w[-1]], **kwargs)
+        ax.set_ylabel(xlabel)
+        ax.set_xlabel('wavevector index')
+    elif style == '3D':
+        for ik in range(nk):
+            ax.plot(w, A[:, ik], 'k-', lw=0.5, zdir='y', zs=offset*ik, **kwargs)
+        ax.set_ylim(0, (1+nk)*offset)
+        ax.set_zlim(0, 2*np.max(A) if A.size else 1)
+        for pane in (ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane):
+            pane.fill = False
+            pane.set_edgecolor('w')
+        ax.set_zticks([])
+        ax.zaxis.line.set_lw(0.)
+        ax.xaxis.line.set_c('b')
+        ax.yaxis.line.set_c('b')
+        ax.grid(False)
+        ax.set_xlabel(xlabel)
+    else:
+        for ik in range(nk):
+            ax.plot(w, A[:, ik] + offset*ik, 'b-', lw=0.5, **kwargs)
+        if w[0] <= 0 <= w[-1]:
+            ax.axvline(0, ls='solid', lw=0.5)
+        ax.set_xlim(w[0], w[-1])
+        ax.set_ylim(0, nk*offset + (np.max(A) if A.size else offset))
+        tick_pos = np.arange(nk)
+        tick_str = [_klabel(x) for x in k]
+        if nk > 24:  # thin out the labels to keep them legible
+            step = int(np.ceil(nk/24))
+            tick_pos = tick_pos[::step]
+            tick_str = tick_str[::step]
+        ax.set_yticks(offset*tick_pos)
+        ax.set_yticklabels(tick_str)
+        if plt_ax is None:
+            ax.set_xlabel(xlabel)
+
+    if title is None and plt_ax is None:
+        ax.set_title(r'$A(\mathbf{k},\omega)$: '+self.model.parameter_string(sys=0), fontsize=6)
+    elif title is not None:
+        ax.set_title(title, fontsize=6)
+
+    if plt_ax is None:
+        if style != 'color':
+            plt.tight_layout()
         if file is not None:
             plt.savefig(file)
             plt.close()

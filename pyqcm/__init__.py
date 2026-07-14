@@ -1080,6 +1080,82 @@ class model_instance:
                 print('B[' + str(i) + '] = \n' + str(x))
             return W, A, B
 
+    # -----------------------------------------------------------------------------------------------
+    def green_representation(self, sys=0, k=None):
+        """
+        Exports the ED Green function representation into the green_structure
+        classes (lehmann_matrix / continued_fraction_matrix), choosing the
+        mapping according to the current GF_method and combine_mcf global
+        parameters:
+
+        * ``GF_method == 'M'``, or ``GF_method == 'L'`` with ``combine_mcf ==
+          True``: returns a ``green_structure.continued_fraction_matrix`` built
+          from :meth:`combined_mcf`. The weight matrix becomes the block ``B[0]``
+          and the unused trailing (truncation-residual) block is dropped, so
+          that ``evaluate()`` reproduces the Green function exactly.
+
+        * ``GF_method == 'L'`` with ``combine_mcf == False`` (the default):
+          returns a ``green_structure.lehmann_matrix`` built from
+          :meth:`qmatrix`. ``k`` is not supported in this case (``qmatrix`` is
+          cluster-level only).
+
+        * ``GF_method == 'M'`` with ``combine_mcf == False``: raises, since no
+          binding exposes the individual (non-combined) per-sector MCF; set
+          ``combine_mcf = True`` to use this method with ``GF_method = 'M'``.
+
+        * ``GF_method == 'F'``: the per-orbital-pair Lanczos runs behind 'F'
+          each truncate independently (see ``continued_fraction_set``), so
+          there is no shared pole structure to place in ``lehmann_matrix`` or
+          ``continued_fraction_matrix``. This returns a plain callable
+          ``g(z) -> (L, L) complex ndarray`` instead, evaluating the exact
+          Green function (the same combination formula used internally by
+          ``continued_fraction_set::Green_function``).
+
+        :param int sys: label of the system (0-based)
+        :param k: wavevector (ndarray(3)), only meaningful when the combined
+            MCF path is used (``GF_method='M'``, or ``'L'`` with
+            ``combine_mcf=True``). Must be None otherwise.
+        :returns: a ``lehmann_matrix``, a ``continued_fraction_matrix``, or
+            (for ``GF_method='F'``) a callable ``z -> G(z)``.
+        """
+        from .green_structure import lehmann_matrix, continued_fraction_matrix
+
+        gf_method = get_global_parameter('GF_method')
+        combine_mcf = bool(get_global_parameter('combine_mcf'))
+
+        if combine_mcf and gf_method in ('L', 'M'):
+            W, A, B = self.combined_mcf(sys, k)
+            L = W.shape[0]
+            if len(A) == 0:
+                A_arr = np.empty((0, L, L), dtype=complex)
+                B_arr = np.empty((0, L, L), dtype=complex)
+            else:
+                A_arr = np.asarray(A, dtype=complex)
+                B_arr = np.asarray([W] + list(B[:-1]), dtype=complex)
+            return continued_fraction_matrix(A_arr, B_arr)
+
+        if k is not None:
+            raise ValueError(
+                "green_representation: k is only supported when the combined MCF "
+                "path is used (GF_method='M', or 'L' with combine_mcf=True)"
+            )
+
+        if gf_method == 'L':
+            W, Q = self.qmatrix(sys)
+            return lehmann_matrix(W, Q.T)
+
+        if gf_method == 'M':
+            raise RuntimeError(
+                "green_representation: GF_method='M' requires the global parameter "
+                "'combine_mcf' to be set to True (no individual, non-combined MCF "
+                "is exposed to Python)."
+            )
+
+        if gf_method == 'F':
+            label = self.label * self.model.nsys + sys
+            return lambda z: qcm.Green_function(z, False, label, False)
+
+        raise ValueError(f"green_representation: unrecognized GF_method '{gf_method}'")
 
 
     # -----------------------------------------------------------------------------------------------

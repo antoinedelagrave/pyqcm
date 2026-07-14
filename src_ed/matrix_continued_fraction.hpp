@@ -44,6 +44,78 @@
 // hdf5_io.hpp is already pulled in by continued_fraction.hpp
 #include "Q_matrix.hpp"
 
+//! Right polar decomposition of a p×p matrix: C = W*P, P Hermitian PSD, W
+//! unitary (a partial isometry if C is singular). Used by
+//! matrix_continued_fraction::convert_B_format() to move an off-diagonal
+//! Lanczos block from upper-triangular (QR) to Hermitian form.
+/**
+ P = sqrt(C^H C) is obtained from the eigendecomposition of the Hermitian PSD
+ matrix C^H C; W = C*P^{-1}. Eigenvalues of C^H C below (accur_deflation)^2
+ are treated as zero (their contribution to P^{-1} is dropped) — this only
+ matters for a rank-deficient C, which in practice only arises for the unused
+ truncation-residual block B[M-1].
+*/
+template<typename T>
+void mcf_polar_decompose(const matrix<T> &C, matrix<T> &W, matrix<T> &P)
+{
+    int p = (int)C.r;
+    matrix<T> Ch(C);
+    Ch.hermitian_conjugate();
+    matrix<T> M(p);
+    M.product(Ch, C);                   // M = C^H * C  (Hermitian PSD)
+
+    vector<double> D(p);
+    matrix<T> V(p);
+    M.eigensystem(D, V);                // M = V * diag(D) * V^H, D >= 0
+
+    double tol = global_double("accur_deflation");
+    tol *= tol;
+
+    P.set_size(p);
+    matrix<T> Pinv(p);
+    for(int r = 0; r < p; ++r){
+        for(int c = 0; c < p; ++c){
+            T s(0), si(0);
+            for(int m = 0; m < p; ++m){
+                double sq = sqrt(max(D[m], 0.0));
+                T vc = V(r,m) * conjugate(V(c,m));
+                s  += vc * T(sq);
+                si += vc * T(D[m] > tol ? 1.0/sq : 0.0);
+            }
+            P(r,c) = s;
+            Pinv(r,c) = si;
+        }
+    }
+    W.set_size(p);
+    W.product(C, Pinv);                 // W = C * P^{-1}
+}
+
+//! QR decomposition of a p×p matrix via modified Gram-Schmidt: C = Q*R, Q
+//! unitary, R upper-triangular. Used by
+//! matrix_continued_fraction::convert_B_format() to move an off-diagonal
+//! Lanczos block from Hermitian to upper-triangular form.
+template<typename T>
+void mcf_qr_decompose(const matrix<T> &C, matrix<T> &Q, matrix<T> &R)
+{
+    int p = (int)C.r;
+    Q = C;
+    R.set_size(p);
+    for(int l = 0; l < p; ++l){
+        for(int k = 0; k < l; ++k){
+            T z(0);
+            for(int i = 0; i < p; ++i) z += conjugate(Q(i,k)) * Q(i,l);
+            R(k,l) = z;
+            for(int i = 0; i < p; ++i) Q(i,l) -= z * Q(i,k);
+        }
+        double nrm2 = 0.0;
+        for(int i = 0; i < p; ++i) nrm2 += realpart(conjugate(Q(i,l)) * Q(i,l));
+        double nrm = sqrt(nrm2);
+        R(l,l) = T(nrm);
+        for(int i = 0; i < p; ++i) Q(i,l) *= T(1.0/nrm);
+    }
+}
+
+
 //! Matrix-valued Jacobi continued fraction.
 /**
  Template parameter T is the field of the Lanczos matrices A and B
@@ -55,8 +127,9 @@ struct matrix_continued_fraction
 {
     int p;                        //!< block size
     vector<matrix<T>> A;          //!< diagonal blocks (partial denominators)
-    vector<matrix<T>> B;          //!< off-diagonal QR blocks (partial numerator factors)
+    vector<matrix<T>> B;          //!< off-diagonal blocks (partial numerator factors)
     matrix<Complex>   W;          //!< initial weight (default: identity, always complex)
+    bool hermitian_B = false;     //!< true: B[j] Hermitian PSD (polar); false: B[j] upper-triangular (QR)
 
     //! Default constructor
     matrix_continued_fraction() : p(0) {}
@@ -228,11 +301,64 @@ struct matrix_continued_fraction
         for(size_t j = 0; j < A.size(); ++j) result.A[j] = to_real_matrix(A[j]);
         for(size_t j = 0; j < B.size(); ++j) result.B[j] = to_real_matrix(B[j]);
         result.W = to_complex_matrix(to_real_matrix(W));
+        result.hermitian_B = hermitian_B;
         return result;
     }
 
     //! Number of levels (= A.size()).
     int floors() const { return (int)A.size(); }
+
+    //! Convert the off-diagonal blocks B[j] between upper-triangular (QR) and
+    //! Hermitian PSD (polar) form, in place.
+    /**
+     The two representations correspond to different (but physically equivalent)
+     choices of orthonormal basis for each Krylov level j >= 1: Q_j' = Q_j * G_j,
+     with G_0 = I so the level-0 basis — and hence W and evaluate()'s G(z) — is
+     left exactly unchanged.
+
+     Sweeping j = 0 .. M-1 with a running gauge G (G = I initially): A[j] is
+     conjugated by the current G, then C = B[j]*G is re-factored — via a polar
+     decomposition (C = W_j*P_j, P_j Hermitian PSD) to move towards Hermitian
+     form, or via a QR decomposition (C = Q_j*R_j, R_j upper-triangular) to move
+     towards upper-triangular form. B[j] becomes the Hermitian/triangular factor
+     and G is updated to the unitary factor for use at the next level.
+
+     B[M-1] (the truncation residual, unused by evaluate()/apply()) is converted
+     for consistency, but the trailing gauge it would define is discarded.
+
+     Toggles hermitian_B to reflect the new state.
+    */
+    void convert_B_format()
+    {
+        int M = (int)A.size();
+        if(M == 0){ hermitian_B = !hermitian_B; return; }
+
+        matrix<T> G(p);
+        G.identity();
+        for(int j = 0; j < M; ++j){
+            matrix<T> Gh(G);
+            Gh.hermitian_conjugate();
+            matrix<T> tmp(p);
+            tmp.product(A[j], G);
+            A[j].product(Gh, tmp);          // A[j] <- G^H * A[j] * G
+
+            matrix<T> C(p);
+            C.product(B[j], G);             // C = B[j] * G
+
+            if(hermitian_B){
+                matrix<T> Q, R;
+                mcf_qr_decompose(C, Q, R);  // C = Q*R, R upper-triangular
+                B[j] = R;
+                G = Q;
+            } else {
+                matrix<T> Wp, P;
+                mcf_polar_decompose(C, Wp, P);  // C = Wp*P, P Hermitian PSD
+                B[j] = P;
+                G = Wp;
+            }
+        }
+        hermitian_B = !hermitian_B;
+    }
 };
 
 
@@ -305,12 +431,15 @@ matrix_continued_fraction<HilbertField> Q_matrix_to_mcf(const Q_matrix<HilbertFi
     diagonal_hamiltonian<HilbertField> H(Q.e);
     vector<matrix<HilbertField>> A, B;
     int M0 = M;
-    if(global_bool("block_Lanczos_QR"))
+    bool use_QR = global_bool("block_Lanczos_QR");
+    if(use_QR)
         blockLanczos(H, phi, A, B, M0);
     else
         blockLanczosSVD(H, phi, A, B, M0);
 
-    return matrix_continued_fraction<HilbertField>(A, B, to_complex_matrix(W));
+    matrix_continued_fraction<HilbertField> mcf(A, B, to_complex_matrix(W));
+    mcf.hermitian_B = !use_QR;
+    return mcf;
 }
 
 
@@ -343,6 +472,7 @@ matrix_continued_fraction<T> combine_for_gf(
 {
     const int pe = e.p, ph = h.p;
     QCM_ASSERT(pe == ph);
+    QCM_ASSERT(e.hermitian_B == h.hermitian_B);
     const int p = pe + ph;
     const int Me = e.floors(), Mh = h.floors(), M = max(Me, Mh);
 
@@ -370,7 +500,9 @@ matrix_continued_fraction<T> combine_for_gf(
         for(int i = 0; i < ph; ++i)
             W(pe + k, i) = h.W(k, i);    // W_h in hole rows
 
-    return matrix_continued_fraction<T>(A, B, W);
+    matrix_continued_fraction<T> mcf(A, B, W);
+    mcf.hermitian_B = e.hermitian_B;
+    return mcf;
 }
 
 
@@ -483,12 +615,15 @@ matrix_continued_fraction<T> combine_via_lanczos(
     // block_Lanczos_QR=true (default) uses QR; false uses polar decomposition (Hermitian B).
     combined_sector_operator<T> op(e, h);
     vector<matrix<T>> A_new, B_new;
-    if(global_bool("block_Lanczos_QR"))
+    bool use_QR = global_bool("block_Lanczos_QR");
+    if(use_QR)
         blockLanczos(op, phi, A_new, B_new, M0);
     else
         blockLanczosSVD(op, phi, A_new, B_new, M0);
 
-    return matrix_continued_fraction<T>(A_new, B_new, to_complex_matrix(W_new));
+    matrix_continued_fraction<T> mcf(A_new, B_new, to_complex_matrix(W_new));
+    mcf.hermitian_B = !use_QR;
+    return mcf;
 }
 
 
@@ -496,7 +631,8 @@ template<typename T>
 std::ostream& operator<<(std::ostream& os, const matrix_continued_fraction<T>& F)
 {
     int M = F.floors();
-    os << "matrix_continued_fraction: p=" << F.p << "  floors=" << M << '\n';
+    os << "matrix_continued_fraction: p=" << F.p << "  floors=" << M
+       << "  B=" << (F.hermitian_B ? "Hermitian" : "upper-triangular") << '\n';
     for(int j = 0; j < M; ++j){
         os << "A[" << j << "]:\n" << F.A[j];
     }
@@ -512,8 +648,9 @@ template<typename T>
 void h5_write_mcf(H5::Group& grp, const matrix_continued_fraction<T>& F)
 {
     int M = F.floors();
-    h5_write_attr(grp, "p",      F.p);
-    h5_write_attr(grp, "floors", M);
+    h5_write_attr(grp, "p",           F.p);
+    h5_write_attr(grp, "floors",      M);
+    h5_write_attr(grp, "hermitian_B", F.hermitian_B ? 1 : 0);
     for(int j = 0; j < M; ++j){
         H5::Group ag = grp.createGroup("A_" + to_string(j));
         h5_write_mat(ag, "data", F.A[j]);
@@ -532,6 +669,9 @@ void h5_read_mcf(H5::Group& grp, matrix_continued_fraction<T>& F)
 {
     F.p   = h5_read_attr_int(grp, "p");
     int M = h5_read_attr_int(grp, "floors");
+    // hermitian_B is absent in files written before this flag existed;
+    // default to false (upper-triangular) for backward compatibility.
+    F.hermitian_B = grp.attrExists("hermitian_B") && h5_read_attr_int(grp, "hermitian_B") != 0;
     F.A.resize(M);
     F.B.resize(M);
     for(int j = 0; j < M; ++j){

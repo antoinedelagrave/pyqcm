@@ -80,6 +80,15 @@ lattice_hybrid::lattice_hybrid(const string &filename){
       H5::DataSet mixing_set = file.openDataSet("mixing");
       mixing_set.read(&mixing, H5::PredType::NATIVE_INT);
 
+      // Get eta (imaginary part of the frequency on the real axis). Optional: absent means eta = 0
+      // (i.e. a Matsubara/imaginary-axis grid), for backward compatibility with older files.
+      if(H5Lexists(file.getId(), "eta", H5P_DEFAULT) > 0){
+        H5::DataSet eta_set = file.openDataSet("eta");
+        eta_set.read(&eta, H5::PredType::NATIVE_DOUBLE);
+      } else {
+        eta = 0.0;
+      }
+
   } catch (H5::Exception& error) {
       qcm_throw("Failed to read HDF5 file");
   }

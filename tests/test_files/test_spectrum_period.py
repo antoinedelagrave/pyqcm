@@ -14,6 +14,7 @@ model = model1D(L, sym=True)
 pyqcm.set_global_parameter('GF_method', 'M')
 pyqcm.set_global_parameter('combine_mcf')  # instructs pyqcm to produce a MCF for the Green function
 
+
 model.set_target_sectors('N{:d}:S0'.format(L))
 
 # Simulation parameters

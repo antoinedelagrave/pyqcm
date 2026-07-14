@@ -109,11 +109,12 @@ for iw in range(nw):
         K = np.copy(k[ik])
         K[0] *= 0.3333333333
         K[1] *= 0.5
-        Vc = I.V_matrix(wr[iw]*1j, K)
+        z = wr[iw]*1j
+        Vc = I.V_matrix(z, K)
         V = Vc[0:dim_red, dim_red:]
         H2 = I.cluster_hopping_matrix(clus=1) + Vc[dim_red:, dim_red:]
-        G2 = np.linalg.inv(wr[iw]*1j*id-H2)
-        hybrid[iw, ik, :, :] = V@G2@np.conjugate(V.T)  # V.(w - H2)^{-1}.V^T
+        G2 = np.linalg.inv(z*id-H2)
+        hybrid[iw, ik, :, :] = V@G2@np.conjugate(V.T)  # V.(z - H2)^{-1}.V^T
 
 iw = 10
 ik = 2
@@ -122,12 +123,13 @@ print('K (grid) = ', K)
 K[0] *= 0.3333333333
 K[1] *= 0.5
 print('K (phys) = ', K)
-G = I.CPT_Green_function(wr[iw]*1j,K)
+G = I.CPT_Green_function(wr[iw]*1j ,K)
 # print('gamma\n', hybrid[iw, ik, :, :])
 print('Gcpt\n', G[0:dim, 0:dim])
 
 # writing the result in a HDF5 file
 with h5py.File('hybrid.h5', "w") as f:
+    f.create_dataset("eta", data = 0.0, dtype=float)
     f.create_dataset("w", data = wr, dtype=wr.dtype)
     f.create_dataset("weight", data = weight, dtype=weight.dtype)
     f.create_dataset("k", data = k, dtype=k.dtype)
@@ -167,7 +169,6 @@ print ('diff tc_ave = ', np.round(tc_ave_read - tc_ave, 10))
 
 # I.cluster_averages(pr=True)
 print('Gcpt\n', I.CPT_Green_function_grid(iw,ik))
-
 
 
 

@@ -16,6 +16,7 @@ pyqcm : documentation (|version|)
    defining_models
    parameters
    spectral
+   green_structure
    cdmft
    vca
    hartree

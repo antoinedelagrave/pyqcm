@@ -2,6 +2,122 @@ import numpy as np
 from numpy.polynomial import polynomial as npoly
 
 #===============================================================================
+def biorthogonal_lanczos(H, v0, w0, tol=1e-12):
+    """Two-sided (bi-orthogonal) Lanczos tridiagonalization.
+
+    Given a real matrix H and two starting vectors v0 (right/ket) and w0
+    (left/bra) with <w0|v0> != 0, builds bi-orthogonal bases {v_i}, {w_i} of
+    the right/left Krylov spaces of H such that W^T H V = T is tridiagonal
+    and W^T V = I (W, V the matrices with columns w_i, v_i). This is the
+    Lanczos bi-orthonormalization algorithm described by Foley (these,
+    Annexe A.2), the variant of the Lanczos algorithm needed whenever the
+    two vectors on either side of a resolvent <w|(z-H)^-1|v> differ, so that
+    the ordinary (self-adjoint) Lanczos recursion -- which requires v0 = w0
+    up to normalization, and a positive starting weight -- does not apply.
+    This happens e.g. for off-diagonal Green function elements, or for the
+    difference of two Lehmann representations (see
+    lehmann.subtract_to_continued_fraction, which is the motivating use case
+    here: H is then the diagonal matrix of pooled poles).
+
+    <w0|(z-H)^-1|v0> is a continued fraction of the general (not necessarily
+    positive-weight) Jacobi form
+
+        <w0|(z-H)^-1|v0> = P[0] / (z - A[0] - P[1] / (z - A[1] - ...)),
+
+    with P[i] = beta_i * delta_i the (possibly negative) product of the two
+    normalizations of v_i and w_i. This is exactly what continued_fraction
+    represents, with its B[i] the signed square root of P[i] (B[i] = beta_i
+    here), so that ``continued_fraction(*biorthogonal_lanczos(H, v0, v0))``
+    recovers the ordinary (self-adjoint) Lanczos result whenever v0 = w0 and
+    all entries of v0 share a common sign.
+
+    Full bi-orthogonalization (against every previous v_j, w_j) is used for
+    numerical stability. The recursion is truncated -- possibly before
+    len(v0) stages are reached -- when a raw overlap <w_i_hat|v_i_hat> drops
+    below tol, which includes both "lucky" breakdowns (signalling that the
+    Krylov space is exhausted, the normal way a finite-support Lehmann
+    function yields a finite continued fraction) and "serious" breakdowns
+    (where the algorithm genuinely cannot continue without look-ahead, which
+    is not implemented here). The two cannot be told apart from the raw
+    overlap alone except at the very first step, where <w0|v0> == 0 means
+    the algorithm cannot even start; that case raises instead of silently
+    returning an empty (zero) result.
+
+    :param H: the matrix, either a 2D (n, n) array, or a 1D array of length
+        n giving the diagonal entries of a diagonal matrix (the case needed
+        for a Lehmann Hamiltonian, avoiding an O(n**2) matrix / matvec).
+    :param v0: starting right (ket) vector, length n.
+    :param w0: starting left (bra) vector, length n, with <w0|v0> != 0.
+    :param tol: threshold on the raw overlap below which the recursion stops.
+    :return: (A, B) arrays of length m <= n, ready to build
+        continued_fraction(A, B).
+    """
+    v0 = np.asarray(v0, dtype=float)
+    w0 = np.asarray(w0, dtype=float)
+    n = v0.size
+    if w0.size != n:
+        raise ValueError(f"v0 and w0 must have the same length, got {n} and {w0.size}")
+
+    H = np.asarray(H, dtype=float)
+    if H.ndim == 1:
+        if H.size != n:
+            raise ValueError(f"H must have length {n}, got {H.size}")
+        apply_H = lambda v: H * v
+        apply_HT = apply_H
+    elif H.ndim == 2:
+        if H.shape != (n, n):
+            raise ValueError(f"H must have shape ({n}, {n}), got {H.shape}")
+        apply_H = lambda v: H @ v
+        apply_HT = lambda v: H.T @ v
+    else:
+        raise ValueError(f"H must be 1D or 2D, got {H.ndim} dimensions")
+
+    A = np.zeros(n)
+    B = np.zeros(n)
+
+    Vs = []                       # right Lanczos vectors v_i
+    Ws = []                       # left Lanczos vectors w_i
+    v_hat = v0.copy()
+    w_hat = w0.copy()
+    v_prev = np.zeros(n)
+    w_prev = np.zeros(n)
+    m = n
+    for i in range(n):
+        p = w_hat @ v_hat
+        if abs(p) < tol:
+            if i == 0:
+                raise ValueError(
+                    f"biorthogonal_lanczos breakdown at the first step: <w0|v0> = {p:.3e} "
+                    "is (numerically) zero, so the algorithm cannot start without "
+                    "look-ahead (see Foley, these, Annexe A.2)."
+                )
+            m = i
+            break
+        delta = np.sqrt(abs(p))
+        beta = p / delta          # = sign(p) * sqrt(|p|), so beta * delta == p
+        v = v_hat / delta
+        w = w_hat / beta
+
+        Hv = apply_H(v)
+        alpha = w @ Hv
+        A[i] = alpha
+        B[i] = beta
+
+        v_hat = Hv - alpha * v - beta * v_prev
+        w_hat = apply_HT(w) - alpha * w - delta * w_prev
+        # full bi-orthogonalization against all previous Lanczos vectors
+        for Vj, Wj in zip(Vs, Ws):
+            v_hat -= Vj * (Wj @ v_hat)
+            w_hat -= Wj * (Vj @ w_hat)
+
+        Vs.append(v)
+        Ws.append(w)
+        v_prev, w_prev = v, w
+
+    return A[:m], B[:m]
+
+
+#===============================================================================
 class lehmann:
     """Lehmann representation of a scalar analytic function with poles on the real axis.
 
@@ -137,6 +253,56 @@ class lehmann:
 
         return continued_fraction(A[:m], B[:m])
 
+    def subtract_to_continued_fraction(self, X, tol=1e-12):
+        """Return the continued-fraction representation of the difference self - X.
+
+        Unlike add_to, the difference of two positive spectral measures is in
+        general not itself positive (pooling W poles with residues R and -X.R
+        gives some effectively negative weights), so the ordinary Lanczos
+        recursion used by to_continued_fraction -- which needs a positive
+        starting weight to build an orthonormal Krylov basis -- does not
+        apply. Following Foley (these, Annexe A.2), self - X is first written
+        as the single matrix element
+
+            self(z) - X(z) = <G|(z - H)^-1|D>,
+
+        of the resolvent of the diagonal (block) Hamiltonian
+        H = diag(self.W) (+) diag(X.W), between the two *different* vectors
+
+            G = (sqrt(self.R), sqrt(X.R)),   D = (sqrt(self.R), -sqrt(X.R))
+
+        (G carries the residues of self - X with both signs positive, D
+        carries the sign of the operand it came from). Because G != D, the
+        self-adjoint Lanczos recursion does not apply and the two-sided
+        (bi-orthogonal) Lanczos algorithm of biorthogonal_lanczos is used
+        instead, started from the right vector v0 = D and left vector
+        w0 = G. This requires <G|D> = sum(self.R) - sum(X.R) != 0 to get
+        started; see biorthogonal_lanczos for what happens otherwise.
+
+        The resulting continued_fraction generally has some negative B**2
+        (encoded as a negative B, see continued_fraction), reflecting a
+        spectral weight that need not be positive; consequently, unlike a
+        continued_fraction coming from to_continued_fraction, its evaluate()
+        is meaningful but its to_lehmann() (and therefore add_to(), which
+        goes through to_lehmann()) is not, since it assumes non-negative
+        residues.
+
+        :param X: another lehmann instance to subtract.
+        :param tol: passed to biorthogonal_lanczos (breakdown threshold).
+        :return: a continued_fraction representing self - X.
+        """
+        if not isinstance(X, lehmann):
+            raise TypeError("X must be a lehmann instance")
+        W = np.concatenate([self.W, X.W])
+        if W.size == 0:
+            return continued_fraction(np.empty(0), np.empty(0))
+        sqrtRf = np.sqrt(self.R)
+        sqrtRg = np.sqrt(X.R)
+        G = np.concatenate([sqrtRf, sqrtRg])
+        D = np.concatenate([sqrtRf, -sqrtRg])
+        A, B = biorthogonal_lanczos(W, D, G, tol=tol)
+        return continued_fraction(A, B)
+
     def add_to(self, X):
         """Return the lehmann representation of the sum self + X.
 
@@ -165,12 +331,22 @@ class continued_fraction:
 
     The function has the form
 
-        f(z) = B[0]**2 / (z - A[0] - B[1]**2 / (z - A[1] - B[2]**2 / (z - A[2] - ...)))
+        f(z) = B[0]*|B[0]| / (z - A[0] - B[1]*|B[1]| / (z - A[1] - B[2]*|B[2]| / (z - A[2] - ...)))
 
     where A holds the diagonal coefficients a_i and B holds the off-diagonal
-    coefficients b_i (B[0] is the overall weight, whose square multiplies the
-    fraction; for a Green function A and B are the Lanczos coefficients). Both
-    arrays have the same length.
+    coefficients b_i (B[0] is the overall weight; for a Green function A and B
+    are the Lanczos coefficients). Both arrays have the same length.
+
+    B is ordinarily non-negative, in which case B[i]*|B[i]| == B[i]**2 and this
+    is an ordinary positive-weight Jacobi fraction (the spectral weight of the
+    associated Lehmann representation, see to_lehmann, is non-negative). B[i]
+    is allowed to be negative, encoding a negative B[i]*|B[i]| product; this
+    arises e.g. from lehmann.subtract_to_continued_fraction, where the spectral
+    weight of a difference need not be positive (Foley, these, Annexe A.2).
+    For such a continued_fraction, evaluate() (and square_root_terminator /
+    period2_terminator, built from asymptotic B) remain meaningful, but
+    to_lehmann() (and add_to(), which goes through it) is not, since it
+    assumes non-negative residues.
     """
 
     def __init__(self, A, B):
@@ -205,9 +381,11 @@ class continued_fraction:
         f = np.zeros_like(z)
         if terminator is not None:
             f = f + np.asarray(terminator(z), dtype=complex)
-        # evaluate the continued fraction from the bottom up
+        # evaluate the continued fraction from the bottom up; b*abs(b) rather
+        # than b**2 so a negative B (signed spectral weight, see the class
+        # docstring) is honored instead of silently squared away
         for a, b in zip(self.A[::-1], self.B[::-1]):
-            f = b**2 / (z - a - f)
+            f = b * abs(b) / (z - a - f)
         return f
 
     @staticmethod
@@ -411,20 +589,32 @@ class continued_fraction:
 
         The coefficients define a symmetric tridiagonal Jacobi matrix J, with the
         diagonal coefficients A on the diagonal and the off-diagonal coefficients
-        B[1:] on the two off-diagonals. Its eigen-decomposition J = sum_i W_i
-        |psi_i><psi_i| yields
+        B[1:] on the two off-diagonals. Its eigen-decomposition
+        ``J = sum_i W_i |psi_i><psi_i|`` yields
 
-            f(z) = B[0]**2 <e_0|(z - J)^-1|e_0> = sum_i B[0]**2 psi_i[0]**2 / (z - W_i)
+            ``f(z) = B[0]**2 <e_0|(z - J)^-1|e_0> = sum_i B[0]**2 psi_i[0]**2 / (z - W_i)``
 
         so the poles are the eigenvalues and the residues are the squared first
         components of the eigenvectors, scaled by the weight B[0]**2. This is the
         inverse of lehmann.to_continued_fraction() (Golub-Welsch relation).
+
+        Only valid for a non-negative B (see the class docstring): squaring B
+        would otherwise silently discard the sign of a negative ``B[i]*|B[i]|``
+        weight and produce a lehmann with the wrong (all non-negative)
+        residues, so a negative B raises instead.
 
         :return: an equivalent lehmann instance.
         """
         n = self.A.size
         if n == 0:
             return lehmann(np.empty(0), np.empty(0))
+        if np.any(self.B < 0.0):
+            raise ValueError(
+                "to_lehmann is only valid for a non-negative B: this continued_fraction "
+                "has a negative B[i]*|B[i]| weight (e.g. from "
+                "lehmann.subtract_to_continued_fraction), whose sign to_lehmann cannot "
+                "represent."
+            )
 
         W, psi = np.linalg.eigh(np.diag(self.A) + np.diag(self.B[1:], 1) + np.diag(self.B[1:], -1))
         R = self.B[0]**2 * psi[0, :]**2
@@ -621,6 +811,132 @@ def _invsqrtm_pd(X, tol=1e-13):
     return (U * (1.0 / np.sqrt(w))) @ U.conj().T
 
 
+def _polar_sqrt_split(P):
+    """Split a square, invertible (not necessarily Hermitian) matrix P as
+    Beta^dagger @ Delta, with Beta and Delta both "sized like sqrt(P)".
+
+    Writing the polar decomposition P = Up @ Hp (Up unitary, Hp Hermitian
+    positive-definite), this returns Delta = sqrt(Hp) and Beta = sqrt(Hp) Up^dagger,
+    so that Beta^dagger @ Delta = Up @ sqrt(Hp) @ sqrt(Hp) = Up @ Hp = P and both
+    factors have singular values sqrt(s), s the singular values of P -- the
+    matrix analogue of splitting a signed scalar p as beta*delta with
+    delta = sqrt(|p|), beta = sign(p)*sqrt(|p|) (used by biorthogonal_lanczos),
+    to which this reduces at L = 1 (Up = sign(p), Hp = |p|).
+
+    :param P: square invertible (L, L) matrix.
+    :return: (Beta, Delta), (L, L) matrices with Beta.conj().T @ Delta == P.
+    """
+    U, s, Vh = np.linalg.svd(P)
+    sqrt_s = np.sqrt(s)
+    Delta = (Vh.conj().T * sqrt_s) @ Vh          # sqrt(Hp) = Vh^d diag(sqrt_s) Vh
+    Beta = Delta @ Vh.conj().T @ U.conj().T       # sqrt(Hp) @ Up^d
+    return Beta, Delta
+
+
+def block_biorthogonal_lanczos(H, V0, W0, tol=1e-10):
+    """Two-sided (bi-orthogonal) block Lanczos tridiagonalization.
+
+    Block matrix generalization of biorthogonal_lanczos: given a real diagonal
+    Hamiltonian H (length M) and two starting L-column blocks V0 (right/ket)
+    and W0 (left/bra), each (M, L), with the L x L overlap W0^dagger V0
+    invertible, builds bi-orthogonal block bases {V_i}, {W_i} (each M x L) such
+    that W_i^dagger V_j = delta_ij I_L, reducing the block resolvent element
+
+        Abra (z - H)^{-1} Aket^dagger,   with V0 = Aket^dagger, W0 = Abra^dagger,
+
+    to a block continued fraction. This is the matrix analogue of the Lanczos
+    bi-orthonormalization algorithm of Foley (these, Annexe A.2), needed for
+    lehmann_matrix.subtract_to_continued_fraction (the block Hamiltonian of
+    pooled poles there is diagonal, hence H given as a 1D array).
+
+    Unlike lehmann_matrix.to_continued_fraction, this simple (non-deflating)
+    algorithm requires the full L x L overlap block to become singular *all at
+    once* to terminate cleanly (which happens once the total number of pooled
+    poles, len(H), is a multiple of L); a *partial* rank deficiency (only some
+    singular values of the raw L x L overlap vanish) would need look-ahead
+    deflation, which is not implemented, and raises instead of silently
+    returning a wrong result.
+
+    Full bi-orthogonalization (against every previous V_j, W_j) is used for
+    numerical stability.
+
+    :param H: 1D array of length M, the diagonal entries of the Hamiltonian.
+    :param V0: starting right (ket) block, shape (M, L).
+    :param W0: starting left (bra) block, shape (M, L), with W0^dagger V0
+        invertible.
+    :param tol: relative threshold (against the largest singular value) below
+        which an overlap block singular value is considered zero.
+    :return: (A, Bbra, Bket) arrays of shape (m, L, L), m <= M // L, ready to
+        build continued_fraction_matrix(A, Bket, Bbra).
+    """
+    H = np.asarray(H, dtype=float)
+    V0 = np.atleast_2d(np.asarray(V0, dtype=complex))
+    W0 = np.atleast_2d(np.asarray(W0, dtype=complex))
+    M, L = V0.shape
+    if W0.shape != (M, L):
+        raise ValueError(f"V0 and W0 must have the same shape, got {V0.shape} and {W0.shape}")
+    if H.shape != (M,):
+        raise ValueError(f"H must have length {M}, got {H.shape}")
+
+    A = []
+    Bbra = []                     # bra-side (left) coupling / weight blocks
+    Bket = []                     # ket-side (right) coupling / weight blocks
+    Vs = []
+    Ws = []
+    V_hat = V0.copy()
+    W_hat = W0.copy()
+    V_prev = np.zeros((M, L), dtype=complex)
+    W_prev = np.zeros((M, L), dtype=complex)
+    for i in range(M):
+        P = W_hat.conj().T @ V_hat                # (L, L) raw overlap block
+        s = np.linalg.svd(P, compute_uv=False)
+        scale = max(1.0, s.max()) if s.size else 1.0
+        active = s > tol * scale
+        if i == 0 and not active.any():
+            raise ValueError(
+                f"block_biorthogonal_lanczos breakdown at the first step: W0^dagger V0 = "
+                f"{P!r} is (numerically) singular, so the algorithm cannot start without "
+                "look-ahead (see Foley, these, Annexe A.2)."
+            )
+        if not active.any():
+            break
+        if not active.all():
+            raise ValueError(
+                f"block_biorthogonal_lanczos: partial breakdown at stage {i} (singular "
+                f"values {s}): only {int(active.sum())} of {L} directions of the overlap "
+                "block are still active. This simple (non-deflating) algorithm needs the "
+                "whole block to become singular at once to terminate cleanly, which holds "
+                "when the total number of poles is a multiple of L; a partial breakdown "
+                "would require look-ahead deflation, not implemented here."
+            )
+
+        Beta_i, Delta_i = _polar_sqrt_split(P)
+        V_i = V_hat @ np.linalg.inv(Delta_i)
+        W_i = W_hat @ np.linalg.inv(Beta_i)
+
+        Hv = H[:, np.newaxis] * V_i
+        Alpha_i = W_i.conj().T @ Hv
+        V_hat = Hv - V_i @ Alpha_i - V_prev @ Beta_i
+        HTw = H[:, np.newaxis] * W_i               # H Hermitian (real diagonal): H^T == H
+        W_hat = HTw - W_i @ Alpha_i.conj().T - W_prev @ Delta_i
+        # full bi-orthogonalization against all previous Lanczos blocks
+        for Vj, Wj in zip(Vs, Ws):
+            V_hat -= Vj @ (Wj.conj().T @ V_hat)
+            W_hat -= Wj @ (Vj.conj().T @ W_hat)
+
+        A.append(Alpha_i)
+        Bbra.append(Beta_i)
+        Bket.append(Delta_i)
+        Vs.append(V_i)
+        Ws.append(W_i)
+        V_prev, W_prev = V_i, W_i
+
+    if not A:
+        L_ = V0.shape[1]
+        return np.empty((0, L_, L_)), np.empty((0, L_, L_)), np.empty((0, L_, L_))
+    return np.array(A), np.array(Bbra), np.array(Bket)
+
+
 #===============================================================================
 class lehmann_matrix:
     """Lehmann representation of an L x L matrix analytic function with poles on the real axis.
@@ -633,7 +949,7 @@ class lehmann_matrix:
     on the real axis and the residue at pole i is the rank-one Hermitian
     positive-semidefinite matrix Q[:,i] Q[:,i]^dagger built from the Lehmann
     amplitude vector Q[:,i] (of length L). This is the matrix analogue of
-    lehmann; for L = 1 it coincides with it (residue |Q[0,i]|**2).
+    lehmann; for L = 1 it coincides with it (residue ``|Q[0,i]|**2``).
     """
 
     def __init__(self, W, Q):
@@ -725,9 +1041,9 @@ class lehmann_matrix:
         associated matrix orthogonal polynomials, which are the block Jacobi
         continued-fraction coefficients:
 
-            A[k]  (Hermitian diagonal block / block-Lanczos alpha)
-            B[k]  (off-diagonal block / block-Lanczos beta), with B[0] from the
-                  QR factor of the starting block (Q^dagger = V0 B[0]).
+        - A[k], the Hermitian diagonal block (block-Lanczos alpha).
+        - B[k], the off-diagonal block (block-Lanczos beta), with B[0] from
+          the QR factor of the starting block (Q^dagger = V0 B[0]).
 
         Full reorthogonalization is used for numerical stability, and the
         recursion is truncated when the residual block norm drops below tol
@@ -787,6 +1103,61 @@ class lehmann_matrix:
 
         return continued_fraction_matrix(np.array(A), np.array(B))
 
+    def subtract_to_continued_fraction(self, X, tol=1e-10):
+        """Return the continued_fraction_matrix representation of the difference self - X.
+
+        The matrix analogue of lehmann.subtract_to_continued_fraction (see
+        Foley, these, Annexe A.2): self - X need not be a positive-semidefinite
+        spectral measure, so the self-adjoint block Lanczos of
+        to_continued_fraction (which needs a positive-semidefinite starting
+        block) does not apply. Instead self(z) - X(z) is written as the single
+        block resolvent element
+
+            self(z) - X(z) = Abra (z - H)^{-1} Aket^dagger,
+
+        of the diagonal (block) Hamiltonian H = diag(self.W) (+) diag(X.W),
+        between the two *different* L x M amplitude blocks
+
+            Abra = [self.Q, X.Q],   Aket = [self.Q, -X.Q]
+
+        (horizontal concatenation along the pole axis; Abra carries the
+        amplitudes of self - X with both signs positive, Aket carries the sign
+        of the operand each pole came from). Because Abra != Aket, the
+        two-sided block_biorthogonal_lanczos is used, started from the right
+        block V0 = Aket^dagger and left block W0 = Abra^dagger. This requires
+        the L x L overlap self.Q @ self.Q.conj().T - X.Q @ X.Q.conj().T (the
+        difference of the zeroth matrix moments) to be invertible to get
+        started; see block_biorthogonal_lanczos for what happens otherwise,
+        including its more general limitation to pole counts that are a
+        multiple of L (both operands must have the same matrix size L).
+
+        The resulting continued_fraction_matrix has, in general, a bra-side
+        coefficient array C different from its (ket-side) B, encoding a
+        spectral weight that need not be positive-semidefinite; consequently,
+        unlike a continued_fraction_matrix coming from to_continued_fraction,
+        its evaluate() is meaningful but its to_lehmann() (and therefore
+        add_to(), which goes through to_lehmann()) is not, since it assumes a
+        self-adjoint (C = B) construction.
+
+        :param X: another lehmann_matrix instance to subtract.
+        :param tol: passed to block_biorthogonal_lanczos (breakdown threshold).
+        :return: a continued_fraction_matrix representing self - X.
+        """
+        if not isinstance(X, lehmann_matrix):
+            raise TypeError("X must be a lehmann_matrix instance")
+        if X.L != self.L:
+            raise ValueError(f"matrix sizes differ: {self.L} and {X.L}")
+        L = self.L
+        W = np.concatenate([self.W, X.W])
+        if W.size == 0:
+            return continued_fraction_matrix(np.empty((0, L, L)), np.empty((0, L, L)), np.empty((0, L, L)))
+        Abra = np.concatenate([self.Q, X.Q], axis=1)
+        Aket = np.concatenate([self.Q, -X.Q], axis=1)
+        V0 = Aket.conj().T
+        W0 = Abra.conj().T
+        A, Bbra, Bket = block_biorthogonal_lanczos(W, V0, W0, tol=tol)
+        return continued_fraction_matrix(A, Bket, Bbra)
+
     def add_to(self, X):
         """Return the lehmann_matrix representation of the sum self + X.
 
@@ -815,30 +1186,48 @@ class continued_fraction_matrix:
 
     The function has the form
 
-        G(z) = B[0]^d M_0^{-1} B[0],   M_k = z I - A[k] - B[k+1]^d M_{k+1}^{-1} B[k+1],
+        G(z) = C[0]^d M_0^{-1} B[0],   M_k = z I - A[k] - C[k+1]^d M_{k+1}^{-1} B[k+1],
 
     truncated (M_{n-1} = z I - A[n-1]) or closed with a terminator. A holds the
-    Hermitian diagonal blocks A[k] and B holds the off-diagonal blocks B[k]
-    (B[0] is the overall weight block, whose square B[0]^d B[0] = m_0 gives the
+    diagonal blocks A[k] and B holds the (ket-side) off-diagonal blocks B[k]
+    (B[0] is the overall weight block, whose product with C[0] gives the
     zeroth matrix moment; for a matrix Green function A and B are the block
-    Lanczos coefficients). Both arrays have shape (n, L, L). This is the matrix
+    Lanczos coefficients). All arrays have shape (n, L, L). This is the matrix
     analogue of continued_fraction.
+
+    C is an independent (bra-side) off-diagonal array, defaulting to B when
+    omitted, in which case A is Hermitian and this is an ordinary
+    positive-semidefinite block Jacobi fraction (the spectral weight of the
+    associated matrix Lehmann representation, see to_lehmann, is
+    positive-semidefinite). Passing a C different from B -- and correspondingly
+    a non-Hermitian A -- encodes a spectral weight that need not be
+    positive-semidefinite; this arises from
+    lehmann_matrix.subtract_to_continued_fraction, the matrix analogue of
+    Foley (these, Annexe A.2). For such a continued_fraction_matrix, evaluate()
+    remains meaningful, but to_lehmann() (and add_to(), which goes through it)
+    is not, since it assumes a self-adjoint (C = B) construction.
     """
 
-    def __init__(self, A, B):
+    def __init__(self, A, B, C=None):
         """
-        :param A: array-like of Hermitian diagonal blocks, shape (n, L, L).
-        :param B: array-like of off-diagonal blocks, shape (n, L, L).
+        :param A: array-like of diagonal blocks, shape (n, L, L) (Hermitian if
+            C is omitted).
+        :param B: array-like of (ket-side) off-diagonal blocks, shape (n, L, L).
+        :param C: array-like of (bra-side) off-diagonal blocks, shape (n, L, L).
+            Defaults to B (the ordinary, self-adjoint case).
         """
         self.A = np.asarray(A, dtype=complex)
         self.B = np.asarray(B, dtype=complex)
+        self.selfadjoint = C is None
+        self.C = self.B if self.selfadjoint else np.asarray(C, dtype=complex)
 
-        if self.A.shape != self.B.shape:
+        if self.A.shape != self.B.shape or self.A.shape != self.C.shape:
             raise ValueError(
-                f"A and B must have the same shape, got {self.A.shape} and {self.B.shape}"
+                f"A, B and C must have the same shape, got {self.A.shape}, {self.B.shape} "
+                f"and {self.C.shape}"
             )
         if self.A.ndim != 3 or self.A.shape[1] != self.A.shape[2]:
-            raise ValueError(f"A and B must have shape (n, L, L), got {self.A.shape}")
+            raise ValueError(f"A, B and C must have shape (n, L, L), got {self.A.shape}")
         self.L = self.A.shape[1]
 
     def evaluate(self, z, terminator=None):
@@ -861,10 +1250,12 @@ class continued_fraction_matrix:
         if terminator is not None:
             f = f + np.asarray(terminator(z), dtype=complex)
         zI = z[..., np.newaxis, np.newaxis] * eye
-        # evaluate the block continued fraction from the bottom up
-        for a, b in zip(self.A[::-1], self.B[::-1]):
+        # evaluate the block continued fraction from the bottom up; C to the
+        # left (conjugate-transposed), B to the right, so C = B (the default)
+        # recovers the ordinary self-adjoint formula
+        for a, b, c in zip(self.A[::-1], self.B[::-1], self.C[::-1]):
             minv = np.linalg.inv(zI - a - f)
-            f = b.conj().T @ minv @ b
+            f = c.conj().T @ minv @ b
         return f
 
     @staticmethod
@@ -1114,12 +1505,23 @@ class continued_fraction_matrix:
         Q[:,i] = B[0]^dagger psi_i^{(0)}. Inverse of
         lehmann_matrix.to_continued_fraction (block Golub-Welsch).
 
+        Only valid for a self-adjoint continued_fraction_matrix (C = B, see the
+        class docstring): a distinct C would be silently ignored by the
+        Hermitian J built here, discarding a spectral weight that need not be
+        positive-semidefinite, so a non-self-adjoint instance raises instead.
+
         :return: an equivalent lehmann_matrix instance.
         """
         n = self.A.shape[0]
         L = self.L
         if n == 0:
             return lehmann_matrix(np.empty(0), np.empty((L, 0)))
+        if not self.selfadjoint:
+            raise ValueError(
+                "to_lehmann is only valid for a self-adjoint continued_fraction_matrix "
+                "(C = B): this instance has a distinct bra-side C (e.g. from "
+                "lehmann_matrix.subtract_to_continued_fraction), which it cannot represent."
+            )
 
         N = n * L
         J = np.zeros((N, N), dtype=complex)
@@ -1348,6 +1750,29 @@ if __name__ == "__main__":
           amax(continued_fraction.from_modified_moments(nu, ac, bc).evaluate(z), ref))
     check("lehmann.add_to (self + self)", amax(lh.add_to(lh).evaluate(z), 2 * ref))
 
+    rng_sub = np.random.default_rng(2)                        # separate stream: doesn't perturb rng below
+    Wg = np.sort(rng_sub.uniform(-2, 2, 5))
+    Rg = rng_sub.uniform(0.1, 1.0, 5)
+    lg = lehmann(Wg, Rg)
+    diff_ref = ref - lg.evaluate(z)
+    cf_diff = lh.subtract_to_continued_fraction(lg)
+    check("lehmann.subtract_to_continued_fraction (distinct poles)", amax(cf_diff.evaluate(z), diff_ref))
+    check("lehmann.subtract_to_continued_fraction: some B < 0", 0.0 if np.any(cf_diff.B < 0) else 1.0)
+    try:
+        cf_diff.to_lehmann()
+        check("continued_fraction.to_lehmann rejects negative B", 1.0)
+    except ValueError:
+        check("continued_fraction.to_lehmann rejects negative B", 0.0)
+    lg_same_poles = lehmann(W, 0.4 * R)                       # same poles, different weight: <G|D> != 0
+    diff_ref2 = ref - lg_same_poles.evaluate(z)
+    cf_diff2 = lh.subtract_to_continued_fraction(lg_same_poles)
+    check("lehmann.subtract_to_continued_fraction (shared poles)", amax(cf_diff2.evaluate(z), diff_ref2))
+    try:
+        lh.subtract_to_continued_fraction(lh)                 # <G|D> = sum(R) - sum(R) = 0: must raise
+        check("lehmann.subtract_to_continued_fraction (self - self) raises", 1.0)
+    except ValueError:
+        check("lehmann.subtract_to_continued_fraction (self - self) raises", 0.0)
+
     # ---- matrix classes --------------------------------------------------
     print("matrix (block) classes (random L x M measures):")
     last_cfm = None
@@ -1369,6 +1794,31 @@ if __name__ == "__main__":
             check(f"L={L} M={M}: cf_matrix.from_moments",
                   amax(continued_fraction_matrix.from_moments(mm).evaluate(z), refm))
 
+    # ---- lehmann_matrix subtraction (matrix analogue of the scalar case) --
+    rng_sub_m = np.random.default_rng(4)              # separate stream, doesn't perturb rng above
+    Lm = 2
+    WmF = np.sort(rng_sub_m.uniform(-2, 2, 4))
+    QmF = rng_sub_m.standard_normal((Lm, 4)) + 1j * rng_sub_m.standard_normal((Lm, 4))
+    WmG = np.sort(rng_sub_m.uniform(-2, 2, 4))          # Mf + Mg = 8 is a multiple of Lm = 2
+    QmG = rng_sub_m.standard_normal((Lm, 4)) + 1j * rng_sub_m.standard_normal((Lm, 4))
+    lhmF = lehmann_matrix(WmF, QmF)
+    lhmG = lehmann_matrix(WmG, QmG)
+    refm_diff = lhmF.evaluate(z) - lhmG.evaluate(z)
+    cfm_diff = lhmF.subtract_to_continued_fraction(lhmG)
+    check("lehmann_matrix.subtract_to_continued_fraction", amax(cfm_diff.evaluate(z), refm_diff))
+    check("lehmann_matrix.subtract_to_continued_fraction: not self-adjoint",
+          0.0 if not cfm_diff.selfadjoint else 1.0)
+    try:
+        cfm_diff.to_lehmann()
+        check("continued_fraction_matrix.to_lehmann rejects non-self-adjoint", 1.0)
+    except ValueError:
+        check("continued_fraction_matrix.to_lehmann rejects non-self-adjoint", 0.0)
+    try:
+        lhmF.subtract_to_continued_fraction(lhmF)      # overlap block = 0: must raise
+        check("lehmann_matrix.subtract_to_continued_fraction (self - self) raises", 1.0)
+    except ValueError:
+        check("lehmann_matrix.subtract_to_continued_fraction (self - self) raises", 0.0)
+
     # ---- L=1 matrix vs scalar consistency --------------------------------
     print("L=1 matrix vs scalar consistency (same W, R):")
     lh1 = lehmann_matrix(W, np.sqrt(R)[None, :])
@@ -1382,6 +1832,10 @@ if __name__ == "__main__":
     check("from_moments", amax(
         continued_fraction_matrix.from_moments(lh1.moments(16)).evaluate(z)[..., 0, 0],
         continued_fraction.from_moments(m).evaluate(z)))
+    lh1g = lehmann_matrix(Wg, np.sqrt(Rg)[None, :])
+    cf1_diff = lh1.subtract_to_continued_fraction(lh1g)
+    check("subtract_to_continued_fraction",
+          amax(cf1_diff.evaluate(z)[..., 0, 0], cf_diff.evaluate(z)))
 
     # ---- terminators (fixed-point residuals) -----------------------------
     print("terminators (fixed-point residual):")

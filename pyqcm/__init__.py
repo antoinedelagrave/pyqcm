@@ -1047,6 +1047,24 @@ class model_instance:
         return qcm.qmatrix(self.label * self.model.nsys + sys)
 
     # -----------------------------------------------------------------------------------------------
+    def hybridization_function_lehmann(self, sys=0, spin_down=False):
+        """
+        Returns the Lehmann representation of the hybridization function, i.e.
+        the bath pole energies and the cluster-bath hopping amplitudes:
+
+            Gamma(z) = sum_i Q[:,i] Q[:,i]^dagger / (z - W[i])
+
+        :param int sys: label of the system (0-based)
+        :param bool spin_down: if True, returns the spin-down representation
+        :returns: a green_structure.lehmann_matrix built from the bath energies
+            (W) and the cluster-bath hybridization amplitudes (Q)
+        """
+        from .green_structure import lehmann_matrix
+
+        W, Q = qcm.hybridization(spin_down, self.label * self.model.nsys + sys)
+        return lehmann_matrix(W, Q.T)
+
+    # -----------------------------------------------------------------------------------------------
     def combined_mcf(self, sys=0, k=None, pr=False):
         """
         Returns the combined matrix continued fraction (MCF) for the cluster Green function.

@@ -423,7 +423,7 @@ namespace ED{
     #endif
     auto& M = model_instances.at(label);
     if(!M->complex_Hilbert){
-      dynamic_pointer_cast<model_instance<double>>(M)->hybridization(spin_down);
+      return dynamic_pointer_cast<model_instance<double>>(M)->hybridization(spin_down);
     }
     return dynamic_pointer_cast<model_instance<complex<double>>>(M)->hybridization(spin_down);
   }

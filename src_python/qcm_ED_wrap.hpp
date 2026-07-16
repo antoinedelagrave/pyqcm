@@ -349,17 +349,17 @@ inline void register_qcm_ED(nb::module_ &m) {
         "Lehmann representation of the Green function: (eigenvalues, MxL matrix)");
 
   m.def("hybridization",
-        [](int label) {
-          auto Q = ED::hybridization(false, label);
+        [](bool spin_down, int label) {
+          auto Q = ED::hybridization(spin_down, label);
           size_t M = Q.first.size();
           size_t L = M ? Q.second.size() / M : 0;
           auto evals = nb_array_<double>(Q.first.data(), {M});
-          auto mat = nb_array_<complex<double>>(Q.second.data(), {L, M});
+          auto mat = nb_array_<complex<double>>(Q.second.data(), {M, L});
           return nb::make_tuple(evals, mat);
         },
-        "label"_a = 0,
+        "spin_down"_a = false, "label"_a = 0,
         "Lehmann representation of the hybridization function: (eigenvalues, "
-        "LxM matrix)");
+        "MxL matrix)");
 
   m.def("write_instance_to_hdf5",
         [](const std::string &filename, const std::string &group, int label) {

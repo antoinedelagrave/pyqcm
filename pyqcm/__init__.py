@@ -823,6 +823,33 @@ class lattice_model:
         return qcm.compact_tiling(A, k)
 
     # -----------------------------------------------------------------------------------------------
+    def periodize_matrix(self, A, k):
+        r"""
+        Periodizes a ``dim_GF`` matrix (Green function, CPT Green function or
+        self-energy) into the reduced band-space matrix of dimension
+        ``dimGF_red`` (= nband * n_mixed), at wavevector **k**.
+
+        :param A: input matrix (ndarray of shape ``(d, d)``, complex, ``d`` = ``dim_GF``)
+        :param k: wavevector (ndarray(3)) in the superdual basis (same convention as :py:meth:`compact_tiling`)
+        :returns: periodized matrix (ndarray of shape ``(dimGF_red, dimGF_red)``, complex)
+
+        """
+        return qcm.periodize_matrix(A, k)
+
+    # -----------------------------------------------------------------------------------------------
+    def periodize_vector(self, v, k):
+        r"""
+        Periodizes a ``dim_GF`` vector into the reduced band-space vector of
+        dimension ``dimGF_red`` (= nband * n_mixed), at wavevector **k**.
+
+        :param v: input vector (ndarray of shape ``(d,)``, complex, ``d`` = ``dim_GF``)
+        :param k: wavevector (ndarray(3)) in the superdual basis (same convention as :py:meth:`compact_tiling`)
+        :returns: periodized vector (ndarray of shape ``(dimGF_red,)``, complex)
+
+        """
+        return qcm.periodize_vector(v, k)
+
+    # -----------------------------------------------------------------------------------------------
     def write_definition(self, filename=None, str=False):
         """Writes a Python file containing the code necessary to define this lattice_model.
 

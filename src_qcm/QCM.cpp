@@ -636,6 +636,33 @@ check_instance(label);
 
 
   /**
+   Periodizes an arbitrary dim_GF matrix (Green function, CPT Green function or
+   self-energy) into the reduced (band) space at wavevector k.
+   @param A  input matrix (dim_GF x dim_GF)
+   @param k  wavevector in the superdual basis (same convention as periodize())
+   */
+  matrix<complex<double>> periodize_matrix(const matrix<complex<double>>& A, const vector3D<double>& k)
+  {
+    lattice_model& mod = *qcm_model;
+    matrix<complex<double>> Ac = A;
+    return mod.periodize(k, Ac);
+  }
+
+
+  /**
+   Periodizes an arbitrary dim_GF vector into the reduced (band) space at wavevector k.
+   @param v  input vector (length dim_GF)
+   @param k  wavevector in the superdual basis (same convention as periodize())
+   */
+  vector<complex<double>> periodize_vector(const vector<complex<double>>& v, const vector3D<double>& k)
+  {
+    lattice_model& mod = *qcm_model;
+    vector<complex<double>> vc = v;
+    return mod.periodize(k, vc);
+  }
+
+
+  /**
    Returns the combined MCF (W, A[j], B[j]) periodized into the band basis at wavevector k.
    Implements the 'L' periodization scheme: adds inter-cluster hopping V to A[0],
    applies compact_tiling to A[j>=1] and B[j>=1], then periodizes all blocks and W.

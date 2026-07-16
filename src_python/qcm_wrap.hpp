@@ -499,6 +499,41 @@ inline void register_qcm(nb::module_ &m) {
         "A"_a, "k"_a,
         "symmetrizes a dim_GF matrix w.r.t. cluster translations at k");
 
+  m.def("periodize_matrix",
+        [](nb::object A, nb::object k) {
+          size_t d = QCM::Green_function_dimension();
+          PyObject *Ao = A.ptr();
+          if (!PyArray_Check(Ao) || PyArray_NDIM((PyArrayObject *)Ao) != 2 ||
+              (size_t)PyArray_DIM((PyArrayObject *)Ao, 0) != d ||
+              (size_t)PyArray_DIM((PyArrayObject *)Ao, 1) != d)
+            qcm_throw("argument A of periodize_matrix must be a square complex "
+                      "array of size dim_GF");
+          matrix<complex<double>> Amat(d);
+          memcpy(Amat.v.data(), PyArray_DATA((PyArrayObject *)Ao),
+                 d * d * sizeof(complex<double>));
+          auto g = QCM::periodize_matrix(Amat, vector_from_Py((PyArrayObject *)k.ptr()));
+          return nb_cmat(g);
+        },
+        "A"_a, "k"_a,
+        "periodizes a dim_GF matrix into the reduced (band) space at wavevector k");
+
+  m.def("periodize_vector",
+        [](nb::object v, nb::object k) {
+          size_t d = QCM::Green_function_dimension();
+          PyObject *vo = v.ptr();
+          if (!PyArray_Check(vo) || PyArray_NDIM((PyArrayObject *)vo) != 1 ||
+              (size_t)PyArray_DIM((PyArrayObject *)vo, 0) != d)
+            qcm_throw("argument v of periodize_vector must be a complex "
+                      "array of length dim_GF");
+          vector<complex<double>> vvec(d);
+          memcpy(vvec.data(), PyArray_DATA((PyArrayObject *)vo),
+                 d * sizeof(complex<double>));
+          auto g = QCM::periodize_vector(vvec, vector_from_Py((PyArrayObject *)k.ptr()));
+          return nb_array_<complex<double>>(g.data(), {g.size()});
+        },
+        "v"_a, "k"_a,
+        "periodizes a dim_GF vector into the reduced (band) space at wavevector k");
+
   m.def("combined_mcf",
         [](int label, nb::object k_obj) {
           ED::CombinedMCF_data D;

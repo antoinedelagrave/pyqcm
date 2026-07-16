@@ -68,6 +68,10 @@ namespace QCM{
   matrix<complex<double>> cluster_hopping_matrix(size_t i, bool spin_down, int label);
   //! Symmetrizes a dim_GF matrix with respect to cluster translations at wavevector k.
   matrix<complex<double>> compact_tiling(const matrix<complex<double>>& A, const vector3D<double>& k);
+  //! Periodizes a dim_GF x dim_GF matrix into the reduced (band) space at wavevector k.
+  matrix<complex<double>> periodize_matrix(const matrix<complex<double>>& A, const vector3D<double>& k);
+  //! Periodizes a dim_GF vector into the reduced (band) space at wavevector k.
+  vector<complex<double>> periodize_vector(const vector<complex<double>>& v, const vector3D<double>& k);
   //! Returns the combined matrix continued fraction (W, A, B) for the cluster Green function at k.
   ED::CombinedMCF_data get_combined_mcf_k(const vector3D<double>& k, bool spin_down, int label);
   //! Computes the CPT Green function at a given frequency and wavevector.

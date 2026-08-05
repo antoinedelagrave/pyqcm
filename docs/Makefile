@@ -6,7 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = python3 -msphinx
 SPHINXPROJ    = pyqcm
 SOURCEDIR     = source
-BUILDDIR      = ../../qcm_wed_doc
+BUILDDIR      = ../../pyqcm_doc
 
 # Put it first so that "make" without argument is like "make help".
 help:

@@ -547,9 +547,16 @@ inline void register_qcm(nb::module_ &m) {
             D = QCM::get_combined_mcf_k(vector_from_Py((PyArrayObject *)ko),
                                         false, label);
           }
+          // matrix<> stores data column-major; nb_cmat flat-copies into a
+          // C-ordered (row-major) NumPy array, which implicitly transposes
+          // square matrices. A[j]/B[j]/W here are not generally symmetric
+          // (B[j] is upper-triangular, W and A[j] can be genuinely complex
+          // after the site-basis transform), so that implicit transpose must
+          // be undone explicitly before marshalling.
           nb::list A, B;
-          for (auto &a : D.A) A.append(nb_cmat(a));
-          for (auto &b : D.B) B.append(nb_cmat(b));
+          for (auto &a : D.A) { a.transpose(); A.append(nb_cmat(a)); }
+          for (auto &b : D.B) { b.transpose(); B.append(nb_cmat(b)); }
+          D.W.transpose();
           return nb::make_tuple(nb_cmat(D.W), A, B);
         },
         "label"_a = 0, "k"_a = nb::none(),

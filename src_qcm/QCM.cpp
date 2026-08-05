@@ -428,7 +428,8 @@ void erase_lattice_model_instance(size_t label){
     #endif
     lattice_model& mod = *lattice_model_instances.at(label)->model;
     Green_function G = lattice_model_instances.at(label)->cluster_Green_function(Complex(0,0.1), false, spin_down);
-    Green_function_k M(G, k);
+    auto ks = mod.superdual.to(mod.physdual.from(k));
+    Green_function_k M(G, ks);
     lattice_model_instances.at(label)->set_V(M);
     return M.t;
   }
@@ -623,15 +624,13 @@ check_instance(label);
   /**
    Applies compact_tiling to an arbitrary dim_GF matrix at wavevector k.
    @param A  input matrix (dim_GF x dim_GF)
-   @param k  wavevector in the same convention as M.k and set_V(): k_phys * a / (2*pi),
-             i.e. in units of the inverse primitive lattice constant / (2*pi).
-             The inter-cluster Bloch phase is exp(i * k * neighbor * 2*pi) where
-             neighbor is the wrapping vector in primitive lattice units.
+   @param k  wavevector in the same convention as ...
    */
   matrix<complex<double>> compact_tiling(const matrix<complex<double>>& A, const vector3D<double>& k)
   {
     lattice_model& mod = *qcm_model;
-    return mod.compact_tiling(A, k);
+    auto ks = mod.superdual.to(mod.physdual.from(k));
+    return mod.compact_tiling(A, ks);
   }
 
 
@@ -639,13 +638,14 @@ check_instance(label);
    Periodizes an arbitrary dim_GF matrix (Green function, CPT Green function or
    self-energy) into the reduced (band) space at wavevector k.
    @param A  input matrix (dim_GF x dim_GF)
-   @param k  wavevector in the superdual basis (same convention as periodize())
+   @param k  wavevector 
    */
   matrix<complex<double>> periodize_matrix(const matrix<complex<double>>& A, const vector3D<double>& k)
   {
     lattice_model& mod = *qcm_model;
     matrix<complex<double>> Ac = A;
-    return mod.periodize(k, Ac);
+    auto ks = mod.superdual.to(mod.physdual.from(k));
+    return mod.periodize(ks, Ac);
   }
 
 
@@ -658,7 +658,8 @@ check_instance(label);
   {
     lattice_model& mod = *qcm_model;
     vector<complex<double>> vc = v;
-    return mod.periodize(k, vc);
+    auto ks = mod.superdual.to(mod.physdual.from(k));
+    return mod.periodize(ks, vc);
   }
 
 

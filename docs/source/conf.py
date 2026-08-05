@@ -40,8 +40,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_copybutton',
 	'myst_parser',
-    'breathe',
-    'exhale',
 ]
 
 autodoc_member_order = 'bysource'
@@ -204,38 +202,6 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-
-# -- C++ API documentation (Breathe + Exhale) ----------------------------------
-# Exhale runs Doxygen with the inline configuration below, then auto-generates
-# an .rst tree under docs/source/cpp_api/ that Sphinx renders. The Doxygen XML
-# lands in docs/source/doxy/xml/. Both directories are .gitignored.
-
-breathe_projects = {"qcm": "./doxy/xml"}
-breathe_default_project = "qcm"
-
-exhale_args = {
-    "containmentFolder":     "./cpp_api",
-    "rootFileName":          "library_root.rst",
-    "rootFileTitle":         "C++ API Reference",
-    "doxygenStripFromPath":  "../..",
-    "createTreeView":        True,
-    "exhaleExecutesDoxygen": True,
-    "exhaleDoxygenStdin": """
-        INPUT                  = ../../src_qcm ../../src_ed ../../src_util
-        RECURSIVE              = YES
-        FILE_PATTERNS          = *.cpp *.hpp
-        EXCLUDE_PATTERNS       = */external/*
-        GENERATE_HTML          = NO
-        GENERATE_LATEX         = NO
-        GENERATE_XML           = YES
-        XML_OUTPUT             = xml
-        EXTRACT_ALL            = YES
-        EXTRACT_PRIVATE        = NO
-        EXTRACT_STATIC         = YES
-        JAVADOC_AUTOBRIEF      = YES
-        QUIET                  = YES
-        WARN_IF_UNDOCUMENTED   = NO
-        TOC_INCLUDE_HEADINGS   = 0
-    """,
-}
+# The C++ API reference (Breathe + Exhale) is a separate Sphinx project;
+# see docs/cpp/source/conf.py. It is not part of this build.
 

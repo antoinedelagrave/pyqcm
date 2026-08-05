@@ -26,8 +26,10 @@ pyqcm : documentation (|version|)
    other_functions
    options
    parallel
-   cpp_api/library_root
 
+This is the documentation for the Python interface of pyqcm. The C++ API
+reference is built separately (see ``docs/cpp``) and is not yet published
+on Read the Docs.
 
 Indices and tables
 ==================

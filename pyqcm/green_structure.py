@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from numpy.polynomial import polynomial as npoly
 
@@ -115,6 +116,57 @@ def biorthogonal_lanczos(H, v0, w0, tol=1e-12):
         v_prev, w_prev = v, w
 
     return A[:m], B[:m]
+
+
+#===============================================================================
+def _snap_near_degenerate_poles(W1, W2, tol):
+    """Return copies of W1, W2 with entries that are within tol of each other
+    snapped to their common average (greedy nearest-pair matching, each entry
+    used at most once).
+
+    Used by lehmann.subtract_to_continued_fraction and
+    lehmann_matrix.subtract_to_continued_fraction: a pole that is
+    mathematically supposed to coincide between the two operands (e.g. a bath
+    pole that must reappear exactly in a cluster Green function inverse, see
+    Ginv in periodization_CDMFT_PY.py) generally reaches each side through a
+    different numerical pipeline and so differs by a small amount (typically
+    ~1e-10, from accumulated round-off in whichever side went through a
+    Lanczos reconstruction) rather than being bit-for-bit identical. Left as
+    is, the two-sided Lanczos recursion has to pool two separate, nearly (but
+    not exactly) degenerate poles: the overlap block it inverts at that stage
+    is nearly singular rather than exactly singular, which is ill-conditioned
+    and can produce a spurious pole pair with an unphysical (e.g. negative)
+    residue instead of the clean single-pole cancellation the exact math
+    predicts. Snapping matched poles to a shared value first makes the
+    degeneracy exact, letting the existing cancellation logic in
+    biorthogonal_lanczos / block_biorthogonal_lanczos handle it cleanly.
+
+    :param W1: 1D array of pole locations.
+    :param W2: 1D array of pole locations.
+    :param tol: distance below which two poles (one from each array) are
+        snapped together.
+    :return: (W1, W2), copies of the inputs with matched entries snapped.
+    """
+    W1 = np.array(W1, dtype=float, copy=True)
+    W2 = np.array(W2, dtype=float, copy=True)
+    if W1.size == 0 or W2.size == 0 or tol <= 0:
+        return W1, W2
+    diff = np.abs(W1[:, np.newaxis] - W2[np.newaxis, :])
+    order = np.argsort(diff, axis=None)
+    used1 = np.zeros(W1.size, dtype=bool)
+    used2 = np.zeros(W2.size, dtype=bool)
+    for flat in order:
+        i, j = np.unravel_index(flat, diff.shape)
+        if diff[i, j] >= tol:
+            break
+        if used1[i] or used2[j]:
+            continue
+        avg = 0.5 * (W1[i] + W2[j])
+        W1[i] = avg
+        W2[j] = avg
+        used1[i] = True
+        used2[j] = True
+    return W1, W2
 
 
 #===============================================================================
@@ -253,8 +305,16 @@ class lehmann:
 
         return continued_fraction(A[:m], B[:m])
 
-    def subtract_to_continued_fraction(self, X, tol=1e-12):
+    def subtract_to_continued_fraction(self, X, tol=1e-12, merge_tol=1e-8):
         """Return the continued-fraction representation of the difference self - X.
+
+        Before pooling, poles of self and X that are within merge_tol of each
+        other are snapped to a common value (see _snap_near_degenerate_poles):
+        such near-coincidences typically reflect the same physical pole
+        reaching self.W and X.W through different numerical pipelines (so
+        they differ only by round-off), and treating them as exactly
+        degenerate avoids a spurious pole pair with an unphysical residue
+        that an almost-but-not-quite cancellation would otherwise produce.
 
         Unlike add_to, the difference of two positive spectral measures is in
         general not itself positive (pooling W poles with residues R and -X.R
@@ -289,11 +349,15 @@ class lehmann:
 
         :param X: another lehmann instance to subtract.
         :param tol: passed to biorthogonal_lanczos (breakdown threshold).
+        :param merge_tol: distance below which a pole of self and a pole of X
+            are snapped to a common value before pooling (see
+            _snap_near_degenerate_poles); set to 0 to disable.
         :return: a continued_fraction representing self - X.
         """
         if not isinstance(X, lehmann):
             raise TypeError("X must be a lehmann instance")
-        W = np.concatenate([self.W, X.W])
+        Wself, WX = _snap_near_degenerate_poles(self.W, X.W, merge_tol)
+        W = np.concatenate([Wself, WX])
         if W.size == 0:
             return continued_fraction(np.empty(0), np.empty(0))
         sqrtRf = np.sqrt(self.R)
@@ -854,7 +918,8 @@ def block_biorthogonal_lanczos(H, V0, W0, tol=1e-10):
     once* to terminate cleanly (which happens once the total number of pooled
     poles, len(H), is a multiple of L); a *partial* rank deficiency (only some
     singular values of the raw L x L overlap vanish) would need look-ahead
-    deflation, which is not implemented, and raises instead of silently
+    deflation, which is not implemented. In that case a warning is issued and
+    the steps computed before the breakdown are returned, rather than silently
     returning a wrong result.
 
     Full bi-orthogonalization (against every previous V_j, W_j) is used for
@@ -901,14 +966,17 @@ def block_biorthogonal_lanczos(H, V0, W0, tol=1e-10):
         if not active.any():
             break
         if not active.all():
-            raise ValueError(
+            warnings.warn(
                 f"block_biorthogonal_lanczos: partial breakdown at stage {i} (singular "
                 f"values {s}): only {int(active.sum())} of {L} directions of the overlap "
                 "block are still active. This simple (non-deflating) algorithm needs the "
                 "whole block to become singular at once to terminate cleanly, which holds "
                 "when the total number of poles is a multiple of L; a partial breakdown "
-                "would require look-ahead deflation, not implemented here."
+                "would require look-ahead deflation, not implemented here. Returning the "
+                f"{i} step(s) computed before the breakdown.",
+                stacklevel=2,
             )
+            break
 
         Beta_i, Delta_i = _polar_sqrt_split(P)
         V_i = V_hat @ np.linalg.inv(Delta_i)
@@ -1042,8 +1110,24 @@ class lehmann_matrix:
         continued-fraction coefficients:
 
         - A[k], the Hermitian diagonal block (block-Lanczos alpha).
-        - B[k], the off-diagonal block (block-Lanczos beta), with B[0] from
-          the QR factor of the starting block (Q^dagger = V0 B[0]).
+        - B[k], the off-diagonal block (block-Lanczos beta), with B[0] the
+          canonical (Hermitian, positive-semidefinite) square root of the
+          starting block's zeroth moment Q Q^dagger (Q^dagger = V0 B[0]).
+          B[0] is the only floor tied to the original (e.g. site) basis --
+          e.g. code that reads off A[0] directly, or reduces the tail by
+          dropping floor 0 (continued_fraction_matrix(A[1:], B[1:]) then
+          equals z - A[0] - this whole G(z)^{-1}), implicitly assumes B[0]
+          is that basis's identity, which only holds if B[0] is picked as
+          the gauge-free Hermitian square root of Q Q^dagger (equal to the
+          identity whenever Q Q^dagger is, by the usual completeness sum
+          rule) rather than an arbitrary SVD/QR factor, which has an
+          unconstrained unitary gauge freedom whenever Q Q^dagger has
+          degenerate eigenvalues (as it generically does when it is close
+          to a multiple of the identity). Subsequent floors (k >= 1) have
+          no such physical-basis role -- their B[k] is purely an internal
+          Krylov-to-Krylov coupling that self-consistently cancels out of
+          evaluate() and to_lehmann() -- so they keep the plain (gauge-
+          dependent but cheaper) SVD-based orthonormalization.
 
         Full reorthogonalization is used for numerical stability, and the
         recursion is truncated when the residual block norm drops below tol
@@ -1073,8 +1157,21 @@ class lehmann_matrix:
             U[:, ~active] = 0.0
             return U, B, int(active.sum())
 
-        # starting block: Q^dagger = V0 B0  (V0 has orthonormal columns)
-        V0, B0, _ = orthonormalize(self.Q.conj().T)          # V0: (M, L), B0: (L, L)
+        # starting block: Q^dagger = V0 B0 (V0 has orthonormal columns), with
+        # B0 the canonical (gauge-free) Hermitian PSD square root of the
+        # zeroth moment Q Q^dagger -- see the docstring above for why this
+        # (rather than an arbitrary SVD/QR factor) is required for B0 to
+        # land in the physical basis.
+        QQd = _hermitize(self.Q @ self.Q.conj().T)
+        wq, Uq = np.linalg.eigh(QQd)
+        wq = np.clip(wq, 0.0, None)
+        active0 = wq > tol * max(1.0, wq.max())
+        B0 = (Uq * np.sqrt(wq)) @ Uq.conj().T
+        if active0.any():
+            B0_pinv = (Uq[:, active0] * (1.0 / np.sqrt(wq[active0]))) @ Uq[:, active0].conj().T
+        else:
+            B0_pinv = np.zeros((L, L), dtype=complex)
+        V0 = self.Q.conj().T @ B0_pinv                        # (M, L)
 
         A = []
         B = [B0]
@@ -1103,8 +1200,16 @@ class lehmann_matrix:
 
         return continued_fraction_matrix(np.array(A), np.array(B))
 
-    def subtract_to_continued_fraction(self, X, tol=1e-10):
+    def subtract_to_continued_fraction(self, X, tol=1e-10, merge_tol=1e-8):
         """Return the continued_fraction_matrix representation of the difference self - X.
+
+        Before pooling, poles of self and X that are within merge_tol of each
+        other are snapped to a common value (see _snap_near_degenerate_poles):
+        such near-coincidences typically reflect the same physical pole
+        reaching self.W and X.W through different numerical pipelines (so
+        they differ only by round-off), and treating them as exactly
+        degenerate avoids a spurious pole pair with an unphysical residue
+        that an almost-but-not-quite cancellation would otherwise produce.
 
         The matrix analogue of lehmann.subtract_to_continued_fraction (see
         Foley, these, Annexe A.2): self - X need not be a positive-semidefinite
@@ -1141,6 +1246,9 @@ class lehmann_matrix:
 
         :param X: another lehmann_matrix instance to subtract.
         :param tol: passed to block_biorthogonal_lanczos (breakdown threshold).
+        :param merge_tol: distance below which a pole of self and a pole of X
+            are snapped to a common value before pooling (see
+            _snap_near_degenerate_poles); set to 0 to disable.
         :return: a continued_fraction_matrix representing self - X.
         """
         if not isinstance(X, lehmann_matrix):
@@ -1148,7 +1256,8 @@ class lehmann_matrix:
         if X.L != self.L:
             raise ValueError(f"matrix sizes differ: {self.L} and {X.L}")
         L = self.L
-        W = np.concatenate([self.W, X.W])
+        Wself, WX = _snap_near_degenerate_poles(self.W, X.W, merge_tol)
+        W = np.concatenate([Wself, WX])
         if W.size == 0:
             return continued_fraction_matrix(np.empty((0, L, L)), np.empty((0, L, L)), np.empty((0, L, L)))
         Abra = np.concatenate([self.Q, X.Q], axis=1)

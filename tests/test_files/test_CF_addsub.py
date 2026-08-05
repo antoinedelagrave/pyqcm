@@ -4,6 +4,7 @@
 #        fractions A and B, form C = A + B, then subtract B back from C and
 #        check that the result matches A again.
 # --------------------------------------------------------------------------------
+import warnings
 import numpy as np
 from pyqcm.green_structure import lehmann, lehmann_matrix
 
@@ -116,5 +117,89 @@ assert err < 1e-9
 err = max_diff(Dm.evaluate(z), cf_Am.evaluate(z))
 print("D = C - B  vs  A (cf form)  : max|diff| =", err)
 assert err < 1e-9
+
+# --------------------------------------------------------------------------------
+# regression test: a pole shared between the two operands of
+# subtract_to_continued_fraction, but reconstructed independently on each side
+# (so it differs by a round-off-sized amount, as happens e.g. in
+# periodization_CDMFT_PY.py between the cluster Green function's MCF and the
+# exactly-computed hybridization function). Without merging, pooling two such
+# near- but not exactly-degenerate poles is ill-conditioned and leaves a
+# spurious extra pole (with an unphysical, e.g. negative, residue) instead of
+# the clean cancellation the exact math predicts; merge_tol (default 1e-8)
+# snaps them together beforehand to avoid this.
+
+# scalar case ---------------------------------------------------------------
+
+Wa2 = np.array([-1.5, -0.3, 0.9])
+Ra2 = np.array([0.6, 0.3, 0.5])
+lehmann_A2 = lehmann(Wa2, Ra2)
+
+Wb2 = np.array([0.7, 2.0])          # 0.7 is the pole that will be shared
+Rb2 = np.array([0.4, 0.2])
+lehmann_B2 = lehmann(Wb2, Rb2)
+
+self_2 = lehmann_A2.add_to(lehmann_B2)     # pools A2's and B2's poles exactly
+
+Wx2 = Wb2.copy()
+Wx2[0] += 1e-10                            # the shared pole at 0.7, off by round-off
+lehmann_X2 = lehmann(Wx2, Rb2)
+
+D_unmerged = self_2.subtract_to_continued_fraction(lehmann_X2, merge_tol=0.0)
+D_merged = self_2.subtract_to_continued_fraction(lehmann_X2)   # default merge_tol=1e-8
+
+print("\nnear-degenerate pole regression (scalar):")
+print("unmerged: n_poles =", D_unmerged.A.size, " has negative B :", np.any(D_unmerged.B < 0))
+print("merged  : n_poles =", D_merged.A.size, " has negative B :", np.any(D_merged.B < 0))
+assert D_unmerged.A.size > D_merged.A.size      # unmerged leaves spurious extra poles
+assert np.any(D_unmerged.B < 0)                 # ... one with an unphysical negative residue
+assert not np.any(D_merged.B < 0)
+
+err_unmerged = max_diff(D_unmerged.evaluate(z), lehmann_A2.evaluate(z))
+err_merged = max_diff(D_merged.evaluate(z), lehmann_A2.evaluate(z))
+print("unmerged eval error vs A2 :", err_unmerged)
+print("merged   eval error vs A2 :", err_merged)
+assert err_merged < 1e-9
+assert err_merged < err_unmerged
+
+# matrix case -----------------------------------------------------------------
+# uses its own RNG (independent of the module-level `rng` state) so this
+# regression stays deterministic regardless of what runs before it.
+
+rng2 = np.random.default_rng(2)
+
+WmA2 = np.array([-1.7, -0.4, 0.3, 1.9])
+QmA2 = rng2.standard_normal((L, 4)) + 1j * rng2.standard_normal((L, 4))
+lehmann_Am2 = lehmann_matrix(WmA2, QmA2)
+
+WmB2 = np.array([-1.1, 0.7, 1.2, 2.3])      # 0.7 is the pole that will be shared
+QmB2 = rng2.standard_normal((L, 4)) + 1j * rng2.standard_normal((L, 4))
+lehmann_Bm2 = lehmann_matrix(WmB2, QmB2)
+
+self_m2 = lehmann_Am2.add_to(lehmann_Bm2)
+
+WmX2 = WmB2.copy()
+WmX2[1] += 1e-10                            # the shared pole at 0.7, off by round-off
+lehmann_Xm2 = lehmann_matrix(WmX2, QmB2)
+
+with warnings.catch_warnings(record=True) as caught_unmerged:
+    warnings.simplefilter("always")
+    Dm_unmerged = self_m2.subtract_to_continued_fraction(lehmann_Xm2, merge_tol=0.0)
+with warnings.catch_warnings(record=True) as caught_merged:
+    warnings.simplefilter("always")
+    Dm_merged = self_m2.subtract_to_continued_fraction(lehmann_Xm2)   # default merge_tol=1e-8
+
+print("\nnear-degenerate pole regression (matrix):")
+print("unmerged triggered a partial-breakdown warning :", any("partial breakdown" in str(w.message) for w in caught_unmerged))
+print("merged   triggered a partial-breakdown warning :", any("partial breakdown" in str(w.message) for w in caught_merged))
+assert any("partial breakdown" in str(w.message) for w in caught_unmerged)
+assert not caught_merged
+
+err_unmerged_m = max_diff(Dm_unmerged.evaluate(z), lehmann_Am2.evaluate(z))
+err_merged_m = max_diff(Dm_merged.evaluate(z), lehmann_Am2.evaluate(z))
+print("unmerged eval error vs Am2 :", err_unmerged_m)
+print("merged   eval error vs Am2 :", err_merged_m)
+assert err_merged_m < 1e-9
+assert err_merged_m < err_unmerged_m
 
 print("\ntest_CF_addsub: all checks passed")

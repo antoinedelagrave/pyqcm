@@ -15,6 +15,7 @@ struct lattice_model_instance{
 	int label; //!< label used to distinguish different, concurrent instances stored in memory
 	bool gs_solved; //!< true if the ground state has been already solved  for that instance
 	bool gf_solved; //!< true if the Green function has been already solved  for that instance
+	bool h_built; //!< true if the k-independent one-body matrices (H, Hc) have already been built for that instance
 	bool average_solved; //!< true if the lattice averages have already been computed for that instance
 	bool SEF_solved; //!< true if the Potthoff functional (SEF) has already been computed for that instance
 	bool PE_solved; //!< true if the potential energy has already been computed for that instance
@@ -61,6 +62,7 @@ struct lattice_model_instance{
 	matrix<complex<double>> hybridization_function(size_t i, complex<double> w, bool spin_down);
 	matrix<complex<double>> Green_integral(bool spin_down, int clus);
 	matrix<Complex> epsilon(Green_function_k &M);
+	matrix<Complex> bare_epsilon(const vector3D<double> &k, bool spin_down); //!< periodized one-body dispersion matrix, without solving the cluster ED problem
 	matrix<Complex> projected_Green_function(Complex w, bool spin_down);
 	matrix<Complex> band_Green_function(Green_function_k &M);
 	matrix<Complex> upgrade_cluster_matrix_anomalous(int latt_mix, int clus_mix, matrix<Complex> &g, matrix<Complex> &gm);

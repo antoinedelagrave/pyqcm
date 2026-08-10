@@ -1883,7 +1883,7 @@ def plot_host_hybrid(self, w, e, clus=0, sys=None, file=None, plt_ax=None, title
 
 
 #---------------------------------------------------------------------------------------------------
-def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, subdivide=False, plane='xy', k_perp=0.0, file=None, data_file=None, plt_ax=None, **kwargs):
+def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, subdivide=False, plane='xy', k_perp=0.0, max=1.0, file=None, data_file=None, plt_ax=None, **kwargs):
     """Draws a 2D density plot of the Berry curvature as a function of wavevector, on a square grid going from -pi to pi in each direction.
     
     :param int nk: number of wavevectors on the side of the grid
@@ -1893,6 +1893,7 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
     :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
     :param int subdivide: True if plaquette subdivision is used.
     :param float k_perp: momentum component in the third direction (x pi)
+    :param float max: maximum value of the scale, relative to the maximum value of the computed curvature
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
     :param str file: Name of the file to save the plot. If None, shows the plot on screen.
     :param str data_file: Name of the file to save the data.
@@ -1949,10 +1950,12 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
     B = qcm.Berry_curvature(k1, k2, nk, orb, subdivide, dir, self.label)
     B *= (2*range[2]/nk)**2
 
+    print('Integrated Berry curvature in this range : ',  B.sum())
+
     ax.set_aspect(1)
 
     # plot per se
-    max = np.abs(B).max()
+    max = max*np.abs(B).max()
     CS = ax.imshow(np.flip(B,0), vmin=-max, vmax = max, cmap='bwr', extent=ext, **kwargs)
     if plt_ax is None:
         axis = _set_legend_mdc(plane, k_perp)

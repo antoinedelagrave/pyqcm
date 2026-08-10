@@ -44,6 +44,7 @@ lattice_model_instance::lattice_model_instance(shared_ptr<lattice_model> _model,
   vector<map<string,double>> sys_values(model->nsys);
   gs_solved = false;
   gf_solved = false;
+  h_built = false;
   average_solved = false;
   SEF_solved = false;
   PE_solved = false;
@@ -131,6 +132,8 @@ vector<pair<double,string>> lattice_model_instance::ground_state()
  */
 void lattice_model_instance::build_H()
 {
+  if(h_built) return;
+
   H.set_size(model->dim_GF);
   if(model->mixing == HS_mixing::up_down) H_down.set_size(model->dim_GF);
   for(auto& x : model->term){
@@ -141,11 +144,11 @@ void lattice_model_instance::build_H()
       if(model->mixing == HS_mixing::up_down) for(auto& e : op.GF_elem_down) H_down(e.r, e.c) += e.v*pv;
     }
   }
-  
+
   // building the cluster one-body matrices
   build_cluster_H();
-  
-  gf_solved = true;
+
+  h_built = true;
 }
 
 //==============================================================================
@@ -160,6 +163,7 @@ void lattice_model_instance::Green_function_solve()
   #pragma omp parallel for schedule(dynamic,1) if(model->nsys > 1)
   for(size_t s = 0; s<model->nsys; s++) ED::Green_function_solve(model->nsys*label+s);
   build_H();
+  gf_solved = true;
 }
 
 

@@ -608,12 +608,13 @@ check_instance(label);
     
     vector<vector3D<double>> K(k.size());
     for(size_t i = 0; i< K.size(); i++) K[i] = mod.superdual.to(mod.physdual.from(k[i]));
-    Green_function G = inst.cluster_Green_function({0.0,0.05}, false, spin_down);
-    
+
     vector<vector<double>> R(K.size());
     for(size_t i = 0; i< K.size(); i++) {
-      Green_function_k M(G, K[i]);
-      R[i] = inst.dispersion(M);
+      matrix<Complex> eps = inst.bare_epsilon(K[i], spin_down);
+      vector<double> d(eps.r);
+      eps.eigenvalues(d);
+      R[i] = d;
     }
     return R;
   }
@@ -729,19 +730,14 @@ check_instance(label);
     check_instance(label);
     #endif
     lattice_model& mod = *lattice_model_instances.at(label)->model;
-    #ifdef QCM_DEBUG
-    check_instance(label);
-    #endif
     lattice_model_instance& inst = *lattice_model_instances.at(label);
     
     vector<vector3D<double>> K(k.size());
     for(size_t i = 0; i< K.size(); i++) K[i] = mod.superdual.to(mod.physdual.from(k[i]));
-    Green_function G = inst.cluster_Green_function({0.0,0.05}, false, spin_down);
-    
+
     vector<matrix<Complex>> R(K.size());
     for(size_t i = 0; i< K.size(); i++) {
-      Green_function_k M(G, K[i]);
-      R[i] = inst.epsilon(M);
+      R[i] = inst.bare_epsilon(K[i], spin_down);
     }
     return R;
   }

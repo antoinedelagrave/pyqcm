@@ -458,7 +458,7 @@ def Hartree_procedure(self, task, couplings, maxiter=32, iteration='fixed_point'
 	if iteration == 'broyden' or iteration == 'Broyden':
 		hartree_params, niter, alpha = pyqcm.broyden(F, X, iJ0 = alpha, maxiter=maxiter, convergence_test=G)
 	elif iteration == 'fixed_point':
-		hartree_params, niter = pyqcm.fixed_point_iteration(F, X, xtol=1e-6, convergence_test=G, maxiter=maxiter, alpha=alpha, eps_algo=eps_algo)
+		hartree_params, niter = pyqcm.fixed_point_iteration(F, X, xtol=1e-6, convergence_test=G, maxiter=maxiter, damping=alpha, eps_algo=eps_algo)
 	else:
 		raise ValueError('type of iteration unknown in call to Hartree_procedure(...)')
 

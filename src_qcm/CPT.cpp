@@ -127,6 +127,59 @@ matrix<Complex> lattice_model_instance::epsilon(Green_function_k &M)
 
 //==============================================================================
 /**
+ calculates the periodized one-body (bare) dispersion matrix at wavevector k
+ (of dimension nband, or 2*nband in the anomalous case), without requiring the
+ interacting cluster Green function, and hence without solving the cluster ED
+ problem. Used by dispersion() and epsilon() (the free functions), which only
+ need the one-body part of the Green function and discard the rest.
+ @param k [in] wavevector, in the superdual basis
+ @param spin_down [in] true if the spin-down sector is covered (mixing = 4)
+ @returns a complex-valued matrix
+ */
+matrix<Complex> lattice_model_instance::bare_epsilon(const vector3D<double> &k, bool spin_down)
+{
+	if(!h_built) build_H();
+
+	size_t nv = model->neighbor.size();
+	vector<Complex> phase(nv);
+	for(int i=0; i<nv; ++i){
+		double z = k*model->neighbor[i]*2*M_PI;
+		phase[i] = Complex(cos(z), sin(z));
+	}
+
+	matrix<Complex> t;
+	if(spin_down){
+		t = H_down;
+		for(auto& op : model->term){
+			if(auto it = params.find(op.second->name); it != params.end()){
+				double pv = it->second;
+				for(auto& e : op.second->IGF_elem_down){
+					t(e.r,e.c) += e.v*pv*phase[e.n];
+				}
+			}
+		}
+	}
+	else{
+		t = H;
+		for(auto& op : model->term){
+			if(auto it = params.find(op.second->name); it != params.end()){
+				double pv = it->second;
+				for(auto& e : op.second->IGF_elem){
+					t(e.r,e.c) += e.v*pv*phase[e.n];
+				}
+			}
+		}
+	}
+
+	char periodization = global_char("periodization");
+	if(periodization == 'N') return t;
+	else return model->periodize(k,t);
+}
+
+
+
+//==============================================================================
+/**
  calculates the dispersion relation
  (of dimension nband, or 2*nband in the anomalous case)
  @param M [in, out]  Green_function_k object

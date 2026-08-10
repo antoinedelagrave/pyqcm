@@ -881,7 +881,7 @@ class lattice_model:
                 args.append(f'generators={repr(s.generators)}')
             if s.bath_irrep:
                 args.append(f'bath_irrep=True')
-            lines.append(f'{s.name} = cluster_model({", ".join(args)})')
+            lines.append(f'{s.name} = pyqcm.cluster_model({", ".join(args)})')
             for op_name, op_type, elem, is_complex in s.operators:
                 method = 'new_operator_complex' if is_complex else 'new_operator'
                 lines.append(f'{s.name}.{method}({repr(op_name)}, {repr(op_type)}, {repr(elem)})')
@@ -894,13 +894,13 @@ class lattice_model:
             clus_varnames.append(varname)
             if c.ref is not None:
                 ref_var = clus_varnames[c.ref.index]
-                lines.append(f'{varname} = cluster({ref_var}, {repr(c.sites)}, pos={repr(c.pos)})')
+                lines.append(f'{varname} = pyqcm.cluster({ref_var}, {repr(c.sites)}, pos={repr(c.pos)})')
             else:
                 if len(c.sys) == 1:
                     sys_arg = c.sys[0].name
                 else:
                     sys_arg = '[' + ', '.join(s.name for s in c.sys) + ']'
-                lines.append(f'{varname} = cluster({sys_arg}, {repr(c.sites)}, pos={repr(c.pos)})')
+                lines.append(f'{varname} = pyqcm.cluster({sys_arg}, {repr(c.sites)}, pos={repr(c.pos)})')
         lines.append('')
 
         # --- lattice_model constructor ---
@@ -910,7 +910,7 @@ class lattice_model:
             lm_args.append(f'lattice={repr(self.lattice)}')
         if self.hybrid_file:
             lm_args.append(f'hybrid_file={repr(self.hybrid_file)}')
-        lines.append(f'model = lattice_model({", ".join(lm_args)})')
+        lines.append(f'model = pyqcm.lattice_model({", ".join(lm_args)})')
         lines.append('')
 
         # --- lattice-level operator calls ---

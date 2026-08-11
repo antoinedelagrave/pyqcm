@@ -2047,6 +2047,8 @@ class model_instance:
             "%Y-%m-%d@%H:%M", time.localtime()
         )  # adds the timestamp
 
+        if f is None: return
+        
         if commented:
             des = "#"
             val = "#"

@@ -538,6 +538,7 @@ class VCA:
     :param str symmetrized_operator: name of an operator wrt which the functional must be symmetrized
     :param int var_max_start: label of the first variable for which the function is a maximum (minimal vars first, maximal vars last)
     :param bool verb: if True (default) prints ample progress messages
+    :param str file: prefix of output files. <file>_sol.tsv for the solutions, <file>_sef.tsv for the SEF values, <file>_gs.tsv for the ground state energies
     :returns: None
 
     :ivar lattice_model model: (unique) model on which the computation is based
@@ -553,7 +554,6 @@ class VCA:
         steps=0.01, 
         accur=1e-4, 
         max=100,
-        file="vca.tsv",
         accur_grad=1e-6, 
         max_iter=30, 
         max_iter_diff=None, 
@@ -563,12 +563,15 @@ class VCA:
         symmetrized_operator=None,
         var_max_start = None,
         consistency_check=False,
-        verb = True
-    ):
+        verb = True,
+        file="vca",
+):
         global verbose
         self.model = model
         verbose = verb
         global SEF_eval
+        if file[-4:] == ".tsv" : self.file = file[:-4]
+        else: self.file = file
         # type and length checks
         if pyqcm.is_sequence(varia) == False:
             if type(varia) != str:
@@ -645,7 +648,7 @@ class VCA:
             SEF_eval += 1
             self.I = pyqcm.model_instance(model)
             current_instance = self.I
-            return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator,consistency_check=self.consistency_check)
+            return self.I.Potthoff_functional(hartree, symmetrized_operator=symmetrized_operator,consistency_check=self.consistency_check, file=self.file+'_sef.tsv')
             
         if root:
             if hartree is None:
@@ -772,8 +775,8 @@ class VCA:
                     print('eigenvalues of Hessian :', np.linalg.eigh(H)[0])
                 print('computing properties of converged solution...')
                 print('omega = ', omega)
-        self.I.ground_state()
-        ave = self.I.averages()
+        self.I.ground_state(file=self.file+'_gs.tsv')
+        ave = self.I.averages(file=None)
 
 
         # writes the solution in the standard file
@@ -785,7 +788,7 @@ class VCA:
                     self.I.props['2der_' + varia[i]] = H[i, i]
             if hartree != None:
                 self.I.props['omega'] = omega
-            self.I.write_summary(file)
+            self.I.write_summary(file+"_sol.tsv")
             VCA.first_time = False
 
         if root:
@@ -836,7 +839,7 @@ class VCA:
             if verbose: print('(min) x = ', x) # new
             SEF_eval += 1
             self.I = pyqcm.model_instance(self.model)
-            return self.I.Potthoff_functional(hartree)
+            return self.I.Potthoff_functional(hartree, file = self.file + "_sef.tsv")
         def F_max(x):
             global SEF_eval
             for i in range(nvar_max): 
@@ -844,7 +847,7 @@ class VCA:
             if verbose: print('(max) x = ', x) # new
             SEF_eval += 1
             self.I = pyqcm.model_instance(self.model)
-            return -self.I.Potthoff_functional(hartree)
+            return -self.I.Potthoff_functional(hartree, file = self.file + "_sef.tsv")
 
 
         X0 = np.array(start)
@@ -982,16 +985,14 @@ def plot_GS_energy(model, param, prm, clus=0, file=None, plt_ax=None, **kwargs):
     else:
         ax = plt_ax
 
+    if file is not None: data_file = file[:-4] + '_gs.tsv'
+    else: data_file = 'gs.tsv'
     omega = np.empty(len(prm))
     for i in range(len(prm)):
         model.set_parameter(param, prm[i])
         I = pyqcm.model_instance(model)
-        omega[i] = I.ground_state()[clus][0]
+        omega[i] = I.ground_state(file=data_file)[clus][0]
         print("omega(", prm[i], ") = ", omega[i])
-
-        # writing the parameters in a progress file
-        I.write_summary('GS.tsv')
-
     
     ax.axhline(omega[0], c='r', ls='solid', lw=0.5)
     ax.plot(prm, omega, 'b-')
@@ -1032,10 +1033,10 @@ def _transition(model, varia, P, bracket, step=0.001, verb=False, symmetrized_op
         model.set_parameter(P, x)
         model.set_parameter(varia, step)
         I = pyqcm.model_instance(model)
-        Om1 = I.Potthoff_functional(symmetrized_operator=symmetrized_operator)
+        Om1 = I.Potthoff_functional(symmetrized_operator=symmetrized_operator, file='transition.tsv')
         model.set_parameter(varia, 1e-8)
         I = pyqcm.model_instance(model)
-        Om0 = I.Potthoff_functional(symmetrized_operator=symmetrized_operator)
+        Om0 = I.Potthoff_functional(symmetrized_operator=symmetrized_operator, file='transition.tsv')
         if verb:
             print(P, '= ', x, '\tdelta Omega = ', Om1-Om0)
         return Om1-Om0

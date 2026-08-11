@@ -171,8 +171,7 @@ class CDMFT:
     :param float/iterable alpha: if iteration='fixed_point', damping parameter (fraction of the previous iteration in the new one). If iteration='broyden', 1+alpha is the inverse initial Jacobian (or alpha can literally be a matrix, the inverse Jacobian from a previous run).
     :param str method: minimization method. Derivative-free choices: 'Nelder-Mead' (default), 'Powell', 'CG', 'ANNEAL', NLopt methods 'NELDERMEAD', 'COBYLA', 'BOBYQA', 'PRAXIS', 'SUBPLEX'. Analytical-Jacobian choices (the Jacobian ``qcm.CDMFT_gradient`` is activated automatically): 'trf' (Trust Region Reflective via scipy.least_squares), 'BFGS', 'L-BFGS-B'. The finite-difference step for the Jacobian is ``cdmft_jacobian_delta`` (default 1e-5, tunable via ``pyqcm.set_global_parameter``).
     :param int lm_max_nfev: maximum number of function/gradient evaluations for the jac-capable methods (default 2000; ignored for derivative-free methods)
-    :param str file: name of the file where the solution is written
-    :param str iter_file: name of the file where the CDMFT iterations are recorded
+    :param str file: prefix of the file where the solution is written. The solutions in <prefix>.tsv and the iterations in <prefix>_iter.tsv
     :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
     :param float initial_step: initial step in the minimization routine
     :param bool SEF: if True, computes the Potthoff functional at the end
@@ -209,8 +208,7 @@ class CDMFT:
         alpha=0.0,  # or (damping factor, iterations) for fixed_point
         method="Nelder-Mead",
         lm_max_nfev=2000,
-        file="cdmft.tsv",
-        iter_file="cdmft_iter.tsv",
+        file="cdmft",
         eps_algo=0,
         initial_step=0.1,
         SEF=False,
@@ -236,7 +234,12 @@ class CDMFT:
             None  # internal : hybridization function (spin downs, when mixing=4)
         )
         self.initial_step = initial_step
-        self.iter_file = iter_file
+        if file[-4:] != '.tsv': 
+            self.file = file + '.tsv'
+            self.iter_file = file + '_iter.tsv'
+        else:
+            self.file = file
+            self.iter_file = file[0:-4] + '_iter.tsv'
         self.max_function_eval = max_function_eval
         self.max_value = max_value
         self.lm_max_nfev = lm_max_nfev
@@ -458,20 +461,19 @@ class CDMFT:
         )
         print(var_val)
 
-        ave = self.I.averages(pr=True)
+        ave = self.I.averages(pr=True, file=None)
         if compute_potential_energy:
             self.I.potential_energy()
         if SEF:
             omega = self.I.Potthoff_functional(self.hartree)
 
-        if file != None:
-            self.I.props["opt_method"] = method
-            self.I.props["CDMFT_method"] = actual_method
-            self.I.props["CDMFT_iterations"] = self.niter
-            self.I.props["dist_function"] = self.grid.name
-            self.I.props["convergence"] = convergence_test_string
-            self.I.props["min_dist"] = self.dist
-            self.I.write_summary(file)
+        self.I.props["opt_method"] = method
+        self.I.props["CDMFT_method"] = actual_method
+        self.I.props["CDMFT_iterations"] = self.niter
+        self.I.props["dist_function"] = self.grid.name
+        self.I.props["convergence"] = convergence_test_string
+        self.I.props["min_dist"] = self.dist
+        self.I.write_summary(self.file)
 
         pyqcm.banner("CDMFT completed successfully", "*")
 

@@ -68,7 +68,7 @@ pyqcm.banner('testing vca() with minimax', c='#', skip=1)
 vca = V.VCA(model, varia=['M_1', 'mu_1'], accur=[0.005, 0.005], steps=[5e-5, 5e-5], max=[10,10], method='minimax', var_max_start=1)
 
 pyqcm.banner('testing plot_sef()', c='#', skip=1)
-V.plot_sef(model, 'M_1', np.arange(1e-9, 0.3, 0.02), accur_SEF=1e-4, show=False)
+V.plot_sef(model, 'M_1', np.arange(1e-9, 0.3, 0.02), accur_SEF=1e-4, show=False, file="test_vca_sef.tsv")
 
 pyqcm.banner('testing plot_GS_energy()', c='#', skip=1)
 V.plot_GS_energy(model, 'M_1', np.arange(1e-9, 0.3, 0.02), file="GS_energy.pdf")

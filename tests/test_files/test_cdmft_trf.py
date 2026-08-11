@@ -59,4 +59,5 @@ X = CDMFT(
     method="trf",
     varia=varia,
     iteration="fixed_point",
+    file="cdmft_trf"
 )

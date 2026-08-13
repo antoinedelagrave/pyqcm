@@ -64,6 +64,7 @@ struct lattice_model_instance{
 	matrix<Complex> epsilon(Green_function_k &M);
 	matrix<Complex> bare_epsilon(const vector3D<double> &k, bool spin_down); //!< periodized one-body dispersion matrix, without solving the cluster ED problem
 	matrix<Complex> projected_Green_function(Complex w, bool spin_down);
+	matrix<Complex> projected_Green_function(Complex w, bool spin_down, double accuracy); //!< adaptive-grid variant, accuracy on the Frobenius norm
 	matrix<Complex> band_Green_function(Green_function_k &M);
 	matrix<Complex> upgrade_cluster_matrix_anomalous(int latt_mix, int clus_mix, matrix<Complex> &g, matrix<Complex> &gm);
 	matrix<Complex> upgrade_cluster_matrix(int latt_mix, int clus_mix, matrix<Complex> &g);
@@ -85,7 +86,7 @@ struct lattice_model_instance{
 	void average_integrand_k(Green_function &G_up, Green_function *G_down, vector3D<double> &k, const int *nv, double *I);
 	void build_cluster_H();
 	void build_H();
-	void CDMFT_host(const vector<double>& freqs, const vector<double>& weights);
+	void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, double accuracy=-1.0);
 	void CDMFT_host();
 	void cluster_self_energy(Green_function& G);
 	void Green_eigensystem(Green_function &G, const vector3D<double> &k, vector<double> &e, matrix<Complex> &U, int opt, bool band_basis=false);

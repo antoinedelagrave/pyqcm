@@ -860,12 +860,15 @@ inline void register_qcm(nb::module_ &m) {
         "varia"_a, "defines the set of CDMFT variational parameters");
 
   m.def("CDMFT_host",
-        [](nb::object freqs, nb::object weights, int label) {
+        [](nb::object freqs, nb::object weights, int label, nb::object accuracy) {
+          double acc = accuracy.is_none() ? -1.0 : nb::cast<double>(accuracy);
           QCM::CDMFT_host(doubles_from_Py(freqs.ptr()),
-                          doubles_from_Py(weights.ptr()), label);
+                          doubles_from_Py(weights.ptr()), label, acc);
         },
-        "freqs"_a, "weights"_a, "label"_a = 0,
-        "sets the CDMFT host function from frequencies and weights");
+        "freqs"_a, "weights"_a, "label"_a = 0, "accuracy"_a = nb::none(),
+        "sets the CDMFT host function from frequencies and weights. If accuracy is "
+        "not None, uses adaptive Brillouin-zone integration to that accuracy (on "
+        "the Frobenius norm) instead of the fixed wavevector grid");
 
   m.def("set_CDMFT_host",
         [](int label, nb::object freqs, nb::object H, int clus, int spin_down) {

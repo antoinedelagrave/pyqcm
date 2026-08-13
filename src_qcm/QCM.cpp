@@ -1190,12 +1190,12 @@ check_instance(label);
     qcm_model->param_set->CDMFT_variational_set(varia);
   }
 
-  void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label)
+  void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label, double accuracy)
   {
     #ifdef QCM_DEBUG
     check_instance(label);
     #endif
-    lattice_model_instances.at(label)->CDMFT_host(freqs, weights); 
+    lattice_model_instances.at(label)->CDMFT_host(freqs, weights, accuracy);
   }
 
   void set_CDMFT_host(int label, const vector<double>& freqs, const int clus, const vector<matrix<Complex>>& H, const bool spin_down)

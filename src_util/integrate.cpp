@@ -247,8 +247,13 @@ void QCM::k_integral_grid(int dim, int nkx, int nky, int nkz, function<void (vec
  @param f		function to integrate (may be multi-component)
  @param Iv		value of the integral (adds to previous value: must be properly initialized)
  @param accuracy		required absolute accuracy of the integral
+ @param verb		prints timing information if true
+ @param global_norm	if true, the accuracy is enforced on the L2 norm of the (vectorized)
+        components jointly, instead of on each component individually. Used when the
+        components represent the real/imaginary parts of a matrix, so that the L2 norm
+        coincides with the Frobenius norm of the matrix error.
  */
-void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb)
+void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb, bool global_norm)
 {
 	int maxpoints;
 	if(dim==1)       maxpoints = 100000;
@@ -265,7 +270,8 @@ void QCM::k_integral(int dim, function<void (vector3D<double> &k, const int *nv,
 
 	KContext ctx{f};
 	auto t1 = std::chrono::high_resolution_clock::now();
-	fail = cubature(ncomp, k_cb, &ctx, dim, xmin, xmax, (size_t)maxpoints, accuracy, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
+	error_norm norm = global_norm ? ERROR_L2 : ERROR_INDIVIDUAL;
+	fail = cubature(ncomp, k_cb, &ctx, dim, xmin, xmax, (size_t)maxpoints, accuracy, 1e-10, norm, value.data(), err.data());
 	if(verb) cout << "Cubature : done in " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
 	for(int i=0; i<ncomp; ++i) Iv[i] += value[i];
 }

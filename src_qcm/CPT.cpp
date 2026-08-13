@@ -4,6 +4,7 @@
  */
 #include "lattice_model_instance.hpp"
 #include "matrix_continued_fraction.hpp"
+#include "QCM.hpp"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -407,11 +408,58 @@ matrix<Complex> lattice_model_instance::projected_Green_function(Complex w, bool
 
 //==============================================================================
 /**
+ Calculates the integral of Gcpt over wavevectors, using adaptive Brillouin-zone
+ integration (as opposed to the fixed grid used by the other overload). Since the
+ integrand is a matrix, it is vectorized into its real and imaginary parts and the
+ required accuracy is enforced on their joint L2 norm, i.e. the Frobenius norm of
+ the matrix error.
+ @param w [in] complex frequency
+ @param spin_down [in] if true, computes the spin-down component (mixing = 4)
+ @param accuracy [in] required accuracy (Frobenius norm) of the wavevector integral
+ */
+matrix<Complex> lattice_model_instance::projected_Green_function(Complex w, bool spin_down, double accuracy)
+{
+	if(global_bool("verb_ED")) cout << "Computing projected GF (adaptive grid, accuracy = " << accuracy << ") at w = " << w << endl;
+	size_t d = model->dim_GF;
+	Green_function G = cluster_Green_function(w, false, spin_down);
+
+	if(model->spatial_dimension == 0){
+		matrix<Complex> PGF(d);
+		Green_function_k M(G,{0.0,0.0,0.0});
+		set_Gcpt(M);
+		PGF += M.Gcpt;
+		return PGF;
+	}
+
+	auto F = [this, &G] (vector3D<double> &k, const int *nv, double *I) mutable {
+		Green_function_k M(G,k);
+		set_Gcpt(M);
+		for(size_t i=0; i<M.Gcpt.v.size(); i++){
+			I[2*i] = real(M.Gcpt.v[i]);
+			I[2*i+1] = imag(M.Gcpt.v[i]);
+		}
+	};
+
+	vector<double> A(2*d*d, 0.0);
+	QCM::k_integral(model->spatial_dimension, F, A, accuracy, global_bool("verb_integrals"), true);
+
+	matrix<Complex> PGF(d);
+	for(size_t i=0; i<d*d; i++) PGF.v[i] = Complex(A[2*i], A[2*i+1]);
+	return PGF;
+}
+
+
+
+
+//==============================================================================
+/**
  Computes the CDMFT host
  @param freqs [in] frequency array (along the imaginary axis)
  @param weights [in] weights of the different frequencies in the distance function
+ @param accuracy [in] if > 0, uses adaptive Brillouin-zone integration to this accuracy
+        (Frobenius norm) instead of the fixed grid "kgrid_side"
  */
-void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vector<double>& weights)
+void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vector<double>& weights, double accuracy)
 {
 	CDMFT_weights = weights;
 	CDMFT_freqs = freqs;
@@ -437,7 +485,7 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 	if(global_bool("verb_ED")) cout << "Building host function" << endl;
 	for(int i=0; i<freqs.size(); i++){
 		Complex w(0.0, freqs[i]);
-		auto Gproj= projected_Green_function(w, false);
+		auto Gproj = (accuracy > 0.0) ? projected_Green_function(w, false, accuracy) : projected_Green_function(w, false);
 		for(int c=0; c<n_clus; c++){
 			int d = model->GF_dims[c];
 			int o = model->GF_offset[c];
@@ -465,7 +513,7 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 		// #pragma omp parallel for
 		for(int i=0; i<freqs.size(); i++){
 			Complex w(0.0, freqs[i]);
-			auto Gproj= projected_Green_function(w, true);
+			auto Gproj = (accuracy > 0.0) ? projected_Green_function(w, true, accuracy) : projected_Green_function(w, true);
 			for(int c=0; c<n_clus; c++){
 				int d = model->GF_dims[c];
 				int o = model->GF_offset[c];

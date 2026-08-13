@@ -183,6 +183,7 @@ class CDMFT:
     :param float max_value: maximum absolute value of variational parameters
     :param bias_field bias: bias field (for spontaneous symmetry breaking) that decreases with iterations
     :param function post_min: function to be executed before writing to the progress file
+    :param float accur_kgrid: if not None, the wavevector integral of the projected Green function (used to build the CDMFT host) is computed on an adaptive grid to this accuracy (Frobenius norm of the difference between successive refinements), instead of the fixed grid controlled by the global parameter "kgrid_side"
     :ivar lattice_model model: (unique) model on which the computation is based
     :ivar ndarray Hyb: host function
     :ivar ndarray Hyb_down: host function for the spin down component in the case of mixing=4
@@ -220,9 +221,11 @@ class CDMFT:
         max_value=100,
         bias=None,
         post_min=None,
+        accur_kgrid=None,
     ):
 
         self.accur_bath = accur_bath
+        self.accur_kgrid = accur_kgrid
         self.accur_dist = accur_dist
         self.alpha = alpha
         self.check_ground_state = check_ground_state
@@ -478,7 +481,10 @@ class CDMFT:
         self.I.props["dist_function"] = self.grid.name
         self.I.props["convergence"] = convergence_test_string
         self.I.props["min_dist"] = self.dist
-        self.I.props["kgrid_side"] = pyqcm.get_global_parameter("kgrid_side")
+        if self.accur_kgrid is None:
+            self.I.props["kgrid_side"] = pyqcm.get_global_parameter("kgrid_side")
+        else:
+            self.I.props["accur_kgrid"] = self.accur_kgrid
         self.I.write_summary(self.file)
 
         pyqcm.banner("CDMFT completed successfully", "*")
@@ -504,7 +510,12 @@ class CDMFT:
         # computing or transferring the host array --------------------------------------
 
         if self.host_function == None:
-            qcm.CDMFT_host(self.grid.wr, self.grid.cdmft_weight, self.I.label)
+            qcm.CDMFT_host(
+                self.grid.wr,
+                self.grid.cdmft_weight,
+                self.I.label,
+                self.accur_kgrid,
+            )
         else:
             self.host_function(self.I)
         # --------------------------------------------------------------------------------

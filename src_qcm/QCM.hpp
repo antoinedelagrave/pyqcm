@@ -150,8 +150,10 @@ namespace QCM{
   void current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int dir, bool re=true);
   //! Defines an interaction operator (Hubbard, Hund, Heisenberg, or X/Y/Z).
   void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, const string &type);
-  //! Performs an adaptive Brillouin-zone integral of a vector-valued function.
-  void k_integral(int dim, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb=false);
+  //! Performs an adaptive Brillouin-zone integral of a vector-valued function. If global_norm is
+  //! true, accuracy is enforced on the joint L2 norm of the components (e.g. the Frobenius norm
+  //! of a matrix vectorized into its real and imaginary parts) rather than on each individually.
+  void k_integral(int dim, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy, bool verb=false, bool global_norm=false);
   //! Performs a fixed-grid Brillouin-zone integral of a vector-valued function.
   void k_integral_grid(int dim, int nkx, int nky, int nkz, function<void (vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv);
   //! Sets the number of wavevectors along each direction of the fixed wavevector grid.
@@ -180,8 +182,10 @@ namespace QCM{
   void Green_function_solve(int label);
   //! Defines the set of CDMFT variational parameters.
   void CDMFT_variational_set(vector<vector<string>>& varia);
-  //! Sets the CDMFT host function from a list of frequencies and weights.
-  void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label);
+  //! Sets the CDMFT host function from a list of frequencies and weights. If accuracy > 0, the
+  //! wavevector integral uses adaptive Brillouin-zone integration to that accuracy (on the
+  //! Frobenius norm of the projected Green function) instead of the fixed grid "kgrid_side".
+  void CDMFT_host(const vector<double>& freqs, const vector<double>& weights, int label, double accuracy=-1.0);
   //! Sets the CDMFT host function from precomputed matrix data.
   void set_CDMFT_host(int label, const vector<double>& freqs, const int clus, const vector<matrix<Complex>>& H, const bool spin_down);
   //! Computes the CDMFT distance function at the given variational point.

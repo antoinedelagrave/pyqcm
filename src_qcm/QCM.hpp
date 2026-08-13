@@ -99,7 +99,7 @@ namespace QCM{
   //! Returns the reduced Green function dimension n (n, 2n or 4n depending on mixing state).
   size_t reduced_Green_function_dimension();
   //! Computes the Berry curvature on a 2D region of the Brillouin zone (works in 2D only).
-  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, int label);
+  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, int label, bool band_basis=false);
   //! Computes the density of states at a given frequency.
   vector<double> dos(const complex<double> w, int label, bool use_grid=false);
   //! Computes the momentum-resolved average of an operator on a set of wavevectors.

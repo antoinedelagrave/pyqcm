@@ -2216,7 +2216,7 @@ class double_counting:
 
         """
 
-        ave = I.averages()
+        ave = I.averages(file=None)
         P = I.parameters()
         return P[self.V] * ave[self.n] * self.coeff
 
@@ -2288,7 +2288,7 @@ class hartree:
             A = I.cluster_averages()
             self.ave = A[self.Vm][0] * self.L
         else:
-            self.ave = I.averages()[self.Vm] * self.L
+            self.ave = I.averages(file=None)[self.Vm] * self.L
         if np.isnan(self.ave):
             raise ValueError("NaN produced in Hartree update")
         self.vm = self.eig * v * self.ave
@@ -2326,7 +2326,7 @@ class hartree:
         if not self.lattice:
             self.ave = I.cluster_averages()[self.Vm][0]
         else:
-            self.ave = I.averages()[self.Vm]
+            self.ave = I.averages(file=None)[self.Vm]
         return -0.5 * self.eig * v * self.ave * self.ave
 
     # -----------------------------------------------------------------------------------------------

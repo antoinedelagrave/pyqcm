@@ -1338,14 +1338,14 @@ def mdc_anomalous(self, nk=200, w=0.1j, orbitals=(1,1), selfenergy=False, im_par
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, datafile=None, zone=((0,0),1), k_perp = 0, plane = 'xy', file=None, plt_ax=None, view_angle=None, **kwargs):
+def plot_dispersion(self, nk=64, spin_down=False, band=None, contour=False, datafile=None, zone=((0,0),1), k_perp = 0, plane = 'xy', file=None, plt_ax=None, view_angle=None, **kwargs):
     """Plots the dispersion relation in the Brillouin zone (2D)
 
     :param int nk: number of wavevectors on each side of the grid
     :param bool spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
-    :param int orb: if None, sums all the orbitals. Otherwise just shows the weight for that orbital (starts at 1)
+    :param int band: if None, sums all the bands. Otherwise just shows the dispersion for that band (starts at 1)
     :param bool contour: True if a contour plot is produced instead of a 3D plot.
-    :param str datafile: if given, name of the data file (no extension please) in which the data is printed, for plotting with an external program. Does not plot. Will produce one file per orbital, with the .tsv extension.
+    :param str datafile: if given, name of the data file (no extension please) in which the data is printed, for plotting with an external program. Does not plot. Will produce one file per band, with the .tsv extension.
     :param zone: origin and half-size of the plot, in multiples of pi. By default ((0,0),1)
     :param float k_perp: momentum component in the third direction (in multiple of pi)
     :param str plane: momentum plane, 'xy'='z', 'yz'='x'='zy' or 'xz'='zx'='y'
@@ -1359,7 +1359,7 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     if self.model.mixing != 4 and spin_down:
         raise ValueError("cannot use spin_down=True in 'plot_dispersion()' when mixing not equal to 4")
         
-    orbs = pyqcm.orbital_manager(orb, from_zero=True)
+    bands = pyqcm.orbital_manager(band, from_zero=True)
 
     if plt_ax is None:
         plt.figure()
@@ -1392,13 +1392,13 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     print('plotting...')
 
     if contour:
-        if len(orbs) > 1:
-            print('Contour plots of the dispersion with more than one orbital make no sense visually! first label used only')
-        CS = ax.contour(x, x, e[:, :, orbs[0]], linewidths=0.5)
+        if len(bands) > 1:
+            print('Contour plots of the dispersion with more than one band make no sense visually! first label used only')
+        CS = ax.contour(x, x, e[:, :, bands[0]], linewidths=0.5)
         ax.clabel(CS, inline=True, fontsize=6)
     else:
         x, y = np.meshgrid(x, y)
-        for j in orbs:
+        for j in bands:
             ax.plot_surface(x, y, e[:, :, j], rstride=1,cstride=1, linewidth=0.2, antialiased=False, **kwargs)
             
     if plt_ax is None:
@@ -1412,17 +1412,17 @@ def plot_dispersion(self, nk=64, spin_down=False, orb=None, contour=False, dataf
     return ax
 
 #---------------------------------------------------------------------------------------------------
-def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = None, band_assign = False, diff_coeff=0.0, colors=None, **kwargs):
+def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, band = None, band_assign = False, diff_coeff=0.0, colors=None, **kwargs):
     """Plots the dispersion relation in the Brillouin zone along a wavevector path
 
     :param str path: wavevector path, as used by the function wavevector_path()
     :param int nk: number of wavevectors on each side of the grid
     :param str file: if not None, saves the plot in a file with that name
     :param matplotlib.axes.Axes plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
-    :param orb: orbital (or sequence of orbitals) to plot. None for all.
+    :param band: band (or sequence of band) to plot. None for all.
     :param bool band_assign: if True, assigns band by using the continuity of the eigenvectors
     :param float diff_coeff: coefficient used to weight velocity differences when tracking bands with overlaps (used only if band_assign is True)
-    :param [str] colors: colors of the different orbitals
+    :param [str] colors: colors of the different bands
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :returns: None
 
@@ -1445,8 +1445,8 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
             V, vec[i,:,:] = np.linalg.eigh(M[i,:,:])
         e, vec = pyqcm.track_bands_with_overlaps(e, vec, diff_coeff)
 
-    if orb == None:
-        orb = range(1,d+1)
+    if band == None:
+        band = range(1,d+1)
 
     if plt_ax is None:
         plt.figure()
@@ -1462,12 +1462,12 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
     elif type(colors) is not list: colors = [colors]
     ncol = len(colors)
 
-    for i in orb:
+    for i in band:
         ax.plot(e[:,i-1], label=str(i+1), c=colors[i%ncol], **kwargs)
 
     if self.model.mixing == 4:
         e = self.dispersion(k, True)
-        for i in orb:
+        for i in band:
             ax.plot(e[:,i-1], label=str(i+1), c=colors[i], **kwargs)
 
     
@@ -1486,10 +1486,10 @@ def segment_dispersion(self, path=None, nk=64, file=None, plt_ax=None, orb = Non
         plt.show()
 
 #---------------------------------------------------------------------------------------------------
-def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, band_assign = False, diff_coeff=0.0, file=None, data_file=None, plt_ax=None, scale=1, **kwargs):
+def segment_dispersion_fat(self, band, width=True, path=None, nk=64, band_assign = False, diff_coeff=0.0, file=None, data_file=None, plt_ax=None, scale=1, **kwargs):
     """Plots the dispersion relation in the Brillouin zone along a wavevector path
 
-    :param orb: orbital (or sequence of orbitals) to plot. Starts at 1.
+    :param band: band (or sequence of bands) to plot. Starts at 1.
     :param bool width: if True, plots the fat bands with variable width (otherwise uses a gray scale)
     :param str path: wavevector path, as used by the function wavevector_path()
     :param int nk: number of wavevectors on each side of the grid
@@ -1517,10 +1517,10 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, band_assign 
     else:
         ax = plt_ax
 
-    if type(orb) is int:
-        orb = (orb,)
-    for o in orb: assert(o > 0 and o <= self.model.nband)
-    orb = np.array(orb) - 1  # now starts at 0
+    if type(band) is int:
+        band = (band,)
+    for o in band: assert(o > 0 and o <= self.model.nband)
+    band = np.array(band) - 1  # now starts at 0
     
     k, tick_pos, tick_str = pyqcm.wavevector_path(nk, path)  # defines the array of wavevectors
     nk = k.shape[0]
@@ -1540,7 +1540,7 @@ def segment_dispersion_fat(self, orb, width=True, path=None, nk=64, band_assign 
         e, vec = pyqcm.track_bands_with_overlaps(e, vec)
 
     for i in range(nk):
-        w[i,:] += np.linalg.norm(vec[i,orb,:], axis=0)**2
+        w[i,:] += np.linalg.norm(vec[i,band,:], axis=0)**2
         min_e = np.min((min_e, np.min(e)))
         max_e = np.max((max_e, np.max(e)))
 
@@ -1883,14 +1883,15 @@ def plot_host_hybrid(self, w, e, clus=0, sys=None, file=None, plt_ax=None, title
 
 
 #---------------------------------------------------------------------------------------------------
-def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, subdivide=False, plane='xy', k_perp=0.0, max=1.0, file=None, data_file=None, plt_ax=None, **kwargs):
+def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, subdivide=False, plane='xy', k_perp=0.0, max=1.0, file=None, data_file=None, plt_ax=None, band_basis=False, **kwargs):
     """Draws a 2D density plot of the Berry curvature as a function of wavevector, on a square grid going from -pi to pi in each direction.
-    
+
     :param int nk: number of wavevectors on the side of the grid
     :param float eta: imaginary part of the frequency at zero, i.e., w = eta*1j
     :param str period: type of periodization used (e.g. 'G', 'M', 'None')
     :param list range: range of plot [originX, originY, side], in multiples of pi
-    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all bands.
+    :param int orb: the band (eigenstate of the periodized Green function at w=0) to use in the computation (1 to number of bands). None (default) means a sum over all bands. By default the eigenstates are ordered by their (interacting) energy at each wavevector; see band_basis to instead order them by bare-band identity.
+    :param bool band_basis: if True, band labels are assigned by maximal orbital-character overlap with the bare (non-interacting) dispersion bands at each wavevector, instead of by interacting energy order. This keeps a given `orb` index tracking the same bare band across the Brillouin zone even where the interacting spectrum reorders (e.g. near a self-energy pole); the Berry curvature itself is still computed from the interacting eigenstate.
     :param int subdivide: True if plaquette subdivision is used.
     :param float k_perp: momentum component in the third direction (x pi)
     :param float max: maximum value of the scale, relative to the maximum value of the computed curvature
@@ -1947,7 +1948,7 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
         k2 = [0.5*k_perp, range[0]+range[2], range[1]+range[2]]
         dir = 1
 
-    B = qcm.Berry_curvature(k1, k2, nk, orb, subdivide, dir, self.label)
+    B = qcm.Berry_curvature(k1, k2, nk, orb, subdivide, dir, self.label, band_basis)
     B *= (2*range[2]/nk)**2
 
     print('Integrated Berry curvature in this range : ',  B.sum())
@@ -1976,15 +1977,16 @@ def Berry_curvature(self, nk=200, eta=0.0, period='G', range=None, orb=None, sub
 
 
 #---------------------------------------------------------------------------------------------------
-def Chern_number(self, nk=100, eta=0.0, period='G', offset=[0., 0., 0.], orb=None, subdivide=False):
+def Chern_number(self, nk=100, eta=0.0, period='G', offset=[0., 0., 0.], orb=None, subdivide=False, band_basis=False):
     """Computes the Chern number by summing the Berry curvature over wavevectors on a square grid going from (0,0) to (pi,pi)
 
     :param int nk: number of wavevectors on the side of the grid
     :param float eta: imaginary part of the frequency at zero, i.e., w = eta*1j
     :param str period: type of periodization used (e.g. 'G', 'M', 'None')
     :param [float] offset: wavevector offset of the computation grid (3-component list)
-    :param int orb: the orbital to use in the computation (1 to number of bands). None (default) means a sum over all occupied bands.
+    :param int orb: the band to use in the computation (1 to number of bands). None (default) means a sum over all occupied bands.
     :param bool subdivide: recursivity flag (wavevector grid subdivision)
+    :param bool band_basis: if True, band labels are assigned by maximal orbital-character overlap with the bare (non-interacting) dispersion bands at each wavevector, instead of by interacting energy order (see Berry_curvature)
     :returns float: The Chern number
 
     """
@@ -1995,10 +1997,10 @@ def Chern_number(self, nk=100, eta=0.0, period='G', offset=[0., 0., 0.], orb=Non
 
     pyqcm.set_global_parameter('eta', eta)
     offset = np.array(offset)
- 
+
     pyqcm.set_global_parameter('dual_basis')
     pyqcm.set_global_parameter('periodization', period)
-    B = qcm.Berry_curvature(np.array([0.0, 0.0, 0.0])+offset, np.array([1.0, 1.0, 0.0])+offset, nk, orb, subdivide, 3, self.label)
+    B = qcm.Berry_curvature(np.array([0.0, 0.0, 0.0])+offset, np.array([1.0, 1.0, 0.0])+offset, nk, orb, subdivide, 3, self.label, band_basis)
     C = B.sum() / (nk * nk)
     if period == 'None':
         C /= pyqcm.model_size()[0]

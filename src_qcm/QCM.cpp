@@ -902,12 +902,12 @@ check_instance(label);
    @param orb lattice orbital label
    @param label label of the model instance
    */
-  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, int label)
+  vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, int label, bool band_basis)
   {
     #ifdef QCM_DEBUG
     check_instance(label);
     #endif
-    return lattice_model_instances.at(label)->Berry_curvature(k1, k2, nk, orb, rec, dir);
+    return lattice_model_instances.at(label)->Berry_curvature(k1, k2, nk, orb, rec, dir, band_basis);
   }
   
   

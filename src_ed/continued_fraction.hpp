@@ -26,6 +26,7 @@ struct continued_fraction
   continued_fraction(const vector<double>& _a, const vector<double>& _b);
   continued_fraction(vector<double>& _a, vector<double>& _b, double e0, double norm, bool create);
   Complex evaluate(Complex z);
+  double integrated_weight() const;
 
   void write_hdf5(H5::Group& grp) const
   {

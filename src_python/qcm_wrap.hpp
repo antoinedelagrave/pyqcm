@@ -815,14 +815,16 @@ inline void register_qcm(nb::module_ &m) {
 
   m.def("Berry_curvature",
         [](nb::object k1, nb::object k2, int nk, int orb, int rec, int dir,
-           int label) {
+           int label, int band_basis) {
           vector3D<double> a = vector_from_Py((PyArrayObject *)k1.ptr());
           vector3D<double> b = vector_from_Py((PyArrayObject *)k2.ptr());
-          auto g = QCM::Berry_curvature(a, b, nk, orb, (bool)rec, dir, label);
+          auto g = QCM::Berry_curvature(a, b, nk, orb, (bool)rec, dir, label,
+                                         (bool)band_basis);
           return nb_array_<double>(g.data(), {(size_t)nk, (size_t)nk});
         },
         "k1"_a, "k2"_a, "nk"_a, "orb"_a = 0, "rec"_a = 0, "dir"_a = 3,
-        "label"_a = 0, "Berry curvature on a 2D region of the Brillouin zone");
+        "label"_a = 0, "band_basis"_a = 0,
+        "Berry curvature on a 2D region of the Brillouin zone");
 
   m.def("monopole",
         [](nb::object k, double a, int nk, int orb, int rec, int label) {

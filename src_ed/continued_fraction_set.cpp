@@ -100,6 +100,20 @@ void continued_fraction_set::Green_function(const Complex &z, block_matrix<Compl
 
 /**
  frequency-integrated Green function
+
+ Uses continued_fraction::integrated_weight() rather than the raw sum rule
+ b[0]: b[0] is the *total* spectral weight of the hole channel, whereas the
+ frequency-integrated Green function only wants the part carried by poles at
+ negative energy. The two coincide when the reference state is a true ground
+ state (all hole poles are then guaranteed negative), but not in general for
+ an excited, thermally-weighted reference state.
+
+ The diagonal terms are cached in a local Gtmp (mirroring Green_function()'s
+ own Gtmp) rather than read back from G.block[r] itself: this function is
+ called once per state in the thermal ensemble, each call accumulating into
+ the same G, so by the time a later state's off-diagonal term is computed,
+ G.block[r](o1,o1) would otherwise already hold the sum over every state
+ processed so far, not just this state's own diagonal contribution.
  */
 void continued_fraction_set::integrated_Green_function(block_matrix<Complex> &G)
 {
@@ -107,16 +121,18 @@ void continued_fraction_set::integrated_Green_function(block_matrix<Complex> &G)
   for(size_t r=0; r<e.size(); ++r){
     size_t nr = e[r].r;
     if(nr==0) continue;
+    vector<Complex> Gtmp(nr);
 
     // diagonal terms
     for(size_t o1 = 0; o1 < nr; o1++){
-      G.block[r](o1,o1) += h[r](o1,o1).b[0];
+      Gtmp[o1] = h[r](o1,o1).integrated_weight();
+      G.block[r](o1,o1) += Gtmp[o1];
     }
 
     // off diagonal terms
     for(size_t o1 = 0; o1 < nr; o1++){
       for(size_t o2 = 0; o2 <o1; o2++){
-        Complex tmp = 0.5*(h[r](o1,o2).b[0] - G.block[r](o1,o1) - G.block[r](o2,o2));
+        Complex tmp = 0.5*(h[r](o1,o2).integrated_weight() - Gtmp[o1] - Gtmp[o2]);
         G.block[r](o1,o2) += tmp;
         G.block[r](o2,o1) += tmp;
       }

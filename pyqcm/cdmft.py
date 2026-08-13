@@ -379,20 +379,25 @@ class CDMFT:
             self.grid = grid
         print("frequency grid = ", self.grid.name)
 
-        if isinstance(self.alpha, float) and self.alpha > 0.0:
-            # Catch if custom float given. Works for both iteration methods.
-            print(f"Constant damping factor of {self.alpha}")
+        if iteration == "fixed_point":
+            if isinstance(self.alpha, float) and self.alpha > 0.0:
+                # Catch if custom float given. Works for both iteration methods.
+                print(f"Constant damping factor of {self.alpha}")
+            elif isinstance(self.alpha, tuple):
+                # Catch if custom tuple is given. Works only for fixed point.
+                print(
+                    f"Applying a damping factor {self.alpha[0]} after {self.alpha[1]} iterations "
+                )
+            else:
+                # Set default 'low-convergence' damping for fixed point iterations
+                self.alpha = (0.3, 16)
+                print(
+                    f"Applying a damping factor {self.alpha[0]} after {self.alpha[1]} iterations "
+                )
         elif isinstance(self.alpha, tuple):
-            # Catch if custom tuple is given. Works only for fixed point.
-            print(
-                f"Applying a damping factor {self.alpha[0]} after {self.alpha[1]} iterations "
-            )
-        elif iteration == "fixed_point":
-            # Set default 'low-convergence' damping for fixed point iterations
-            self.alpha = (0.3, 16)
-            print(
-                f"Applying a damping factor {self.alpha[0]} after {self.alpha[1]} iterations "
-            )
+            self.alpha = self.alpha[0]
+            print(f"initial value of alpha = {self.alpha} (Broyden)")
+
 
         print("-" * 100)
 
@@ -473,6 +478,7 @@ class CDMFT:
         self.I.props["dist_function"] = self.grid.name
         self.I.props["convergence"] = convergence_test_string
         self.I.props["min_dist"] = self.dist
+        self.I.props["kgrid_side"] = pyqcm.get_global_parameter("kgrid_side")
         self.I.write_summary(self.file)
 
         pyqcm.banner("CDMFT completed successfully", "*")
@@ -547,16 +553,22 @@ class CDMFT:
                 F = lambda x, grad=None: qcm.CDMFT_distance(x, _clus, _label)
                 jac_fn = False
                 maxfev = self.max_function_eval
-            opt_x, opt_iter_done, opt_success, _ = optimize(
-                F,
-                x0,
-                self.method,
-                self.initial_step,
-                self.accur_bath,
-                self.accur_dist,
-                maxfev,
-                jac=jac_fn,
-            )
+            try:
+                opt_x, opt_iter_done, opt_success, _ = optimize(
+                    F,
+                    x0,
+                    self.method,
+                    self.initial_step,
+                    self.accur_bath,
+                    self.accur_dist,
+                    maxfev,
+                    jac=jac_fn,
+                )
+            except MinimizationError:
+                raise MinimizationError(
+                    "Failure of the bath optimization procedure, possibly out of bounds parameter"
+                ) from None
+            
             opt_fun = qcm.CDMFT_distance(opt_x, _clus, _label)
 
             self.dist += opt_fun
@@ -674,7 +686,7 @@ class CDMFT:
                 converged = converged and T
 
             elif C.op != None:
-                T = C.test(self.I.averages()[C.op])
+                T = C.test(self.I.averages(file=None)[C.op])
                 converged = converged and T
 
         for C in self.convergence_test:

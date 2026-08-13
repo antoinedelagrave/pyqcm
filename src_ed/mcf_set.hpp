@@ -42,10 +42,17 @@
 
  ### Integrated Green function
 
- For the hole MCF all poles lie at negative energies, so the spectral integral
- equals W_h^H W_h (the squared weight matrix, which includes the sqrt of the
- state weight Omega.weight).  Following the same G(b,a) convention as
- Q_matrix::integrated_Green_function, we add (W_h^H W_h)^T to G.block[r].
+ integrated_Green_function() does NOT assume that every pole of the hole MCF
+ lies at negative energy (that assumption only holds when the reference state
+ is the/a true ground state; it can fail for an excited, thermally-weighted
+ reference state at finite temperature). Instead it diagonalizes the
+ block-tridiagonal projected Hamiltonian of h[r] (or of combined[r] when the
+ combine_mcf path is used) and sums only the negative-eigenvalue poles — see
+ matrix_continued_fraction::integrated_Green_function(). The result is
+ transposed before being added to G.block[r], following the same convention
+ as Green_function()'s hole-part transpose; combined[r] already includes the
+ transpose internally (see combine_via_lanczos), so no further transpose is
+ applied in that case.
 */
 template<typename T>
 struct mcf_set : Green_function_set
@@ -138,29 +145,36 @@ inline void mcf_set<T>::Green_function(const Complex &z, block_matrix<Complex> &
 /**
  Computes the frequency-integrated Green function (occupation matrix).
 
- For the hole MCF all poles are at negative energies.  The exact spectral
- weight is W_h^H W_h.  Following the Q_matrix convention G(b,a) += M(a,b),
- we add (W_h^H W_h)^T to G.block[r].
+ Per irrep block: if combined[r] is populated (combine_mcf path, or the
+ Q_matrix-to-MCF conversion which only ever fills combined[r]), its poles
+ already merge the electron and hole channels in the final output
+ convention (see combine_via_lanczos), so its filtered integral is added
+ directly, without transposition. Otherwise, the hole MCF h[r] is used: its
+ filtered integral (only the negative-eigenvalue poles, see
+ matrix_continued_fraction::integrated_Green_function()) is transposed
+ before being added, matching Green_function()'s hole-part convention.
 */
 template<typename T>
 inline void mcf_set<T>::integrated_Green_function(block_matrix<Complex> &G)
 {
     for(size_t r = 0; r < group->g; ++r) {
-        if(h[r].floors() == 0 || h[r].p == 0) continue;
-        int p = h[r].p;
-        matrix<Complex> Wh = h[r].W;
-        Wh.hermitian_conjugate();
-        matrix<Complex> M(p);
-        M.product(Wh, h[r].W);  // M = W^H * W
-        M.transpose();           // (W^H W)^T: cf. G(b,a) += M(a,b) convention
-        G.block[r] += M;
+        if(combined[r].floors() > 0){
+            G.block[r] += combined[r].integrated_Green_function();
+        }
+        else if(h[r].floors() > 0 && h[r].p > 0){
+            matrix<Complex> Gi = h[r].integrated_Green_function();
+            Gi.transpose();
+            G.block[r] += Gi;
+        }
     }
 }
 
 
 /**
  Writes the mcf_set to an HDF5 group.
- Layout: attribute "nblocks"; for each r, sub-group "block_r" containing "e" and "h".
+ Layout: attribute "nblocks"; for each r, sub-group "block_r" containing "e"
+ and "h", plus "combined" when combined[r] is populated (combine_mcf path,
+ including the Q_matrix-to-MCF conversion which only fills combined[r]).
 */
 template<typename T>
 inline void mcf_set<T>::write_hdf5(H5::Group& grp)
@@ -172,6 +186,10 @@ inline void mcf_set<T>::write_hdf5(H5::Group& grp)
         h5_write_mcf(eg, e[r]);
         H5::Group hg = bg.createGroup("h");
         h5_write_mcf(hg, h[r]);
+        if(combined[r].floors() > 0){
+            H5::Group cg = bg.createGroup("combined");
+            h5_write_mcf(cg, combined[r]);
+        }
     }
 }
 
@@ -185,12 +203,17 @@ inline void mcf_set<T>::read_hdf5(H5::Group& grp)
     int nblocks = h5_read_attr_int(grp, "nblocks");
     e.resize(nblocks);
     h.resize(nblocks);
+    combined.resize(nblocks);
     for(int r = 0; r < nblocks; ++r){
         H5::Group bg = grp.openGroup("block_" + to_string(r));
         H5::Group eg = bg.openGroup("e");
         h5_read_mcf(eg, e[r]);
         H5::Group hg = bg.openGroup("h");
         h5_read_mcf(hg, h[r]);
+        if(bg.nameExists("combined")){
+            H5::Group cg = bg.openGroup("combined");
+            h5_read_mcf(cg, combined[r]);
+        }
     }
 }
 

@@ -254,6 +254,69 @@ struct matrix_continued_fraction
         return G;
     }
 
+    //! Frequency-integrated Green function: ∫_{-∞}^{0} A(ω) dω.
+    /**
+     Builds the dense (Mp × Mp) Hermitian block-tridiagonal matrix T (diagonal
+     blocks A[j]; T(j,j+1) = B[j]^H, T(j+1,j) = B[j] for j = 0..M-2; B[M-1] is
+     the truncation residual and is excluded, exactly as in evaluate()/apply()),
+     diagonalizes it, and keeps only the eigenmodes with negative eigenvalue.
+
+     For eigenvalue d_k < 0 with eigenvector u_k, writing u_k^{(0)} for its
+     first p components (the level-0 block), the pole's residue in the output
+     (W-weighted) basis is v_k = W^H u_k^{(0)}, and the returned q×q matrix is
+     sum_k v_k v_k^H over negative-eigenvalue modes only — i.e. the same
+     per-pole energy filter as Q_matrix::integrated_Green_function, applied
+     here to the block-Lanczos representation instead of an explicit Lehmann
+     sum. This is exact regardless of whether every pole of this MCF happens
+     to lie on one side of zero (e.g. for a hole MCF built from an excited,
+     thermally-weighted reference state, where some poles can stray to
+     positive energy).
+    */
+    matrix<Complex> integrated_Green_function() const
+    {
+        int M = (int)A.size();
+        int q = (int)W.c;
+        matrix<Complex> result(q, q);
+        if(M == 0 || p == 0) return result;
+
+        int N = M*p;
+        matrix<Complex> Tmat(N, N);
+        for(int j = 0; j < M; ++j){
+            matrix<Complex> Aj = to_complex_matrix(A[j]);
+            for(int a = 0; a < p; ++a)
+                for(int b = 0; b < p; ++b)
+                    Tmat(j*p+a, j*p+b) = Aj(a,b);
+            if(j < M-1){
+                matrix<Complex> Bj = to_complex_matrix(B[j]);
+                for(int a = 0; a < p; ++a){
+                    for(int b = 0; b < p; ++b){
+                        Tmat(j*p+a, (j+1)*p+b) = conjugate(Bj(b,a));   // B[j]^H
+                        Tmat((j+1)*p+b, j*p+a) = Bj(b,a);              // B[j]
+                    }
+                }
+            }
+        }
+
+        vector<double> d(N);
+        matrix<Complex> U(N, N);
+        Tmat.eigensystem(d, U);
+
+        matrix<Complex> Wh(W);
+        Wh.hermitian_conjugate();
+
+        for(int k = 0; k < N; ++k){
+            if(d[k] >= 0.0) continue;
+            matrix<Complex> u0(p, 1);
+            for(int a = 0; a < p; ++a) u0(a,0) = U(a, k);
+            matrix<Complex> v(q, 1);
+            v.product(Wh, u0);
+            for(int a = 0; a < q; ++a)
+                for(int b = 0; b < q; ++b)
+                    result(a,b) += v(a,0)*conjugate(v(b,0));
+        }
+        return result;
+    }
+
     //! Apply the block-tridiagonal Lanczos matrix T to a vector and return T*x.
     /**
      The input vector x must have size M*p (M = A.size(), p = block size).

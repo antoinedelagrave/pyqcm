@@ -206,11 +206,16 @@ matrix<Complex> lattice_model_instance::band_Green_function(Green_function_k &M)
 	periodized_Green_function(M);
 	// then compute the dispersion relation
 	auto eps = epsilon(M);
-	int nband = model->n_band;
-	matrix<Complex> U(nband);
-	vector<double> d(nband);
+	// eps (and M.g) have dimension n_band*n_mixed, not n_band alone: n_mixed = 2 or 4
+	// when the model has anomalous and/or spin-flip mixing. U and d must match, or
+	// eigensystem() (which sizes its output from eps, not from U/d) overflows their buffers.
+	size_t dim = eps.r;
+	matrix<Complex> U(dim);
+	vector<double> d(dim);
 	eps.eigensystem(d, U);
-	matrix<Complex> bandG(M.g);
+	// matrix<Complex>::simil(A,B) accumulates (this += A^dagger*B*A), so bandG must
+	// start at zero, not as a copy of M.g, or the untransformed M.g leaks into the result.
+	matrix<Complex> bandG(dim);
 	bandG.simil(U, M.g);
 	return bandG;
 }

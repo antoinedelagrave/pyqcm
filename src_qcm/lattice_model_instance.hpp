@@ -41,7 +41,7 @@ struct lattice_model_instance{
 
 	complex<double> TrSigmaG(Complex w, vector3D<double> &k, bool spin_down);
 	double Berry_flux(const vector<vector3D<double>> &k, int orb, bool spin_down);
-	double Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int orb);
+	double Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int orb, bool band_basis=false);
 	double CDMFT_distance(const vector<double>& p, int clus);
 	vector<double> CDMFT_residuals(const vector<double>& p, int clus);
 	vector<double> CDMFT_gradient(const vector<double>& p, int clus);
@@ -68,7 +68,7 @@ struct lattice_model_instance{
 	matrix<Complex> upgrade_cluster_matrix_anomalous(int latt_mix, int clus_mix, matrix<Complex> &g, matrix<Complex> &gm);
 	matrix<Complex> upgrade_cluster_matrix(int latt_mix, int clus_mix, matrix<Complex> &g);
 	pair<vector<array<double,9>>, vector<array<complex<double>, 11>>> site_and_bond_profile();
-	vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool recursive=false, int dir=3);
+	vector<double> Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool recursive=false, int dir=3, bool band_basis=false);
 	vector<double> dispersion(Green_function_k &M);
 	vector<double> dos(const complex<double> w, bool use_grid=false);
 	vector<double> momentum_profile_per(const lattice_operator& op, const vector<vector3D<double>> &k);
@@ -88,7 +88,7 @@ struct lattice_model_instance{
 	void CDMFT_host(const vector<double>& freqs, const vector<double>& weights);
 	void CDMFT_host();
 	void cluster_self_energy(Green_function& G);
-	void Green_eigensystem(Green_function &G, const vector3D<double> &k, vector<double> &e, matrix<Complex> &U, int opt);
+	void Green_eigensystem(Green_function &G, const vector3D<double> &k, vector<double> &e, matrix<Complex> &U, int opt, bool band_basis=false);
 	void Green_function_solve(); //!< calls the Green_function solver for all clusters
 	void inverse_Gcpt(const block_matrix<Complex> &Ginv, Green_function_k &M);
 	void periodized_Green_function(Green_function_k &M);

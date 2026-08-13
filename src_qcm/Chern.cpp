@@ -4,6 +4,8 @@
  */
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <tuple>
 
 #define MAX_K_SIDE 5000
 
@@ -35,12 +37,17 @@ Computes the eigenvalues and eigenvectors of a Green function at zero frequency
 @param k0 [in] wave vector
 @param e [out] eigenvalues
 @param U [out] matrix whose columns are the eigenvectors
-@param opt [in] option:  
+@param opt [in] option:
   opt = 0 : physical basis (periodized Green function)
   opt = 1 : dual_basis (periodized Green function)
   opt = 2 : non periodized Green function
+@param band_basis [in] if true, relabels the columns of U (and e) so that column l is the
+  eigenstate with maximal overlap with the l-th eigenvector of the bare dispersion (bare_epsilon),
+  instead of being sorted by eigenvalue. This tracks band identity by orbital character rather
+  than by (possibly reordering) interacting energy, while still using the interacting eigenstate
+  itself in the Berry curvature formula.
  */
-void lattice_model_instance::Green_eigensystem(Green_function &G, const vector3D<double> &k0, vector<double> &e, matrix<Complex> &U, int opt)
+void lattice_model_instance::Green_eigensystem(Green_function &G, const vector3D<double> &k0, vector<double> &e, matrix<Complex> &U, int opt, bool band_basis)
 {
   vector3D<double> k = k0;
   if(opt&1) k = model->superdual.to(model->dual.from(k));
@@ -48,7 +55,7 @@ void lattice_model_instance::Green_eigensystem(Green_function &G, const vector3D
     // do nothing : leave k as is
   }
   else k = model->superdual.to(model->physdual.from(k));
-  
+
   Green_function_k K(G,k);
   if(opt&2){
     set_Gcpt(K);
@@ -57,6 +64,47 @@ void lattice_model_instance::Green_eigensystem(Green_function &G, const vector3D
   else{
     periodized_Green_function(K);
     K.g.eigensystem(e, U);
+  }
+
+  if(band_basis){
+    size_t ng = e.size();
+    vector<double> d(ng);
+    matrix<Complex> W(ng);
+    bare_epsilon(k, G.spin_down).eigensystem(d, W);
+
+    // greedy maximal-overlap matching between bare bands (columns of W) and interacting eigenstates (columns of U)
+    vector<std::tuple<double,size_t,size_t>> overlap;
+    overlap.reserve(ng*ng);
+    for(size_t l=0; l<ng; l++){
+      for(size_t b=0; b<ng; b++){
+        Complex s(0.0);
+        for(size_t j=0; j<ng; j++) s += conjugate(W(j,l))*U(j,b);
+        overlap.push_back({norm(s), l, b});
+      }
+    }
+    sort(overlap.begin(), overlap.end(), [](const auto &x, const auto &y){return get<0>(x) > get<0>(y);});
+
+    vector<int> assign(ng, -1);
+    vector<bool> band_used(ng, false), state_used(ng, false);
+    size_t count = 0;
+    for(auto &t : overlap){
+      if(count == ng) break;
+      size_t l = get<1>(t), b = get<2>(t);
+      if(band_used[l] || state_used[b]) continue;
+      assign[l] = (int)b;
+      band_used[l] = true;
+      state_used[b] = true;
+      ++count;
+    }
+
+    vector<double> e_new(ng);
+    matrix<Complex> U_new(ng);
+    for(size_t l=0; l<ng; l++){
+      e_new[l] = e[assign[l]];
+      for(size_t j=0; j<ng; j++) U_new(j,l) = U(j,assign[l]);
+    }
+    e = e_new;
+    U = U_new;
   }
 }
 
@@ -170,8 +218,9 @@ Computes the flux of the Berry curvature through a square plaquette with a corne
 @param opt [in] option, like in function Green_eigensystem above
 @param dir [in] direction of perpendicular to plaquette (x=1, y=2, z=3)
 @param orb [in] orb=0 means a sum over all lattice orbitals, otherwise the orbital specified
+@param band_basis [in] if true, columns of each eigensystem are relabeled by maximal overlap with the bare bands (see Green_eigensystem)
 */
-double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int orb)
+double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D<double> &k1, const double deltax, const double deltay, const int opt, int dir, int orb, bool band_basis)
 {
   check_signals();
 
@@ -185,19 +234,19 @@ double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D
 	vector<double> e1(ng), e2(ng), e3(ng), e4(ng);
   vector3D<double> k(k1);
 
-  Green_eigensystem(G, k, e1, U1, opt);
+  Green_eigensystem(G, k, e1, U1, opt, band_basis);
   for(auto& x : e1) x = -1.0/x;
 
   k += increment(deltax, 0, dir);
-  Green_eigensystem(G, k, e2, U2, opt);
+  Green_eigensystem(G, k, e2, U2, opt, band_basis);
   for(auto& x : e2) x = -1.0/x;
-  
+
   k += increment(deltay, 1, dir);
-  Green_eigensystem(G, k, e3, U3, opt);
+  Green_eigensystem(G, k, e3, U3, opt, band_basis);
   for(auto& x : e3) x = -1.0/x;
 
   k += increment(deltax, 2, dir);
-  Green_eigensystem(G, k, e4, U4, opt);
+  Green_eigensystem(G, k, e4, U4, opt, band_basis);
   for(auto& x : e4) x = -1.0/x;
 
 	gauge_field(U1, U2, u1);
@@ -220,13 +269,13 @@ double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D
     double dx = deltax/2;
     double dy = deltay/2;
     k = k1;
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb, band_basis);
     k += increment(dx, 0, dir);
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb, band_basis);
     k += increment(dy, 1, dir);
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb, band_basis);
     k += increment(dx, 2, dir);
-    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb);
+    phase += Berry_plaquette(G, k, dx, dy, opt, dir, orb, band_basis);
   }
 
 
@@ -248,8 +297,9 @@ double lattice_model_instance::Berry_plaquette(Green_function &G, const vector3D
  @param orb [in] orbital label (0 means a sum over all lattice orbitals)
  @param rec [in] if true, refines reursively the grid if needed
  @param dir [in] direction of perpendicular to plaquette (x=1, y=2, z=3)
+ @param band_basis [in] if true, labels states by maximal overlap with the bare (non-interacting) bands instead of by interacting energy order (see Green_eigensystem)
  */
-vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir)
+vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vector3D<double>& k2, int nk, int orb, bool rec, int dir, bool band_basis)
 {
   recursive = rec;
 
@@ -295,15 +345,15 @@ vector<double> lattice_model_instance::Berry_curvature(vector3D<double>& k1, vec
   // #pragma omp parallel for
 	for(int j=0; j<nk; j++){
 		for(int i=0; i<nk; i++){
-			B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, orb);
+			B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, orb, band_basis);
 		}
 	}
-	
+
 	if(model->mixing == HS_mixing::up_down){
 		G = cluster_Green_function(Complex(0, 1e-8), false, true);
     for(int j=0; j<nk; j++){
       for(int i=0; i<nk; i++){
-        B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, orb);
+        B[i+nk*j] = Berry_plaquette(G, k1 + i*delta1 + j*delta2, d1, d2, opt, dir, orb, band_basis);
       }
     }
   }

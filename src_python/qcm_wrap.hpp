@@ -597,21 +597,29 @@ inline void register_qcm(nb::module_ &m) {
         "grids");
 
   m.def("CPT_Green_function_inverse",
-        [](complex<double> z, nb::object k, int spin_down, int label) {
+        [](complex<double> z, nb::object k, int spin_down,
+           int label) -> nb::ndarray<nb::numpy, complex<double>> {
           PyObject *ko = k.ptr();
           int ndim = require_array_ndim(ko, "CPT_Green_function_inverse");
-          if (ndim != 2)
-            qcm_throw("Argument 2 of 'CPT_Green_function_inverse' should be of "
-                      "dimension 2");
+          if (ndim > 2)
+            qcm_throw("Argument 2 of 'CPT_Green_function_inverse' should be "
+                      "of dimension 1 or 2");
           size_t d = QCM::Green_function_dimension();
-          auto g = QCM::CPT_Green_function_inverse(
-              z, many_vectors_from_Py((PyArrayObject *)ko), (bool)spin_down,
-              label);
-          return nb_cstack(g, d);
+          if (ndim == 1) {
+            vector<vector3D<double>> kk(1, vector_from_Py((PyArrayObject *)ko));
+            auto g = QCM::CPT_Green_function_inverse(z, kk, (bool)spin_down,
+                                                       label);
+            return nb_cmat(g[0]);
+          } else {
+            auto g = QCM::CPT_Green_function_inverse(
+                z, many_vectors_from_Py((PyArrayObject *)ko), (bool)spin_down,
+                label);
+            return nb_cstack(g, d);
+          }
         },
         "z"_a, "k"_a, "spin_down"_a = 0, "label"_a = 0,
         "computes the inverse CPT Green function at a frequency and "
-        "wavevectors");
+        "wavevector(s)");
 
   m.def("periodized_Green_function",
         [](complex<double> z, nb::object k, int spin_down, int label) {

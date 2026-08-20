@@ -1492,7 +1492,7 @@ class model_instance:
         Computes the inverse CPT Green function at a given frequency
 
         :param z: complex frequency
-        :param k: array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
+        :param k: single wavevector (ndarray(3)) or array of wavevectors (ndarray(N,3)) in units of :math:`2\pi`
         :param bool spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
         :returns: a single or an array of complex-valued matrices
 

@@ -1282,6 +1282,7 @@ void lattice_model::explicit_operator(const string &name, const string &type, co
 matrix<Complex> lattice_model::lattice_hybridization(int iw, int ik){
   
   if(hybrid == nullptr) qcm_throw("Lattice hybridization has not been defined");
+  if(iw < 0 or ik < 0) qcm_throw("lattice_hybridization() requires a discrete frequency-grid and wavevector-grid index (iw="+to_string(iw)+", ik="+to_string(ik)+"); this operation is not supported at an arbitrary continuous frequency for a model with an external hybridization file");
   lattice_hybrid& H = *hybrid;
   matrix<Complex> gamma(H.d);
   int r = H.d*(ik+H.nk*iw);
@@ -1293,13 +1294,13 @@ matrix<Complex> lattice_model::lattice_hybridization(int iw, int ik){
 
   // upgrade depending on mixing state
   if(mixing == H.mixing) return gamma;
-  else if(HS_mixing::anomalous and H.mixing==0){
+  else if((mixing & HS_mixing::anomalous) and H.mixing==0){
     matrix<Complex> h(2*H.d);
     gamma.move_sub_matrix(H.d, H.d, 0, 0, 0, 0, h);
     gamma.move_sub_matrix_HC(H.d, H.d, 0, 0, H.d, H.d, h, -1.0);
     return h;
   }
-  else if(HS_mixing::spin_flip and H.mixing==0){
+  else if((mixing & HS_mixing::spin_flip) and H.mixing==0){
     matrix<Complex> h(2*H.d);
     gamma.move_sub_matrix(H.d, H.d, 0, 0, 0, 0, h);
     gamma.move_sub_matrix(H.d, H.d, 0, 0, H.d, H.d, h);

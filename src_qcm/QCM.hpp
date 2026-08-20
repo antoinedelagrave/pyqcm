@@ -178,6 +178,8 @@ namespace QCM{
   void set_parameters(vector<pair<string,double>>&, vector<tuple<string, double, string>>&);
   //! Performs an adaptive integral over frequencies and the Brillouin zone.
   void wk_integral(int dim, function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double accuracy,bool verb=false);
+  //! Finite-temperature analog of wk_integral: a Matsubara-frequency sum (frequency only, no k).
+  void matsubara_sum(function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double T, const double accuracy, bool verb=false);
   //! Forces eager (non-lazy) computation of cluster Green functions in all clusters.
   void Green_function_solve(int label);
   //! Defines the set of CDMFT variational parameters.

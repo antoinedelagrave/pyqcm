@@ -62,7 +62,7 @@ if live:
 else:
     nrows, ncols = 5, 3
     fig, ax = plt.subplots(nrows, ncols)
-    fig.set_size_inches(ncols * 8 / 2.54, nrows * 6 / 2.54)
+    fig.set_size_inches(ncols * 12 / 2.54, nrows * 9 / 2.54)
     ax = ax.flatten()
 
     I.spectral_function(w=6, nk=32, period='G', plt_ax=ax[0]); ax[0].set_title('spectral_function', fontsize=9)
@@ -74,7 +74,7 @@ else:
     I.mdc_anomalous(nk=64, plt_ax=ax[6]); ax[6].set_title('mdc_anomalous', fontsize=9)
     ax[7] = I.plot_dispersion(nk=32, plt_ax=ax[7]); ax[7].set_title('plot_dispersion', fontsize=9)
     I.segment_dispersion(nk=32, plt_ax=ax[8]); ax[8].set_title('segment_dispersion', fontsize=9)
-    I.segment_dispersion_fat(orb=1, nk=32, plt_ax=ax[9]); ax[9].set_title('segment_dispersion_fat', fontsize=9)
+    I.segment_dispersion_fat(band=1, nk=32, plt_ax=ax[9]); ax[9].set_title('segment_dispersion_fat', fontsize=9)
     I.Fermi_surface(nk=32, plt_ax=ax[10]); ax[10].set_title('Fermi_surface', fontsize=9)
     ax[11] = I.G_dispersion(nk=32, plt_ax=ax[11]); ax[11].set_title('G_dispersion', fontsize=9)
     I.Luttinger_surface(nk=64, plt_ax=ax[12]); ax[12].set_title('Luttinger_surface', fontsize=9)

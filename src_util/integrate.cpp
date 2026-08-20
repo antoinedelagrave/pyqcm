@@ -80,6 +80,38 @@ int k_cb(unsigned ndim, size_t npts, const double *x, void *fdata, unsigned fdim
 	return 0;
 }
 
+//------------------------------------------------------------------------------
+// Continuous tail integral over w=iOmega, Omega in [w_start, infinity), via the
+// 1/Omega substitution (same as region 3 of QCM::wk_integral). Shared by wk_integral
+// (T=0, w_start=large_scale) and matsubara_sum (T>0, w_start possibly pushed further
+// out): beyond w_start, the Matsubara spacing 2*pi*T is assumed negligible next to
+// Omega, so the discrete sum and the continuous integral coincide there.
+void wk_high_freq_tail(function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> &f, int ndim, vector<double> &Iv, const double accuracy, bool verb, double w_start)
+{
+	int ncomp = (int)Iv.size();
+	int maxpoints;
+	if(ndim==2)      maxpoints = 500000;
+	else if(ndim==3) maxpoints = 10000000;
+	else if(ndim==4) maxpoints = 20000000;
+	else             maxpoints = 10000;
+
+	auto cubature = global_bool("use_pcubature") ? pcubature_v : hcubature_v;
+	const double xmin[] = {0,0,0,0};
+	const double xmax[] = {1,1,1,1};
+	const double iw_cutoff = 1.0/global_double("cutoff_scale");
+	int count = 0;
+
+	double w_domain = 1.0/w_start;
+	vector<double> value(ncomp, 0.0), err(ncomp, 0.0);
+	WkContext ctx{f, w_domain, 0.0, iw_cutoff, true, verb, count};
+	auto t1 = std::chrono::high_resolution_clock::now();
+	int fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
+	if(fail) qcm_throw("error in Cubature integral : fail = "+to_string<int>(fail));
+	if(verb) cout << "high-frequency tail : " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
+	double fac = w_domain*M_1_PI;
+	for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
+}
+
 } // anonymous namespace
 
 
@@ -148,17 +180,49 @@ void QCM::wk_integral(int dim, function<void (Complex w, vector3D<double> &k, co
 
 	//------------------------------------------------------------------------------
 	// third region : inverse frequencies below 1/large_scale
-	{
-		double w_domain = 1.0/large_scale;
-		vector<double> value(ncomp, 0.0), err(ncomp, 0.0);
-		WkContext ctx{f, w_domain, 0.0, iw_cutoff, true, verb, count};
-		auto t1 = std::chrono::high_resolution_clock::now();
-		fail = cubature(ncomp, wk_cb, &ctx, ndim, xmin, xmax, (size_t)maxpoints, accuracy*M_PI/w_domain, 1e-10, ERROR_INDIVIDUAL, value.data(), err.data());
-		if(fail) qcm_throw("error in Cubature integral : fail = "+to_string<int>(fail));
-		if(verb) cout << "region 3 : " << (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-t1).count()/1000 << " seconds" << endl;
-		double fac = w_domain*M_1_PI;
-		for(int i=0; i<ncomp; ++i) Iv[i] += value[i]*fac;
+	wk_high_freq_tail(f, ndim, Iv, accuracy, verb, large_scale);
+}
+
+
+
+/**
+ Finite-temperature analog of QCM::wk_integral. Computes
+ $T\sum_{n=-\infty}^{\infty} f(i\omega_n)$, with $\omega_n=(2n+1)\pi T$ the fermionic
+ Matsubara frequencies, expressed (via $f(-i\Omega)=f(i\Omega)^\dagger$, which f is assumed
+ to already build in, exactly as QCM::wk_integral expects) as an explicit sum over
+ $n=0,1,2,\dots$ of $f(i\omega_n)$ for $\omega_n$ below a crossover frequency, weighted so
+ as to match exactly the normalization of QCM::wk_integral in the $T\to 0$ limit (a Riemann
+ sum with step $2\pi T$ converges to the region-1/2 integral of wk_integral as $T\to 0$).
+ Frequencies above the crossover are handled with the same continuous tail integral used
+ by wk_integral, relying on the Matsubara spacing $2\pi T$ being negligible next to the
+ crossover frequency; to keep that assumption valid even when T is not small, the crossover
+ is pushed out to a fixed multiple of $2\pi T$ (at least "large_scale").
+ @param f function to sum (frequency only; only used at k=0, dim=0)
+ @param Iv value of the sum (adds to previous value: must be properly initialized)
+ @param T temperature (assumed > 0)
+ @param accuracy required absolute accuracy of the sum
+ */
+void QCM::matsubara_sum(function<void (Complex w, vector3D<double> &k, const int *nv, double I[])> f, vector<double> &Iv, const double T, const double accuracy, bool verb)
+{
+	int ncomp = (int)Iv.size();
+	const int nv = ncomp;
+	vector3D<double> k(0.0, 0.0, 0.0);
+	vector<double> I(ncomp);
+
+	const double large_scale = global_double("large_scale");
+	const double n_min_explicit = 32; // minimum number of Matsubara points summed explicitly
+	const double w_crossover = max(large_scale, 2.0*n_min_explicit*M_PI*T);
+
+	int n = 0;
+	for(double w_n = M_PI*T; w_n < w_crossover; w_n += 2.0*M_PI*T){
+		Complex w(0.0, w_n);
+		f(w, k, &nv, I.data());
+		for(int i=0; i<ncomp; ++i) Iv[i] += 2.0*T*I[i];
+		++n;
 	}
+	if(verb) cout << "Matsubara sum : " << n << " frequencies used below crossover = " << w_crossover << endl;
+
+	wk_high_freq_tail(f, 1, Iv, accuracy, verb, w_crossover);
 }
 
 

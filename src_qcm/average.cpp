@@ -221,6 +221,7 @@ void lattice_model_instance::average_integrand(int iw, int ik, vector<double> &I
 	i = 0;
 	if(model->mixing == HS_mixing::up_down){
     Green_function G = cluster_Green_function(w, false, true);
+    G.iw = iw;
     Green_function_k K(G, model->hybrid->k[ik], ik);
     set_Gcpt(K);
     K.Gcpt.add(-G_pole); // regulates the Green function at high frequency (subtracts G_pole times the identity matrix)
@@ -702,8 +703,19 @@ matrix<complex<double>> lattice_model_instance::Green_integral(bool spin_down, i
   };
 
   vector<double> A(dim*dim, 0.0);
-  if(clus) QCM::wk_integral(0, Fmp_clus, A, accur_OP, global_bool("verb_integrals"));
-  else QCM::wk_integral(0, Fmp, A, accur_OP, global_bool("verb_integrals"));
+  double T = global_double("temperature");
+  // at T=0, the density matrix is obtained from a contour integral of G along the
+  // imaginary frequency axis; at T>0 the occupation is smeared by the Fermi function,
+  // and the corresponding generalization is a sum over fermionic Matsubara frequencies
+  // (which reduces to the T=0 integral as T->0).
+  if(T < 1e-10){
+    if(clus) QCM::wk_integral(0, Fmp_clus, A, accur_OP, global_bool("verb_integrals"));
+    else QCM::wk_integral(0, Fmp, A, accur_OP, global_bool("verb_integrals"));
+  }
+  else{
+    if(clus) QCM::matsubara_sum(Fmp_clus, A, T, accur_OP, global_bool("verb_integrals"));
+    else QCM::matsubara_sum(Fmp, A, T, accur_OP, global_bool("verb_integrals"));
+  }
   if(model->mixing == HS_mixing::normal) A *= 2;
   else if(model->mixing == HS_mixing::full) {A *= 0.5;}
   return hermitian_matrix_from_real_vector(dim, A);

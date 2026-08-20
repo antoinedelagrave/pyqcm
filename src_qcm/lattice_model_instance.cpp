@@ -473,6 +473,7 @@ Green_function lattice_model_instance::cluster_Green_function(Complex w, bool si
   if(!gf_solved) Green_function_solve();
 	Green_function G;
 	G.w = w;
+	G.iw = -1; // no discrete frequency-grid index associated with an arbitrary continuous frequency
 	G.spin_down = spin_down;
 	G.G.block.resize(n_clus);
 

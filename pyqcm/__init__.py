@@ -1936,12 +1936,14 @@ class model_instance:
     # -----------------------------------------------------------------------------------------------
     def V_matrix(self, z, k, spin_down=False):
         r"""
-        Computes the matrix :math:`V=G_0^{-1}-G^{c-1}_0` at a given frequency and wavevectors, where :math:`G_0` is the noninteracting Green function on the infinite lattice and :math:`G^c_0` is the noninteracting Green function on the cluster.
+        Computes the matrix :math:`V=G_0^{-1}-G^{c-1}_0` at a given frequency and wavevector, where :math:`G_0` is the noninteracting Green function on the infinite lattice and :math:`G^c_0` is the noninteracting Green function on the cluster.
 
-        :param complex z: frequency
-        :param wavevector k: wavevector (ndarray(3)) in units of :math:`2\pi`
-        :param bool spin_down: True is the spin down sector is to be computed (applies if mixing = 4)
-        :returns: a single (d,d) or an array (N,d,d) of complex-valued matrices. d is the reduced GF dimension.
+        If both `z` and `k` are integers, they are instead interpreted as the indices (iw, ik) of the frequency and wavevector within the external hybridization grids (requires the model to have been created with a non-empty ``hybrid_file``).
+
+        :param z: complex frequency, or (if k is an int) the index iw of the frequency in the external hybridization frequency array
+        :param k: wavevector (ndarray(3)) in units of :math:`2\pi`, or (if an int) the index ik of the wavevector in the external hybridization wavevector array
+        :param bool spin_down: True is the spin down sector is to be computed (applies if mixing = 4). Ignored if k is an int.
+        :returns: a single (d,d) complex-valued matrix
 
         """
         return qcm.V_matrix(z, k, spin_down, self.label)

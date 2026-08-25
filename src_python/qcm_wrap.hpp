@@ -927,7 +927,7 @@ inline void register_qcm(nb::module_ &m) {
           return nb_array_<double>(J.data(), {Nrows, Nparams});
         },
         "p"_a, "clus"_a, "label"_a = 0,
-        "analytical Jacobian dr/dp of the CDMFT residual vector");
+        "finite-difference Jacobian dr/dp of the CDMFT residual vector");
 
   //------------------------------------------------------------------ printing
   m.def("print_model",

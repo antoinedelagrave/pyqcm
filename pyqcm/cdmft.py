@@ -169,7 +169,7 @@ class CDMFT:
     :param bool converge_with_stdev: If True, checks convergence using the standard deviation of the convergence tests, not the difference
     :param str iteration: method of iteration of parameters ('fixed_point' or 'broyden')
     :param float/iterable alpha: if iteration='fixed_point', damping parameter (fraction of the previous iteration in the new one). If iteration='broyden', 1+alpha is the inverse initial Jacobian (or alpha can literally be a matrix, the inverse Jacobian from a previous run).
-    :param str method: minimization method. Derivative-free choices: 'Nelder-Mead' (default), 'Powell', 'CG', 'ANNEAL', NLopt methods 'NELDERMEAD', 'COBYLA', 'BOBYQA', 'PRAXIS', 'SUBPLEX'. Analytical-Jacobian choices (the Jacobian ``qcm.CDMFT_gradient`` is activated automatically): 'trf' (Trust Region Reflective via scipy.least_squares), 'BFGS', 'L-BFGS-B'. The finite-difference step for the Jacobian is ``cdmft_jacobian_delta`` (default 1e-5, tunable via ``pyqcm.set_global_parameter``).
+    :param str method: minimization method. Derivative-free choices: 'Nelder-Mead' (default), 'Powell', 'CG', 'ANNEAL', NLopt methods 'NELDERMEAD', 'COBYLA', 'BOBYQA', 'PRAXIS', 'SUBPLEX'. Least-squares choices, which fit the hybridization residual vector directly and activate the Jacobian ``qcm.CDMFT_gradient`` automatically: 'trf' (trust region reflective), 'BFGS' (Levenberg-Marquardt), 'L-BFGS-B' (dogbox). Note that the latter two names are kept for backward compatibility and do not describe the algorithm actually used. The Jacobian is computed in C++ by central finite differences with step ``cdmft_jacobian_delta`` (default 1e-5, tunable via ``pyqcm.set_global_parameter``), which costs 2 residual evaluations per bath parameter.
     :param int lm_max_nfev: maximum number of function/gradient evaluations for the jac-capable methods (default 2000; ignored for derivative-free methods)
     :param str file: prefix of the file where the solution is written. The solutions in <prefix>.tsv and the iterations in <prefix>_iter.tsv
     :param int eps_algo: number of elements in the epsilon algorithm convergence accelerator = 2*eps_algo + 1 (0 = no acceleration)
@@ -547,12 +547,10 @@ class CDMFT:
             x0 = self.x[ic : ic + self.nvar[c]]
             _clus = c - 1
             _label = self.I.label
-            # NOTE: CDMFT_residuals returns r such that ‖r‖² ∝ D (same minimiser,
-            # different scale). CDMFT_distance normalises by dw/(dim²) for reporting.
+            # CDMFT_residuals returns r with sum(r^2) proportional to the distance
+            # function: same minimizer, different scale. CDMFT_distance applies the
+            # dw/dim^2 normalization and is what gets reported below.
             if self.jac:
-                # All jac-capable methods receive the residual vector r(x) and the
-                # full Jacobian J(x) = ∂r/∂x.  optimize() selects the appropriate
-                # scipy.optimize.least_squares sub-algorithm (trf / lm / dogbox).
                 F = lambda x, _c=_clus, _l=_label: np.asarray(
                     qcm.CDMFT_residuals(x, _c, _l)
                 )
@@ -1574,28 +1572,28 @@ def optimize(
     """
 
     :param F: function to be optimized.
-        When ``jac`` is callable: ``F(x) -> array`` (residual vector ``r(x)``); applies to
-        ``trf``, ``BFGS``, and ``L-BFGS-B``.
-        When ``jac=False``: ``F(x) -> float`` (scalar objective); ``F`` must also accept an
+        When ``jac`` is callable: ``F(x) -> array``, the residual vector ``r(x)``; applies to
+        ``trf``, ``BFGS`` and ``L-BFGS-B``.
+        When ``jac=False``: ``F(x) -> float``, a scalar objective; ``F`` must also accept an
         optional ``grad`` keyword: ``F(x, grad=None)``.
     :param (float) x: array of variables
     :param str method: minimization method. Scipy methods: ``Nelder-Mead``, ``Powell``, ``CG``,
         ``BFGS``, ``ANNEAL``. NLopt derivative-free: ``COBYLA``, ``BOBYQA``, ``PRAXIS``,
         ``NELDERMEAD``, ``SUBPLEX``. NLopt gradient-based (forward finite differences): ``L-BFGS-B``.
-        Jacobian-based least-squares (require ``jac`` callable): ``trf`` (trust-region reflective),
-        ``BFGS`` (Levenberg-Marquardt, no bounds), ``L-BFGS-B`` (dogbox, supports bounds).
-        All three jac-capable methods call ``scipy.optimize.least_squares`` and therefore
-        share the same xtol/ftol stopping criteria, guaranteeing equivalent bath-parameter
-        precision and consistent outer CDMFT convergence.
+        Least-squares methods, which require a callable ``jac`` and route to
+        ``scipy.optimize.least_squares``: ``trf`` (trust region reflective), ``BFGS``
+        (Levenberg-Marquardt, no bounds), ``L-BFGS-B`` (dogbox, supports bounds). The last two
+        names are historical and do not name the algorithm that runs. All three share the same
+        stopping criteria, so they converge the bath parameters to a comparable precision.
     :param float initial_step: initial step in the minimization procedure
-    :param float accur: absolute tolerance on the parameters (x-tolerance)
-    :param float accur_dist: absolute tolerance on the objective function value (f-tolerance)
+    :param float accur: tolerance on the parameters (x-tolerance). Absolute for the NLopt
+        methods; relative for the least-squares methods, which stop when the step satisfies
+        ``norm(dx) < accur * (accur + norm(x))``.
+    :param float accur_dist: tolerance on the objective function value (f-tolerance). Absolute
+        for the NLopt methods, relative to the cost for the least-squares methods.
     :param int maxfev: maximum number of function evaluations allowed
     :param jac: ``False`` (default, derivative-free) or a callable ``jac(x) -> 2-D array``
-        returning the full Jacobian matrix J = ∂r/∂x (shape ``Nresiduals × Nparams``).
-    :param bounds: ``None`` (unbounded, ±∞) or a positive scalar ``B`` that applies a ``[-B, B]``
-        box to all parameters. Used by ``trf`` and ``L-BFGS-B`` when ``jac`` is callable;
-        ignored by ``BFGS`` (which uses Levenberg-Marquardt, an unbounded algorithm).
+        returning the Jacobian dr/dx, of shape (Nresiduals, Nparams).
     :returns: a 4-tuple (opt_x, iter_done, success, fun) with the optimal parameters, number of evaluations, success flag, and optimal function value
     :rtype: tuple
 
@@ -1618,23 +1616,22 @@ def optimize(
         "neldermead": nlopt.LN_NELDERMEAD,
         "subplex": nlopt.LN_SBPLX,
     }
-    if method.lower() == "trf":
+    def least_squares(ls_method):
+        # gtol is effectively disabled so that all three share the same xtol/ftol criteria
         sol_ls = scipy.optimize.least_squares(
             F,
             x,
             jac=jac,
-            method="trf",
+            method=ls_method,
             max_nfev=maxfev,
             ftol=accur_dist,
             xtol=accur,
             gtol=1e-12,
         )
-        opt_x, iter_done, success, fun = (
-            sol_ls.x,
-            sol_ls.nfev,
-            sol_ls.success,
-            sol_ls.cost,
-        )
+        return sol_ls.x, sol_ls.nfev, sol_ls.success, sol_ls.cost
+
+    if method.lower() == "trf":
+        opt_x, iter_done, success, fun = least_squares("trf")
 
     elif method == "Nelder-Mead":
         initial_simplex = np.zeros((nvar + 1, nvar))
@@ -1677,26 +1674,10 @@ def optimize(
 
     elif method == "BFGS":
         if callable(jac):
-            # Route through Levenberg-Marquardt (least-squares, no bounds).
-            # BFGS with a gradient J^T r is suboptimal for ‖r‖²: it ignores the
-            # Gauss-Newton structure and has no direct x-tolerance stopping criterion.
-            # LM uses J directly (Gauss-Newton step) and stops on xtol, matching TRF.
-            sol_ls = scipy.optimize.least_squares(
-                F,
-                x,
-                jac=jac,
-                method="lm",
-                max_nfev=maxfev,
-                ftol=accur_dist,
-                xtol=accur,
-                gtol=1e-12,
-            )
-            opt_x, iter_done, success, fun = (
-                sol_ls.x,
-                sol_ls.nfev,
-                sol_ls.success,
-                sol_ls.cost,
-            )
+            # Levenberg-Marquardt rather than BFGS: feeding BFGS the gradient J^T r
+            # throws away the Gauss-Newton structure of a sum of squares, and it has no
+            # direct x-tolerance criterion. Unbounded, unlike trf and dogbox.
+            opt_x, iter_done, success, fun = least_squares("lm")
         else:
             sol = scipy.optimize.minimize(
                 F,
@@ -1746,26 +1727,9 @@ def optimize(
 
     elif method == "L-BFGS-B":
         if callable(jac):
-            # Route through dogbox (least-squares, supports bounds).
-            # NLopt LD_LBFGS with relative tolerances stalls when ‖r‖ is near
-            # machine precision; dogbox uses xtol/ftol (absolute) and exploits J
-            # directly, matching TRF's convergence precision.
-            sol_ls = scipy.optimize.least_squares(
-                F,
-                x,
-                jac=jac,
-                method="dogbox",
-                max_nfev=maxfev,
-                ftol=accur_dist,
-                xtol=accur,
-                gtol=1e-12,
-            )
-            opt_x, iter_done, success, fun = (
-                sol_ls.x,
-                sol_ls.nfev,
-                sol_ls.success,
-                sol_ls.cost,
-            )
+            # dogbox rather than NLopt LD_LBFGS, which stalls when the residual norm
+            # approaches machine precision. Supports bounds, unlike lm.
+            opt_x, iter_done, success, fun = least_squares("dogbox")
         else:
             _fd_eps = pyqcm.get_global_parameter("cdmft_jacobian_delta")
 

@@ -686,14 +686,14 @@ double lattice_model_instance::CDMFT_distance(const vector<double>& p, int clus)
 
 //==============================================================================
 /**
- Computes the CDMFT residual vector (real-valued) used by least_squares optimizers.
+ Computes the CDMFT residual vector (real-valued) used by the least-squares optimizers.
  The residuals are r_n = sqrt(w_n) * (Gamma(iw_n) + G_host(iw_n)), packed as
  [Re(.).ravel(), Im(.).ravel()] for each frequency, then stacked over frequencies.
  If the model has up_down mixing, residuals for both spin components are concatenated.
 
- NOTE: unlike CDMFT_distance, this does NOT multiply by dw nor divide by (dim*dim),
- because least_squares uses the residuals directly (sum of squares forms the cost).
- A constant rescaling does not change the optimum.
+ Unlike CDMFT_distance, this does not multiply by dw nor divide by dim*dim: the
+ least-squares drivers build the cost from the residuals themselves, and a constant
+ rescaling does not move the optimum.
 
  @param p values of the variational parameters
  @param clus cluster index
@@ -701,12 +701,14 @@ double lattice_model_instance::CDMFT_distance(const vector<double>& p, int clus)
  */
 vector<double> lattice_model_instance::CDMFT_residuals(const vector<double>& p, int clus)
 {
+	if(G_host.size()==0) qcm_throw("CDMFT_residuals called before the host function was computed");
+
 	for(int i=0; i<model->param_set->CDMFT_variational[clus].size(); i++){
 		model->param_set->set_value(model->param_set->CDMFT_variational[clus][i], p[i]);
 	}
 	auto I = lattice_model_instance(model, label+999);
 
-	int dim = G_host[0][0].r;
+	int dim = G_host[0][clus].r; // per cluster: GF dimensions differ when clusters differ in size
 	int dim2 = dim*dim;
 	int Nfreq = (int)CDMFT_freqs.size();
 	bool has_down = (model->mixing & HS_mixing::up_down) != 0;
@@ -746,38 +748,27 @@ vector<double> lattice_model_instance::CDMFT_residuals(const vector<double>& p, 
 
 //==============================================================================
 /**
- Computes the finite-difference Jacobian d r / d p of the CDMFT residual vector
- using central differences: J[:,j] = (r(p+δeⱼ) − r(p−δeⱼ)) / (2δ).
- Stored row-major with shape (Nrows, Nparams), where Nrows = 2 * n_spins * Nfreq * dim^2.
+ Computes the Jacobian d r / d p of the CDMFT residual vector by central differences:
+ J[:,j] = (r(p + d*e_j) - r(p - d*e_j)) / (2d), with d taken from the global parameter
+ cdmft_jacobian_delta and scaled by max(1, |p_j|). Cost is 2*Nparams residual evaluations.
 
- Cost: 2*Nparams calls to CDMFT_residuals (no baseline evaluation needed).
- Accuracy: O(δ²) ≈ 1e-10 versus O(δ) ≈ 1e-7 for forward differences.
-
- Implementation note: the bath parameters -> Gamma(iw) map is evaluated by
- finite difference because individual operator derivatives are not exposed by the
- lattice_model_instance interface. This is still substantially cheaper than
- scipy's default numerical Jacobian (all computation stays in C++).
+ Finite differences are used because the derivative of Gamma(iw) with respect to an
+ individual bath operator is not exposed by the lattice_model_instance interface. Doing
+ it here rather than letting scipy do it keeps every evaluation inside C++.
 
  @param p values of the variational parameters
  @param clus cluster index
- @returns the Jacobian as a flat row-major vector (shape: Nrows × Nparams, row-major)
+ @returns the Jacobian, flattened row-major with shape (Nrows, Nparams)
  */
 vector<double> lattice_model_instance::CDMFT_gradient(const vector<double>& p, int clus)
 {
-	int Nparams = (int)p.size();
-	int dim = G_host[0][0].r;
-	int dim2 = dim*dim;
-	int Nfreq = (int)CDMFT_freqs.size();
-	bool has_down = (model->mixing & HS_mixing::up_down) != 0;
-	int n_spins = has_down ? 2 : 1;
-	int Nrows = 2 * n_spins * Nfreq * dim2;
-
-	vector<double> J(Nrows * Nparams, 0.0);
+	size_t Nparams = p.size();
+	size_t Nrows = 0;
+	vector<double> J;
 
 	const double delta = global_double("cdmft_jacobian_delta");
-	for(int j=0; j<Nparams; j++){
-		double scale = std::max(1.0, std::abs(p[j]));
-		double dj = delta * scale;
+	for(size_t j=0; j<Nparams; j++){
+		double dj = delta * std::max(1.0, std::abs(p[j]));
 
 		vector<double> pp = p;
 		pp[j] = p[j] + dj;
@@ -787,13 +778,17 @@ vector<double> lattice_model_instance::CDMFT_gradient(const vector<double>& p, i
 		pm[j] = p[j] - dj;
 		vector<double> rm = CDMFT_residuals(pm, clus);
 
-		double inv = 1.0 / (2.0 * dj);
-		for(int row=0; row<Nrows; row++){
-			J[row * Nparams + j] = (rp[row] - rm[row]) * inv;
+		if(j==0){
+			Nrows = rp.size();
+			J.assign(Nrows*Nparams, 0.0);
 		}
+		else if(rp.size() != Nrows) qcm_throw("inconsistent CDMFT residual length across the Jacobian columns");
+
+		double inv = 1.0 / (2.0 * dj);
+		for(size_t row=0; row<Nrows; row++) J[row*Nparams + j] = (rp[row] - rm[row]) * inv;
 	}
 
-	// Restore original parameter values so subsequent calls see consistent state
+	// CDMFT_residuals leaves the parameter set at its last probe point, not at p
 	for(int i=0; i<model->param_set->CDMFT_variational[clus].size(); i++){
 		model->param_set->set_value(model->param_set->CDMFT_variational[clus][i], p[i]);
 	}

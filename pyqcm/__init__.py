@@ -50,7 +50,12 @@ cluster_model_names = set()
 
 
 class OutOfBoundsError(Exception):
-    pass
+    def __init__(self, message, max_value):
+        self.message = message
+        self.max_value = max_value
+
+    def __str__(self):
+        return self.message + f" The maximum value is {self.max_value}."
 
 
 class TooManyIterationsError(Exception):
@@ -58,7 +63,7 @@ class TooManyIterationsError(Exception):
         self.max_iteration = max_iteration
 
     def __str__(self):
-        return "the number of iterations has exceeded {:d}".format(self.max_iteration)
+        return "The number of iterations has exceeded {:d}!".format(self.max_iteration)
 
 
 class SolverError(Exception):
@@ -70,7 +75,12 @@ class MissingArgError(TypeError):
 
 
 class MinimizationError(Exception):
-    pass
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+    def __str__(self):
+        return f"{self.message}"
 
 
 class ParseError(Exception):
@@ -2100,7 +2110,7 @@ class model_instance:
         )  # adds the timestamp
 
         if f is None: return
-        
+
         if commented:
             des = "#"
             val = "#"
@@ -2980,7 +2990,7 @@ def fixed_point_iteration(
         alpha = damping
     else:
         alpha = 0
-        
+
     iter = 0
     while True:
         print("\n--> fixed_point iteration {:d}".format(iter + 1))

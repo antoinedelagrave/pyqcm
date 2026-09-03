@@ -560,6 +560,10 @@ class lattice_model:
         is the number of electrons and z is twice the total spin projection. For instance, 'R0:N7:S1' means
         7 electrons and total spin projection 1/2, in the trivial representation. If more than one sector
         must be explored, their corresponding strings are separated by '/', e.g. 'R0:N7:S1/R0:N7:S-1'.
+        When neither the particle number nor the spin is conserved (i.e. when anomalous and spin-flip
+        operators are both present), only the parity of the particle number is conserved: the sector
+        string 'Rx' then denotes the even sector, and the prefix 'O' the odd one, e.g. 'R0/OR0' in
+        order to explore both.
 
         :param (str) sec: the target sectors
 
@@ -592,8 +596,11 @@ class lattice_model:
                 if len(x) == 0:
                     valid = False
                     break
+                # a leading 'O' denotes the odd particle-number sector
+                if x[0] == 'O':
+                    x = x[1:]
                 for y in x.split(':'):
-                    if y[0] not in 'RNS':
+                    if len(y) == 0 or y[0] not in 'RNS':
                         valid = False
                         break
                     if not is_integer(y[1:]):

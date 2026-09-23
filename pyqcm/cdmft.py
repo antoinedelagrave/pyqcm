@@ -195,7 +195,7 @@ class CDMFT:
         self,
         model,
         varia,
-        grid=None,
+        grid,
         maxiter=32,
         miniter=0,
         convergence="parameters",

@@ -886,26 +886,35 @@ def gap(self, k, orb = 1, threshold=1e-3):
 
 
 #---------------------------------------------------------------------------------------------------
-def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors=None, file=None, data_file='dos.tsv', plt_ax=None, spin_up = False, use_grid=True, **kwargs):
+def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors=None, file=None, data_file='dos.tsv', plt_ax=None, use_grid=True, **kwargs):
     """Plots the density of states (DoS) as a function of frequency
+
+    All the bands (orbitals) of the model are plotted. Which spin components are plotted
+    (and printed to `data_file`) depends on the mixing state of the model:
+
+    * mixing = 0 (normal) : only the spin up DoS, the spin down DoS being identical
+    * mixing = 1 (simple Nambu, i.e. superconductivity) : only the spin up DoS, the second
+      component of the Nambu spinor being the spin down DoS at the opposite frequency
+    * mixing = 2 (spin flip) : both the spin up and spin down DoS
+    * mixing = 3 (full Nambu) : both the spin up and spin down DoS, the anomalous (Nambu)
+      components not being plotted
+    * mixing = 4 (spin dependent) : both the spin up and spin down DoS
 
     :param float w: the frequency range is from -w to w if w is a float. If w is a tuple then the range is (w[0], w[1]). w can also be an explicit list of real frequencies, or of complex frequencies (in which case eta is ignored)
     :param float eta: Lorentzian broadening, if w is real
     :param bool sum: if True, the sum of the DoS of all lattice orbitals is plotted in addition to each orbital individually
     :param bool progress: if True, prints computation progress
-    :param [str] labels: labels of the different curves
-    :param [str] colors: colors of the different curves
+    :param [str] labels: labels of the different orbitals (bands). If None, 'orb 1', 'orb 2', etc. are used. An up or down arrow is appended when both spins are plotted.
+    :param [str] colors: colors of the different orbitals (bands)
     :param str file: if not None, saves the plot in a file with that name
     :param str data_file: saves the data in a file with that name
     :param matplotlib.axes.Axes plt_ax: optional matplotlib axis set, to be passed when one wants to collect a subplot of a larger set
-    :param bool spin_up: only plots the spin up bands, even if mixing is nonzero
     :param bool use_grid: if True, the wavevector integral is performed on a fixed regular grid (size set by global parameter "kgrid_side") instead of adaptive cubature
     :param kwargs: keyword arguments passed to the matplotlib 'plot' function
     :returns: w, A : the complex frequency array and the DoS array
 
     """
     _check_no_hybrid_file(self, 'plot_DoS')
-    from cycler import cycler
 
     plot = True
     if type(plt_ax) == int:
@@ -926,9 +935,10 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     nw = len(w)
     mix = self.model.mixing
     nband = self.model.nband
-    if mix == 4 and spin_up: mix = 0 
-    d = nband
-    if mix != 0: d *=2
+    # the spin down DoS is shown only when it is an independent function of the same
+    # frequency, i.e. for spin flip (2), full Nambu (3) and spin dependent (4) mixings
+    spin_down = mix in (2, 3, 4)
+    d = 2*nband if spin_down else nband
 
     pyqcm.banner("computing the DoS, mixing={:d}, {:d} bands".format(mix, nband), '*')
     # reserves space for the DoS
@@ -951,12 +961,12 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     
     for i in range(nband):
         head += 'up_{:d}\t'.format(i+1)
-    if mix > 0:
+    if spin_down:
         for i in range(nband):
             head += 'down_{:d}\t'.format(i+1)
     for i in range(nband):
         head += 'cumul_up_{:d}\t'.format(i+1)
-    if mix > 0 and spin_up==False:
+    if spin_down:
         for i in range(nband):
             head += 'cumul_down_{:d}\t'.format(i+1)
     np.savetxt(data_file, np.hstack((np.reshape(np.real(w), (nw, 1)), A, accum)), header=head, delimiter='\t', fmt='%1.6g', comments='')
@@ -968,13 +978,18 @@ def plot_DoS(self, w, eta = 0.1, sum=False, progress = True, labels=None, colors
     if colors != None:
         ax.set_prop_cycle(color=colors)
     if labels is None:
-        labels = [str(i+1) for i in range(nband)]
+        labels = ['orb {:d}'.format(i+1) for i in range(nband)]
+    elif len(labels) < nband:
+        raise ValueError('plot_DoS: {:d} labels provided, but the model has {:d} bands'.format(len(labels), nband))
     ax.set_xlim(w[0].real, w[-1].real)
+    fixed_color = ('color' in kwargs) or ('c' in kwargs)
     for i in range(nband):
-        ax.plot(np.real(w), A[:, i], '-', label=labels[i], **kwargs)
-    if mix>0 and spin_up==False:
-        for i in range(nband):
-            ax.plot(np.real(w), A[:, i+nband], '-', label=labels[i]+'$\\downarrow$', **kwargs)
+        L, = ax.plot(np.real(w), A[:, i], '-', label=(labels[i]+'$\\uparrow$') if spin_down else labels[i], **kwargs)
+        if spin_down:
+            kw = dict(kwargs)
+            if not fixed_color:
+                kw['color'] = L.get_color()  # same color as the spin up curve of the same band
+            ax.plot(np.real(w), A[:, i+nband], '--', label=labels[i]+'$\\downarrow$', **kw)
     if sum:
         ax.plot(np.real(w), np.sum(A, 1), 'r-', label = 'total', **kwargs)
     ax.set_xlabel(r'$\omega$')
@@ -2495,3 +2510,42 @@ def wavevector_path_2_str(self, k):
         for x in k:
             K += '({:.5g}, {:.5g}, {:.5g})\t'.format(x[0],x[1],x[2])
     return K
+
+
+#---------------------------------------------------------------------------------------------------
+def gap_from_DoS(self, w, eta, threshold):
+    """
+    This functions estimates the size of gap in the density of states by (1) computing the DoS in an interval w=(w1,w2)
+    with Lorentzian broadening eta.
+    The function starts by computing the DoS in a grid of step eta, then finds the minimum M in that interval, then proceeds to a finer computation of the DoS with step eta/4 in the two directions and stops when the DoS reaches the value threshold*M. The gap is then returned as the difference between these two frequencies.
+    If one or two of the edges cannot be found, ValueError is returned.
+
+    :param (float,float) w: a 2-tuple defining the range of frequencies studied
+    :param (float) eta: the Lorentzian broadening
+    :param (float) threshold: the threshold for exiting the gap
+    """
+
+    W = np.arange(w[0], w[1]+1e-6, eta)
+    A = np.array([np.sum(self.dos(x+eta*1j)) for x in W])
+    i0 = np.argmin(A)
+    w0 = W[i0]
+    A0 = A[i0]
+
+    w2 = w0
+    for x in np.arange(w0, w[1]+1e-6, eta/4):
+        a = np.sum(self.dos(x+eta*1j))
+        if a > threshold*A0: 
+            w2 = x
+            break
+    if w2 == w0: raise ValueError("gap edge could not be found above the minimum in gap_from_DoS")
+
+    w1 = w0
+    for x in np.arange(w0, w[0]-1e-6, -eta/4):
+        a = np.sum(self.dos(x+eta*1j))
+        if a > threshold*A0: 
+            w1 = x
+            break
+    if w1 == w0: raise ValueError("gap edge could not be found below the minimum in gap_from_DoS")
+
+    return w1, w2, w2-w1, threshold*A0
+

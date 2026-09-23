@@ -2251,6 +2251,7 @@ class model_instance:
         spectral_function_Lehmann,
         spin_mdc,
         wavevector_path_2_str,
+        gap_from_DoS
     )
 
 

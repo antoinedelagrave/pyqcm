@@ -244,6 +244,51 @@ class cluster_model:
             self.new_operator(op_name, 'general_interaction', E)
 
     # -----------------------------------------------------------------------------------------------
+    def update_operator(self, op_name, elem, spin_dependent=False):
+        """redefines an existing operator from a new list of matrix elements
+
+        Unlike :func:`~pyqcm.cluster_model.new_operator`, this can be called after the model is closed.
+        The type of the operator is that of the existing operator of that name, and the new matrix
+        elements must not change its mixing state (e.g. add spin-flip terms to an operator that had none).
+        The Hilbert space realizations of the operator are rebuilt when next needed.
+
+        If the operator derives from a lattice operator (e.g. defined by :func:`~pyqcm.lattice_model.hopping_operator`),
+        the intra-cluster matrix elements of the lattice operator are replaced as well, on all clusters
+        hosting this cluster model (and their replicas), so that the lattice and cluster one-body
+        Hamiltonians stay consistent; the inter-cluster matrix elements are unchanged. For a density wave,
+        the operator is named ``<name>@<c>`` in the cluster model, ``c`` being the cluster label (from 1).
+
+        Model instances created before the update are not modified: create new instances afterwards.
+
+        :param str op_name: name of the operator
+        :param [(int,int,complex)] elem: new matrix elements, in the same format as in :func:`~pyqcm.cluster_model.new_operator`
+            (or as in :func:`~pyqcm.cluster_model.general_interaction_operator` if the operator is a general interaction)
+        :param bool spin_dependent: for a general interaction operator only (see :func:`~pyqcm.cluster_model.general_interaction_operator`)
+        :returns: None
+
+        """
+
+        op_type = qcm.matrix_elements(self.name, op_name)[0]
+
+        if op_type == "general_interaction":
+            n = self.n_sites + self.n_bath
+            elem = general_interaction_matrix_elements(elem, n, spin_dependent=spin_dependent)
+        elif op_type == "anomalous":
+            for x in elem:
+                if x[0] >= x[1]:
+                    raise ValueError(
+                        f"anomalous matrix elements of {op_name} must be such that row index < column index"
+                    )
+        if len(elem) == 0:
+            raise ValueError(f"the new list of matrix elements of operator {op_name} is empty")
+
+        qcm.update_operator(self.name, op_name, elem)
+        is_complex = any(isinstance(x[2], complex) and x[2].imag != 0 for x in elem)
+        for i, x in enumerate(self.operators):
+            if x[0] == op_name:
+                self.operators[i] = (op_name, x[1], elem, is_complex)
+
+    # -----------------------------------------------------------------------------------------------
     def matrix_elements(self, op):
         """
         returns the type and matrix elements defining a Hermitian operator
@@ -333,6 +378,7 @@ class lattice_model:
         self.superlattice = superlattice
         self.lattice = lattice
         self.hybrid_file = hybrid_file
+        self.hybrid_version = 0  # incremented each time the external hybridization is replaced
         self.dim = len(superlattice)
         self.nsites = 0
         self.descrpt = {}
@@ -366,6 +412,28 @@ class lattice_model:
         self.nsys = len(self.systems)
 
         qcm.lattice_model(name, superlattice, lattice, hybrid_file)
+
+    # -----------------------------------------------------------------------------------------------
+    def update_extern_hybrid(self, filename):
+        """Replaces the external hybridization function by that read from a new HDF5 file
+
+        The file has the same format as the ``hybrid_file`` argument of the constructor (see
+        :func:`~pyqcm.TRIQS_converter.write_hybrid_file`); its frequency and wavevector grids may differ
+        from those of the previous file. This can also be used to add an external hybridization to a
+        model defined without one.
+
+        If the model is already in use, the file is read and checked immediately, and the existing model
+        instances forget the quantities that depend on the hybridization (lattice averages, CDMFT host
+        function, etc.), which are recomputed with the new hybridization when needed. The cluster
+        solutions, which do not depend on it, are kept.
+
+        :param str filename: name of the HDF5 file containing the external hybridization
+        :returns: None
+
+        """
+        qcm.update_extern_hybrid(filename)
+        self.hybrid_file = filename
+        self.hybrid_version += 1
 
     # -----------------------------------------------------------------------------------------------
     def hopping_operator(self, name, link, amplitude, orbitals=None, **kwargs):
@@ -1085,6 +1153,7 @@ class model_instance:
 
         # bools to record tasks that risk being asked more than once
         self.averages_done = False
+        self.hybrid_version = model.hybrid_version  # version of the external hybridization used by the props
 
     # -----------------------------------------------------------------------------------------------
     def __del__(self):
@@ -1379,6 +1448,9 @@ class model_instance:
             ops = []
         ave = qcm.averages(ops, self.label)
 
+        if self.hybrid_version != self.model.hybrid_version:  # the external hybridization was replaced
+            self.averages_done = False
+            self.hybrid_version = self.model.hybrid_version
         if not self.averages_done:
             self.props["E_kin"] = qcm.kinetic_energy(self.label)
             for x in ave:
@@ -2990,7 +3062,7 @@ def fixed_point_iteration(
     """
     n = len(x0)
     x = np.copy(x0)
-    data = np.empty((n, maxiter + 1))
+    data = np.empty((n, maxiter + 2))
     if eps_algo > 0:
         pass
 

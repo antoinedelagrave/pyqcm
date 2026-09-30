@@ -301,7 +301,7 @@ class CDMFT:
             self.varia += v
         self.nvaria = len(self.varia)
         self.x = np.empty(self.nvaria)
-        self.var_data = np.empty((self.nvaria, maxiter + 1))
+        self.var_data = np.empty((self.nvaria, maxiter + 2))
 
         P = model.parameters()
         for i, v in enumerate(self.varia):

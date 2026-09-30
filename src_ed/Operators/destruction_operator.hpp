@@ -28,18 +28,23 @@ struct destruction_identifier{
   
 };
 
+// ordering used for storing in a map (recent libc++ versions call operator< directly, bypassing std::less)
+inline bool operator<(const destruction_identifier &x, const destruction_identifier &y){
+  if(x.sorb < y.sorb) return true;
+  else if(x.sorb > y.sorb) return false;
+  else{
+    if(x.secB > y.secB) return true;
+    else return false;
+  }
+}
+
 
 namespace std
 {
   template<>
   struct less<destruction_identifier>{
     bool operator()(const destruction_identifier &x, const destruction_identifier &y) const{
-      if(x.sorb < y.sorb) return true;
-      else if(x.sorb > y.sorb) return false;
-      else{
-        if(x.secB > y.secB) return true;
-        else return false;
-      }
+      return x < y;
     }
   };
 }

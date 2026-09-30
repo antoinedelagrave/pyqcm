@@ -144,6 +144,11 @@ namespace QCM{
   void density_wave(const string &name, vector3D<int64_t> &link, complex<double> amplitude, int orb, vector3D<double> Q, double phase, const string& type);
   //! Defines an explicit operator from a list of matrix elements.
   void explicit_operator(const string &name, const string &type, const vector<tuple<vector3D<int64_t>, vector3D<int64_t>, complex<double>>> &elem, int tau=1, int sigma=0);
+  //! Redefines an existing cluster operator from new matrix elements, even after the model is closed, and updates the lattice operator it derives from, if any.
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<double>> &elements);
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<Complex>> &elements);
+  //! Replaces the external hybridization of the lattice model by that read from a HDF5 file.
+  void update_extern_hybrid(const string &filename);
   //! Initializes the global parameter table.
   void global_parameter_init();
   //! Defines a hopping (one-body) operator.

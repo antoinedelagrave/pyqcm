@@ -85,6 +85,23 @@ lattice_model_instance::~lattice_model_instance()
   #endif
 }
 //==============================================================================
+/**
+ forgets the lattice quantities that depend on the external hybridization (after it has been replaced).
+ The cluster solutions do not depend on it and are kept.
+ */
+void lattice_model_instance::reset_hybrid_dependent()
+{
+  average_solved = false;
+  SEF_solved = false;
+  PE_solved = false;
+  ave.clear();
+  G_host.clear();
+  G_host_down.clear();
+  G_host_cumul.clear();
+}
+
+
+//==============================================================================
 /** 
  finds the ground states of all clusters
  @returns a vector of (double, string) giving the ground state energy and sector for each cluster

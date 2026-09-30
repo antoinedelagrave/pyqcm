@@ -543,16 +543,30 @@ void lattice_model::post_parameter_consolidate(size_t label)
   //..............................................................................
 	// reading the external hybridization, if applicable
 
-  if(hybrid_file.empty() == false){
-    hybrid = make_shared<lattice_hybrid>(hybrid_file);
-    if(hybrid->mixing==0){
-      if(n_mixed*hybrid->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
-    }
-    else if(hybrid->mixing==1){
-      if(mixing != 1) qcm_throw("External hybridization matrix has mixing = 1, so should the lattice model!");
-      if(hybrid->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
-    }
+  if(hybrid_file.empty() == false) read_hybrid(hybrid_file);
+}
+
+
+
+//===============================================================================
+/**
+ reads the external hybridization from a HDF5 file and checks its compatibility with the model.
+ The current hybridization (and hybrid_file) is replaced only if the file is valid.
+ Requires the model to be consolidated (the mixing state and GF dimension must be known).
+ @param filename [in] name of the HDF5 file
+ */
+void lattice_model::read_hybrid(const string &filename)
+{
+  auto H = make_shared<lattice_hybrid>(filename);
+  if(H->mixing==0){
+    if(n_mixed*H->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
   }
+  else if(H->mixing==1){
+    if(mixing != 1) qcm_throw("External hybridization matrix has mixing = 1, so should the lattice model!");
+    if(H->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
+  }
+  hybrid = H;
+  hybrid_file = filename;
 }
 
 //===============================================================================
@@ -1271,6 +1285,128 @@ void lattice_model::explicit_operator(const string &name, const string &type, co
   }
   tmp_op->close();
 
+}
+
+
+
+//===============================================================================
+/**
+ finds the lattice operator (if any) from which the cluster operator 'ed_name' of the cluster model 'model_name' derives,
+ and the clusters whose intra-cluster matrix elements are defined by that cluster operator
+ @param ed_name [in] name of the operator in the cluster model (of the form name@c for density waves)
+ @param model_name [in] name of the cluster model
+ @param C [out] labels (from 0) of the clusters affected (clusters hosting the model and their replicas)
+ @returns a pointer to the lattice operator, or nullptr if the operator is defined on the cluster only
+ */
+shared_ptr<lattice_operator> lattice_model::cluster_operator_target(const string &ed_name, const string &model_name, vector<int> &C)
+{
+  C.clear();
+  string name = ed_name;
+  int clus_only = -1;
+  size_t at = ed_name.find('@');
+  if(at != string::npos){
+    name = ed_name.substr(0, at);
+    clus_only = stoi(ed_name.substr(at+1))-1;
+  }
+  if(term.find(name) == term.end()) return nullptr;
+  auto op = term.at(name);
+  if(op->is_density_wave != (clus_only >= 0)) return nullptr;
+  if(global_bool("periodic"))
+    qcm_throw("operator "+name+" cannot be updated when the global option 'periodic' is set");
+
+  vector<bool> hosts(clusters.size(), false);
+  for(auto& S : systems){
+    if(S.name != model_name) continue;
+    if(clus_only >= 0 and S.clus != clus_only) continue;
+    hosts[S.clus] = true;
+  }
+  for(size_t c=0; c<clusters.size(); c++){
+    if(hosts[c] or hosts[clusters[c].ref]) C.push_back(c);
+  }
+  if(C.size() == 0) qcm_throw("operator "+ed_name+" of model "+model_name+" does not act on any cluster of the lattice model");
+
+  // the lattice operator cannot be changed if another cluster model sitting on the same clusters shares it
+  for(auto& S : systems){
+    if(S.name == model_name) continue;
+    if(find(C.begin(), C.end(), S.clus) == C.end() and find(C.begin(), C.end(), clusters[S.clus].ref) == C.end()) continue;
+    if(ED::exists(S.name, ed_name))
+      qcm_throw("operator "+ed_name+" is also defined in cluster model "+S.name+", hosted by the same cluster: its update would be ambiguous");
+  }
+  return op;
+}
+
+
+
+//===============================================================================
+/**
+ replaces the intra-cluster matrix elements of a lattice operator by those of the (updated) cluster operator
+ The inter-cluster elements are unchanged. The mixing state of the operator cannot grow.
+ @param op [in, out] lattice operator
+ @param C [in] labels of the clusters affected (see cluster_operator_target())
+ @param model_name [in] name of the cluster model
+ @param elem [in] matrix elements of the cluster operator, as stored by it (both halves of Hermitian pairs, 0-based indices)
+ */
+void lattice_model::update_cluster_elements(lattice_operator& op, const vector<int> &C, const string &model_name, const vector<matrix_element<Complex>> &elem)
+{
+  auto data = ED::model_size(model_name);
+  size_t n_sites = get<0>(data);
+  size_t n_orb = n_sites + get<1>(data);
+
+  // saving the current state, in case the update is rejected
+  auto old_elements = op.elements;
+  int old_mixing = op.mixing;
+  bool old_complex = op.is_complex;
+  double old_nambu = op.nambu_correction;
+  double old_nambu_full = op.nambu_correction_full;
+
+  // removing the current intra-cluster elements
+  vector<bool> in_C(clusters.size(), false);
+  for(auto c : C) in_C[c] = true;
+  vector<lattice_matrix_element> E;
+  E.reserve(op.elements.size() + C.size()*elem.size());
+  for(auto& e : op.elements){
+    if(e.neighbor == 0 and sites[e.site1].cluster == sites[e.site2].cluster and in_C[sites[e.site1].cluster]) continue;
+    E.push_back(e);
+  }
+
+  // adding the new ones, cluster by cluster
+  for(auto c : C){
+    vector<int> site_index(clusters[c].n_sites);
+    for(size_t s=0; s<sites.size(); s++) if(sites[s].cluster == c) site_index[sites[s].index_within_cluster] = s;
+    for(auto& x : elem){
+      size_t i = x.r%n_orb, j = x.c%n_orb;
+      if(i >= n_sites or j >= n_sites) continue; // bath orbitals have no lattice counterpart
+      Complex v = clusters[c].conj ? conjugate(x.v) : x.v;
+      E.push_back({site_index[i], (int)(x.r/n_orb), site_index[j], (int)(x.c/n_orb), 0, v});
+    }
+    op.in_cluster[c] = true;
+  }
+  op.elements = E;
+
+  // recomputing the properties of the operator
+  op.mixing &= HS_mixing::anomalous;
+  op.is_complex = false;
+  op.nambu_correction = 0.0;
+  op.nambu_correction_full = 0.0;
+  op.consolidate();
+  if((op.mixing | old_mixing) != old_mixing){
+    int new_mixing = op.mixing;
+    op.elements = old_elements;
+    op.mixing = old_mixing;
+    op.is_complex = old_complex;
+    op.nambu_correction = old_nambu;
+    op.nambu_correction_full = old_nambu_full;
+    qcm_throw("the update of operator "+op.name+" changes its mixing state on the lattice ("+to_string(old_mixing)+" -> "+to_string(new_mixing)+")");
+  }
+
+  // rebuilding the Green function matrix elements, if already built
+  if(model_consolidated){
+    op.GF_elem.clear();
+    op.GF_elem_down.clear();
+    op.IGF_elem.clear();
+    op.IGF_elem_down.clear();
+    one_body_matrix(op);
+  }
 }
 
 

@@ -1140,6 +1140,71 @@ check_instance(label);
 
   
   /**
+   * Replaces the external hybridization of the lattice model by that read from a HDF5 file.
+   * If the model is not yet consolidated, the file will be read at consolidation. Otherwise it is read
+   * and checked now, and the quantities that depend on the hybridization (lattice averages, CDMFT host,
+   * etc.) are forgotten by all existing lattice model instances, so that they are recomputed with the
+   * new hybridization. The cluster solutions do not depend on it and are kept.
+   * @param filename name of the HDF5 file
+   */
+  void update_extern_hybrid(const string &filename)
+  {
+    if(qcm_model == nullptr) qcm_throw("no lattice model has been defined");
+    if(filename.empty()) qcm_throw("the name of the external hybridization file is empty");
+    if(!lattice_model::model_consolidated){
+      qcm_model->hybrid_file = filename;
+      return;
+    }
+    qcm_model->read_hybrid(filename);
+    for(auto& x : lattice_model_instances) if(x.second) x.second->reset_hybrid_dependent();
+  }
+
+
+  /**
+   * Redefines an existing operator of a cluster model by providing a new list of matrix elements.
+   * This is allowed even after the model is closed; the type of the operator is inferred from the existing one.
+   * If the cluster operator derives from a lattice operator, the intra-cluster matrix elements of the latter
+   * are replaced as well, so that the lattice and cluster one-body Hamiltonians remain consistent.
+   * Model instances created before the update are not modified: new instances must be created.
+   * @param model_name name of the cluster model
+   * @param name name of the operator in the cluster model (name@c for a density wave on cluster c)
+   * @param elements new matrix elements (same format as in ED::new_operator())
+   * @returns the type of the operator
+   */
+  template<typename T>
+  string update_operator_templ(const string &model_name, const string &name, const vector<matrix_element<T>> &elements)
+  {
+    vector<int> C;
+    shared_ptr<lattice_operator> op = nullptr;
+    if(qcm_model != nullptr) op = qcm_model->cluster_operator_target(name, model_name, C);
+    shared_ptr<Hermitian_operator> old_op = nullptr;
+    if(op != nullptr and models.count(model_name) and models.at(model_name)->term.count(name))
+      old_op = models.at(model_name)->term.at(name);
+    string typ = ED::update_operator(model_name, name, elements);
+    if(op == nullptr) return typ;
+    // the update was accepted by the cluster model; op != nullptr implies that the model and operator exist
+    try{
+      qcm_model->update_cluster_elements(*op, C, model_name, ED::matrix_elements(model_name, name).second);
+    }
+    catch(const std::exception&){
+      models.at(model_name)->term[name] = old_op; // restores the cluster operator
+      throw;
+    }
+    return typ;
+  }
+
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<double>> &elements)
+  {
+    return update_operator_templ(model_name, name, elements);
+  }
+
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<Complex>> &elements)
+  {
+    return update_operator_templ(model_name, name, elements);
+  }
+
+
+  /**
    * returns some information about the clusters in an array of 4-tuples
    * for each cluster of the repeated unit: 1. the number of sites, 2. the number of systems, 3. the index of the first system, 4. the dimension of the Green function
    */

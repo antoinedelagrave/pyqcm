@@ -20,6 +20,58 @@ extern map<size_t, shared_ptr<model_instance_base>> model_instances;
 static PyObject *qcm_ED_Error;
 
 //==============================================================================
+// helper: converts the Python list (or array) of matrix elements (i, j, v) of a
+// cluster operator into a C++ vector (indices from 1 in Python, from 0 in C++)
+//==============================================================================
+template <typename T>
+vector<matrix_element<T>> operator_elements_from_Py(nb::object elem_obj,
+                                                    const std::string &type,
+                                                    const std::string &fname) {
+  vector<matrix_element<T>> elem;
+  PyObject *elem_pyobj = elem_obj.ptr();
+  double fac = 1.0;
+  bool check_upper = true;
+  if (type == "anomalous") fac = 0.5;
+  if (type == "general_interaction") check_upper = false;
+  if (PyArray_Check(elem_pyobj)) {
+    size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
+    elem.resize(nelem);
+    memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
+           nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
+  } else if (PySequence_Check(elem_pyobj)) {
+    size_t n = PySequence_Size(elem_pyobj);
+    elem.assign(n, matrix_element<T>());
+    for (size_t i = 0; i < n; i++) {
+      PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
+      if (PyTuple_Size(pkey) == 3) {
+        elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
+        elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
+        if ((elem[i].r > elem[i].c) and check_upper)
+          qcm_ED_throw("the first index of element " + to_string(i) +
+                       " of argument 4 of '" + fname + "' cannot be "
+                       "bigger than the second index");
+        if (elem[i].r == 0 or elem[i].c == 0)
+          qcm_ED_throw("indices in matrix elements of operators are "
+                       "labelled starting at 1, not at 0.");
+        elem[i].r--;
+        elem[i].c--;
+        if constexpr (std::is_same_v<T, double>) {
+          elem[i].v = fac * PyFloat_AsDouble(PyTuple_GetItem(pkey, 2));
+        } else {
+          Py_complex z = PyComplex_AsCComplex(PyTuple_GetItem(pkey, 2));
+          elem[i].v = {fac * z.real, fac * z.imag};
+        }
+      } else {
+        qcm_ED_throw("element " + to_string(i) + " of argument 4 of '" +
+                     fname + "' should be a 3-tuple");
+      }
+    }
+  } else
+    qcm_ED_throw("argument 4 of " + fname + "() must be a list or array");
+  return elem;
+}
+
+//==============================================================================
 // Registration of the QCM_ED part of the `qcm` module.
 //==============================================================================
 inline void register_qcm_ED(nb::module_ &m) {
@@ -174,44 +226,8 @@ inline void register_qcm_ED(nb::module_ &m) {
   m.def("new_operator",
         [](const std::string &name, const std::string &op,
            const std::string &type, nb::object elem_obj) {
-          vector<matrix_element<double>> elem;
-          PyObject *elem_pyobj = elem_obj.ptr();
-          double fac = 1.0;
-          bool check_upper = true;
-          if (type == "anomalous") fac = 0.5;
-          if (type == "general_interaction") check_upper = false;
-          if (PyArray_Check(elem_pyobj)) {
-            size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
-            elem.resize(nelem);
-            memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
-                   nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
-          } else if (PySequence_Check(elem_pyobj)) {
-            size_t n = PySequence_Size(elem_pyobj);
-            elem.assign(n, matrix_element<double>());
-            for (size_t i = 0; i < n; i++) {
-              PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
-              if (PyTuple_Size(pkey) == 3) {
-                elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
-                elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
-                if ((elem[i].r > elem[i].c) and check_upper)
-                  qcm_ED_throw("the first index of element " + to_string(i) +
-                               " of argument 4 of 'new_operator' cannot be "
-                               "bigger than the second index");
-                if (elem[i].r == 0 or elem[i].c == 0)
-                  qcm_ED_throw("indices in matrix elements of operators are "
-                               "labelled starting at 1, not at 0.");
-                elem[i].r--;
-                elem[i].c--;
-                elem[i].v = fac * PyFloat_AsDouble(PyTuple_GetItem(pkey, 2));
-              } else {
-                qcm_ED_throw("element " + to_string(i) +
-                             " of argument 4 of 'new_operator' should be a "
-                             "3-tuple");
-              }
-            }
-          } else
-            qcm_ED_throw("argument 4 of new_operator() must be a list or array");
-          ED::new_operator(name, op, type, elem);
+          ED::new_operator(name, op, type,
+                           operator_elements_from_Py<double>(elem_obj, type, "new_operator"));
         },
         "model"_a, "op"_a, "type"_a, "elements"_a,
         "creates a new operator from its (real) matrix elements");
@@ -219,45 +235,8 @@ inline void register_qcm_ED(nb::module_ &m) {
   m.def("new_operator_complex",
         [](const std::string &name, const std::string &op,
            const std::string &type, nb::object elem_obj) {
-          vector<matrix_element<complex<double>>> elem;
-          PyObject *elem_pyobj = elem_obj.ptr();
-          double fac = 1.0;
-          bool check_upper = true;
-          if (type == "anomalous") fac = 0.5;
-          if (type == "general_interaction") check_upper = false;
-          if (PyArray_Check(elem_pyobj)) {
-            size_t nelem = PyArray_DIMS((PyArrayObject *)elem_pyobj)[0];
-            elem.resize(nelem);
-            memcpy(elem.data(), PyArray_DATA((PyArrayObject *)elem_pyobj),
-                   nelem * PyArray_STRIDES((PyArrayObject *)elem_pyobj)[0]);
-          } else if (PySequence_Check(elem_pyobj)) {
-            size_t n = PySequence_Size(elem_pyobj);
-            elem.assign(n, matrix_element<complex<double>>());
-            for (size_t i = 0; i < n; i++) {
-              PyObject *pkey = PySequence_GetItem(elem_pyobj, i);
-              if (PyTuple_Size(pkey) == 3) {
-                elem[i].r = PyLong_AsLong(PyTuple_GetItem(pkey, 0));
-                elem[i].c = PyLong_AsLong(PyTuple_GetItem(pkey, 1));
-                if ((elem[i].r > elem[i].c) and check_upper)
-                  qcm_ED_throw("the first index of element " + to_string(i) +
-                               " of argument 4 of 'new_operator' cannot be "
-                               "bigger than the second index");
-                if (elem[i].r == 0 or elem[i].c == 0)
-                  qcm_ED_throw("indices in matrix elements of operators are "
-                               "labelled starting at 1, not at 0.");
-                elem[i].r--;
-                elem[i].c--;
-                Py_complex z = PyComplex_AsCComplex(PyTuple_GetItem(pkey, 2));
-                elem[i].v = {fac * z.real, fac * z.imag};
-              } else {
-                qcm_ED_throw("element " + to_string(i) +
-                             " of argument 4 of 'new_operator' should be a "
-                             "3-tuple");
-              }
-            }
-          } else
-            qcm_ED_throw("argument 4 of new_operator() must be a list or array");
-          ED::new_operator(name, op, type, elem);
+          ED::new_operator(name, op, type,
+                           operator_elements_from_Py<complex<double>>(elem_obj, type, "new_operator"));
         },
         "model"_a, "op"_a, "type"_a, "elements"_a,
         "creates a new operator from its (complex) matrix elements");

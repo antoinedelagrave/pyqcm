@@ -70,6 +70,34 @@ namespace ED{
 
 
   
+  /**
+   builds an operator of a given type from its matrix elements (factory used by new_operator() and update_operator())
+   returns nullptr if the type is not implemented
+   */
+  shared_ptr<Hermitian_operator> make_operator(shared_ptr<model> M, const string &_name, const string &_type, const vector<matrix_element<double>> &elements)
+  {
+    if(_type == "one-body") return make_shared<one_body_operator<double>>(_name, M, elements);
+    else if(_type == "anomalous") return make_shared<anomalous_operator<double>>(_name, M, elements);
+    else if(_type == "interaction") return make_shared<interaction_operator>(_name, M, elements);
+    else if(_type == "Hund") return make_shared<Hund_operator>(_name, M, elements);
+    else if(_type == "Heisenberg") return make_shared<Heisenberg_operator>(_name, M, elements);
+    else if(_type == "X") return make_shared<Heisenberg_operator>(_name, M, elements, 'X');
+    else if(_type == "Y") return make_shared<Heisenberg_operator>(_name, M, elements, 'Y');
+    else if(_type == "Z") return make_shared<Heisenberg_operator>(_name, M, elements, 'Z');
+    else if(_type == "general_interaction") return make_shared<general_interaction_operator<double>>(_name, M, elements);
+    return nullptr;
+  }
+
+
+  shared_ptr<Hermitian_operator> make_operator(shared_ptr<model> M, const string &_name, const string &_type, const vector<matrix_element<Complex>> &elements)
+  {
+    if(_type == "one-body") return make_shared<one_body_operator<Complex>>(_name, M, elements);
+    else if(_type == "anomalous") return make_shared<anomalous_operator<Complex>>(_name, M, elements);
+    else if(_type == "general_interaction") return make_shared<general_interaction_operator<Complex>>(_name, M, elements);
+    return nullptr;
+  }
+
+
   void new_operator(const string &model_name, const string &_name, const string &_type, const vector<matrix_element<double>> &elements)
   {
     if(!elements.size()) return;
@@ -79,16 +107,9 @@ namespace ED{
     if(M->is_closed){
       qcm_warning("model " + model_name + " has already been instantiated and is closed for modifications. Ignoring.");
     }
-    if(_type == "one-body") M->term[_name] = make_shared<one_body_operator<double>>(_name, M, elements);
-    else if(_type == "anomalous") M->term[_name] = make_shared<anomalous_operator<double>>(_name, M, elements);
-    else if(_type == "interaction") M->term[_name] = make_shared<interaction_operator>(_name, M, elements);
-    else if(_type == "Hund") M->term[_name] = make_shared<Hund_operator>(_name, M, elements);
-    else if(_type == "Heisenberg") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements);
-    else if(_type == "X") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements, 'X');
-    else if(_type == "Y") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements, 'Y');
-    else if(_type == "Z") M->term[_name] = make_shared<Heisenberg_operator>(_name, M, elements, 'Z');
-    else if(_type == "general_interaction") M->term[_name] = make_shared<general_interaction_operator<double>>(_name, M, elements);
-    else qcm_throw("type of operator "+_name+" is not yet implemented");
+    auto op = make_operator(M, _name, _type, elements);
+    if(op == nullptr) qcm_throw("type of operator "+_name+" is not yet implemented");
+    M->term[_name] = op;
   }
   
   
@@ -100,10 +121,63 @@ namespace ED{
     if(M->is_closed){
       qcm_warning("model " + model_name + " has already been instantiated and is closed for modifications. Ignoring.");
     }
-    if(_type == "one-body") M->term[_name] = make_shared<one_body_operator<Complex>>(_name, M, elements);
-    else if(_type == "anomalous") M->term[_name] = make_shared<anomalous_operator<Complex>>(_name, M, elements);
-    else if(_type == "general_interaction") M->term[_name] = make_shared<general_interaction_operator<Complex>>(_name, M, elements);
-    else cout << "ED_WARNING : type of operator " << _name << " is not yet implemented" << endl;
+    auto op = make_operator(M, _name, _type, elements);
+    if(op == nullptr) cout << "ED_WARNING : type of operator " << _name << " is not yet implemented" << endl;
+    else M->term[_name] = op;
+  }
+
+
+  /**
+   type of an existing operator, in the form accepted by new_operator()
+   */
+  string operator_type(Hermitian_operator &op)
+  {
+    string typ = op.type();
+    if(typ == "one_body") return "one-body";
+    if(typ == "Heisenberg"){
+      char dir = dynamic_cast<Heisenberg_operator&>(op).dir;
+      if(dir != 'H') return string(1, dir);
+    }
+    return typ;
+  }
+
+
+  template<typename T>
+  string update_operator_templ(const string &model_name, const string &_name, const vector<matrix_element<T>> &elements)
+  {
+    if(models.find(model_name) == models.end())
+      qcm_ED_throw("The model "+model_name+" is not defined. Check spelling.");
+    shared_ptr<model> M = models.at(model_name);
+    if(M->term.find(_name) == M->term.end())
+      qcm_ED_throw("operator "+_name+" is not defined in model "+model_name+" and cannot be updated.");
+    if(!elements.size())
+      qcm_ED_throw("the new list of matrix elements of operator "+_name+" is empty");
+    shared_ptr<Hermitian_operator> old_op = M->term.at(_name);
+    string typ = operator_type(*old_op);
+
+    // the model is unlocked only for this operator: a new instance of the same type replaces the old one.
+    // Its Hilbert-space realizations (HS_operator) are empty and will be rebuilt on demand, sector by sector.
+    auto op = make_operator(M, _name, typ, elements);
+    if(op == nullptr)
+      qcm_ED_throw("operator "+_name+" is of type "+typ+", which cannot have complex matrix elements");
+    if((op->mixing | old_op->mixing) != old_op->mixing)
+      qcm_ED_throw("the new matrix elements of operator "+_name+" change its mixing state ("+to_string(old_op->mixing)+" -> "+to_string(op->mixing)+"), which cannot be changed once the model is defined");
+    op->is_active = old_op->is_active;
+    op->norm = old_op->norm;
+    M->term[_name] = op;
+    return typ;
+  }
+
+
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<double>> &elements)
+  {
+    return update_operator_templ(model_name, name, elements);
+  }
+
+
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<Complex>> &elements)
+  {
+    return update_operator_templ(model_name, name, elements);
   }
   
   

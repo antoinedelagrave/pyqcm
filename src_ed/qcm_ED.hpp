@@ -56,6 +56,19 @@ namespace ED{
   void new_operator(const string &model_name, const string &name, const string &type, const vector<matrix_element<double>> &elements);
   void new_operator(const string &model_name, const string &name, const string &type, const vector<matrix_element<complex<double>>> &elements);
 
+  /**
+   redefines an existing operator of a model by providing a new list of matrix elements, even if the model is closed.
+   The type of the operator is unchanged, and so must be its mixing state.
+   The Hilbert space realizations of the operator are rebuilt on demand.
+
+   model_name : name of the model the operator belongs to
+   name : name of the operator
+   elements : the new matrix elements (same format as in new_operator())
+   returns the type of the operator (as accepted by new_operator())
+   */
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<double>> &elements);
+  string update_operator(const string &model_name, const string &name, const vector<matrix_element<complex<double>>> &elements);
+
   
   
   /**

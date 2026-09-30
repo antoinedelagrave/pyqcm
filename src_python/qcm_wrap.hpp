@@ -191,6 +191,41 @@ inline void register_qcm(nb::module_ &m) {
         "name"_a, "elements"_a, "tau"_a = 1, "sigma"_a = 0,
         "type"_a = "one-body", "defines an explicit operator");
 
+  m.def("update_extern_hybrid",
+        [](const std::string &filename) { QCM::update_extern_hybrid(filename); },
+        "filename"_a,
+        "replaces the external hybridization of the lattice model by that read from a HDF5 file");
+
+  m.def("update_operator",
+        [](const std::string &model, const std::string &op, nb::object elem_obj) {
+          // the type of the operator is that of the existing operator
+          string type = ED::matrix_elements(model, op).first;
+          bool is_complex = false;
+          PyObject *eo = elem_obj.ptr();
+          if (PyArray_Check(eo))
+            is_complex = PyArray_ISCOMPLEX((PyArrayObject *)eo);
+          else if (PySequence_Check(eo)) {
+            size_t n = PySequence_Size(eo);
+            for (size_t i = 0; i < n and !is_complex; i++) {
+              PyObject *t = PySequence_GetItem(eo, i);
+              if (PyTuple_Check(t) and PyTuple_Size(t) == 3) {
+                PyObject *v = PyTuple_GetItem(t, 2);
+                if (PyComplex_Check(v) and PyComplex_ImagAsDouble(v) != 0.0)
+                  is_complex = true;
+              }
+              Py_DECREF(t);
+            }
+          }
+          if (is_complex)
+            return QCM::update_operator(model, op,
+                operator_elements_from_Py<complex<double>>(elem_obj, type, "update_operator"));
+          else
+            return QCM::update_operator(model, op,
+                operator_elements_from_Py<double>(elem_obj, type, "update_operator"));
+        },
+        "model"_a, "op"_a, "elements"_a,
+        "redefines an existing cluster operator from new matrix elements (and the lattice operator it derives from); returns its type");
+
   //---------------------------------------------------------------- parameters
   m.def("set_parameter",
         [](const std::string &name, double value) {

@@ -48,6 +48,7 @@ struct lattice_model_instance{
 	double monopole_part(vector3D<double>& k, double a, int nk, int orb, bool rec, int dir, bool spin_down);
 	double monopole(vector3D<double>& k, double a, int nk, int orb, bool rec);
 	double potential_energy();
+	void reset_hybrid_dependent();
 	double Potthoff_functional();
 	double spectral_average(const string& name, const complex<double> w);
 	Green_function cluster_Green_function(Complex w, bool sig, bool spin_down);

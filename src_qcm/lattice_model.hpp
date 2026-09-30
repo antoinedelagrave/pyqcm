@@ -130,9 +130,12 @@ struct lattice_model{
 	void hopping_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, int tau, int sigma);
 	void current_operator(const string &name, vector3D<int64_t> &link, double amplitude, int b1, int b2, int dir, bool pau=true);
 	void interaction_operator(const string &name, vector3D<int64_t> &link, double amplitude, int orb1, int orb2, const string &type);
+	shared_ptr<lattice_operator> cluster_operator_target(const string &ed_name, const string &model_name, vector<int> &C);
 	void one_body_matrix(lattice_operator& op);
+	void update_cluster_elements(lattice_operator& op, const vector<int> &C, const string &model_name, const vector<matrix_element<Complex>> &elem);
 	void post_parameter_consolidate(size_t label);
 	void pre_operator_consolidate();
+	void read_hybrid(const string &filename);
 	void print(ostream& fout, bool asy_operators=false, bool asy_labels=false, bool asy_orb=false, bool asy_neighbors=false, bool asy_working_basis=false);
 	matrix<Complex> lattice_hybridization(int iw, int ik); //!< extracts a particular hybridization matrix
 };

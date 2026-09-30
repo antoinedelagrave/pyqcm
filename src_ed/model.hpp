@@ -51,7 +51,6 @@ struct model
   void print_graph(const vector<vector<double>> &pos);
   shared_ptr<ED_mixed_basis> provide_basis(const sector& sec);
   shared_ptr<ED_factorized_basis> provide_factorized_basis(const sector& sec);
-  void build_HS_operators(const sector& sec, bool is_complex);
 };
 
 

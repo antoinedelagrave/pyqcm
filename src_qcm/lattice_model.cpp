@@ -558,13 +558,19 @@ void lattice_model::post_parameter_consolidate(size_t label)
 void lattice_model::read_hybrid(const string &filename)
 {
   auto H = make_shared<lattice_hybrid>(filename);
-  if(H->mixing==0){
+  // supported combinations (see lattice_hybridization()): a normal hybridization, upgraded if the model
+  // is in the simple Nambu or spin-flip mixing, or a hybridization in the same mixing state as the model
+  if(H->mixing == HS_mixing::normal){
+    if(mixing != HS_mixing::normal and mixing != HS_mixing::anomalous and mixing != HS_mixing::spin_flip)
+      qcm_throw("An external hybridization in the normal state (mixing = 0) cannot be used with a lattice model in the mixing state "+to_string(mixing)+" (only 0, 1 or 2)");
     if(n_mixed*H->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
   }
-  else if(H->mixing==1){
-    if(mixing != 1) qcm_throw("External hybridization matrix has mixing = 1, so should the lattice model!");
+  else if(H->mixing == HS_mixing::anomalous or H->mixing == HS_mixing::spin_flip){
+    if(mixing != H->mixing)
+      qcm_throw("External hybridization matrix has mixing = "+to_string(H->mixing)+", so should the lattice model (its mixing is "+to_string(mixing)+")");
     if(H->d != dim_GF) qcm_throw("incorrect dimension of the external hybridization matrix");
   }
+  else qcm_throw("External hybridizations with mixing = "+to_string(H->mixing)+" are not supported (only 0, 1 or 2)");
   hybrid = H;
   hybrid_file = filename;
 }

@@ -100,7 +100,45 @@ The member function ``new_operator(name, type, elements)`` takes the following a
 #. The type of operator; one of 'one-body', 'anomalous', 'interaction', 'Hund', 'Heisenberg'
 #. An array of real matrix elements. Each element of the array is a 3-tuple giving the labels of the orbitals involved and the value of the matrix element itself. Note that spin-up and spin-down orbital labels are separated by the total number of orbitals on the cluster, here `no=10`.
 
-If a complex-valued operator is needed, then the function ``new_cluster_operator_complex()`` must be used, the only difference being that the actual matrix elements are complex numbers.
+If a complex-valued operator is needed, then the function ``new_operator_complex()`` must be used, the only difference being that the actual matrix elements are complex numbers.
+
+.. _updating operators:
+
+Updating operators
+------------------
+
+Operators can only be added to a model until the model is *closed*, which happens when the first model instance is
+created (usually by the first function call that requires a solution of the model). After that, new operators can no
+longer be defined, but an existing operator can still be *redefined* by providing a new list of matrix elements, with
+the member function ``update_operator(name, elements)``. For instance::
+
+    CM.update_operator('bt1', [
+        (1, 7, 0.5),
+        (1+no, 7+no, 0.5)
+    ])
+
+The type of the operator is not specified: it is that of the existing operator of that name, and the elements have
+the same format as in ``new_operator()`` (or ``general_interaction_operator()``, for a general interaction). Complex
+matrix elements are accepted if the type of the operator allows them. The Hilbert space realizations of the operator,
+used by the exact diagonalization solver, are rebuilt when next needed.
+
+This applies as well to operators defined on the lattice model (see :doc:`defining_models`), since they are also
+operators of the cluster models: ``update_operator()`` then replaces the intra-cluster matrix elements of the lattice
+operator on all the clusters based on that cluster model, so that the lattice and cluster one-body Hamiltonians stay
+consistent; the matrix elements linking different clusters are unchanged. The cluster-model counterpart of a density
+wave defined on the lattice is named ``<name>@<c>``, where ``c`` is the cluster label (starting at 1); it must be
+updated under that name, cluster by cluster.
+
+The following restrictions apply:
+
+#. The new matrix elements cannot change the mixing state of the operator (for instance, spin-flip terms cannot be
+   added to an operator that had none), since the mixing state of the model is fixed once it is closed.
+#. The update is not possible if another cluster model hosted by the same cluster also contains the operator, or if
+   the global option ``periodic`` is set.
+#. Model instances created before the update are not modified: new instances must be created in order to use the
+   updated operator.
+
+An update that is rejected leaves the model unchanged.
 
 General interactions
 --------------------

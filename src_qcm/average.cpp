@@ -41,6 +41,8 @@ vector<pair<string,double>> lattice_model_instance::averages(const vector<string
   vector<double> Iw(ops.size());
 
   if(model->hybrid != nullptr){ // frequency-momentum sum
+    if(model->hybrid->eta != 0.0)
+      qcm_throw("lattice averages cannot be computed with an external hybridization defined on the real frequency axis (eta != 0)");
 	  vector<double> I(ops.size());
     for(int iw=0; iw < model->hybrid->nw; iw++){
       to_zero(Iw);

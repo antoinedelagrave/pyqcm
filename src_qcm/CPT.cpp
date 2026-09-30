@@ -472,6 +472,26 @@ matrix<Complex> lattice_model_instance::projected_Green_function(Complex w, bool
  */
 void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vector<double>& weights, double accuracy)
 {
+	// checks done before G_host is allocated: an allocated G_host is taken as already computed
+	if(model->hybrid != nullptr){
+		if(model->hybrid->eta != 0.0)
+			qcm_throw("The CDMFT host function cannot be computed with an external hybridization defined on the real frequency axis (eta != 0)");
+		// With an external hybridization the host is built on the frequency grid stored in the
+		// h5 file, whereas the distance function and the bath hybridization use "freqs". The two
+		// must be the same grid, otherwise the CDMFT procedure silently minimizes a distance
+		// between quantities evaluated at different frequencies.
+		if(model->hybrid->nw != freqs.size())
+			qcm_throw("The CDMFT frequency grid has "+to_string(freqs.size())
+				+" frequencies, but the external hybridization file has "+to_string(model->hybrid->nw)
+				+". They must be the same grid.");
+		for(size_t i=0; i<freqs.size(); i++){
+			if(fabs(model->hybrid->w[i] - freqs[i]) > 1e-9*(1.0+fabs(freqs[i])))
+				qcm_throw("The CDMFT frequency grid differs from that of the external hybridization file at index "
+					+to_string(i)+" : "+to_string(freqs[i])+" vs "+to_string(model->hybrid->w[i])
+					+". They must be the same grid.");
+		}
+	}
+
 	CDMFT_weights = weights;
 	CDMFT_freqs = freqs;
 	size_t n_clus = model->clusters.size();
@@ -487,20 +507,6 @@ void lattice_model_instance::CDMFT_host(const vector<double>& freqs, const vecto
 	}
 	else return;
 	if(model->hybrid != nullptr){
-		// With an external hybridization the host is built on the frequency grid stored in the
-		// h5 file, whereas the distance function and the bath hybridization use "freqs". The two
-		// must be the same grid, otherwise the CDMFT procedure silently minimizes a distance
-		// between quantities evaluated at different frequencies.
-		if(model->hybrid->nw != freqs.size())
-			qcm_throw("The CDMFT frequency grid has "+to_string(freqs.size())
-				+" frequencies, but the external hybridization file has "+to_string(model->hybrid->nw)
-				+". They must be the same grid.");
-		for(size_t i=0; i<freqs.size(); i++){
-			if(fabs(model->hybrid->w[i] - freqs[i]) > 1e-9*(1.0+fabs(freqs[i])))
-				qcm_throw("The CDMFT frequency grid differs from that of the external hybridization file at index "
-					+to_string(i)+" : "+to_string(freqs[i])+" vs "+to_string(model->hybrid->w[i])
-					+". They must be the same grid.");
-		}
 		CDMFT_host();
 		return;
 	}

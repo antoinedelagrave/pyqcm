@@ -69,6 +69,11 @@ Finally, a density wave corresponding to :math:`(\pi,\pi)` antiferromagnetism is
 
 Additional keyword arguments to ``density_wave()`` include the link on which the density wave is defined (for bond-density waves), lattice orbitals involved (for multi-band models), additional phases and amplitudes, etc. Again, see the reference section for details.
 
+All operators must be defined before the model is used: the model is *closed* when the first model instance is
+created, after which no operator can be added. An existing operator can however be redefined with new matrix
+elements, via the ``cluster_model`` member function ``update_operator()``; this also updates the corresponding lattice
+operator within the clusters. See :ref:`updating operators`.
+
 
 A more complex example
 ----------------------
